@@ -142,6 +142,64 @@ CREATE TRIGGER trigger_users
     AFTER INSERT OR UPDATE ON users
     FOR EACH ROW EXECUTE PROCEDURE history_users();
 
+-- Config values, generic for future use
+CREATE TABLE configs (
+        config_uuid           uuid    default uuidv7()    not null,
+        config_vessel_uuid    uuid                        not null, 
+        config_name           text                        not null, 
+        config_value          text                        not null, 
+        config_description    text                        not null,
+        modified_date         timestamptz                 not null,
+
+        PRIMARY KEY(config_uuid),
+        FOREIGN KEY(config_vessel_uuid) REFERENCES vessels(vessel_uuid)
+);
+ALTER TABLE configs OWNER TO admin;
+
+CREATE TABLE history.configs (
+        history_id            bigserial,
+        config_uuid           uuid,
+        config_vessel_uuid    uuid,
+        config_name           text,
+        config_value          text,
+        config_description    text,
+        modified_date         timestamptz,
+        
+        PRIMARY KEY(config_uuid)
+);
+ALTER TABLE history.configs OWNER TO admin;
+
+CREATE FUNCTION history_configs() RETURNS trigger
+AS $$
+DECLARE
+    history_configs RECORD;
+BEGIN
+    SELECT INTO history_configs * FROM configs WHERE config_uuid = new.config_uuid;
+    INSERT INTO history.configs
+        (config_uuid,
+         config_vessel_uuid,
+         config_name,
+         config_value,
+         config_description,
+         modified_date)
+    VALUES
+        (history_configs.config_uuid,
+         history_configs.config_vessel_uuid,
+         history_configs.config_name,
+         history_configs.config_value,
+         history_configs.config_description,
+         history_configs.modified_date);
+    RETURN NULL;
+END;
+$$
+LANGUAGE plpgsql;
+ALTER FUNCTION history_configs() OWNER TO admin;
+
+CREATE TRIGGER trigger_configs
+    AFTER INSERT OR UPDATE ON configs
+    FOR EACH ROW EXECUTE PROCEDURE history_configs();
+
+
 -- Manually entered logs of weather, travel, etc.
 CREATE TABLE ships_logs (
         ship_log_uuid                uuid    default uuidv7()    not null,
@@ -154,7 +212,7 @@ CREATE TABLE ships_logs (
         ship_log_sail_plan           text                        not null, -- Reefed, wing on wing, port tack, etc
         ship_log_sea_state           smallint                    not null, -- Beaufort scale; 0 ~ 12, extended to 17 - https://en.wikipedia.org/wiki/Beaufort_scale#Modern_scale
         ship_log_narrative           text                        not null, -- The free-form textual narrative of the log
-        modified_date                timestamptz,
+        modified_date                timestamptz                 not null,
         
         PRIMARY KEY(ship_log_uuid),
         FOREIGN KEY(ship_log_vessel_uuid) REFERENCES vessels(vessel_uuid),
@@ -684,6 +742,59 @@ ALTER VIEW tanks_current OWNER TO admin;
 -- Indexing for spatial and time-series performance
 CREATE INDEX index_tanks_latest ON tanks (tank_source, time DESC);
 ALTER INDEX index_tanks_latest OWNER TO admin;
+
+-- NOTE: https://emsa.europa.eu/cise-documentation/cise-data-model-1.5.3/model/guidelines/687507181.html
+-- Records of AIS targets, static data
+CREATE TABLE ais_targets (
+        ais_target_vessel_uuid    uuid                               not null,
+        ais_target_mmsi           text                               not null,
+        ais_target_imo            text                               not null, -- When available
+        ais_target_name           text                               not null, -- Vessel name or call sign
+        ais_target_length         real                               not null, -- Vessel length
+        ais_target_beam           real                               not null, -- Vessel width
+        ais_target_vessel_type    text                               not null, -- cargo, tanker, passenger, pleasure, etc
+        time                      timestamptz    default now()       not null,
+
+        PRIMARY KEY(ais_target_mmsi), -- NOTE: This is different from other tables! The MMSI acts as the UUID for locating records
+        FOREIGN KEY(ais_target_vessel_uuid) REFERENCES vessels(vessel_uuid)
+);
+ALTER TABLE ais_targets OWNER TO admin;
+
+-- View to quickly access the most recent cell data.
+CREATE OR REPLACE VIEW ais_targets_current AS SELECT DISTINCT ON (ais_target_mmsi) * FROM ais_targets ORDER BY ais_target_mmsi, time DESC;
+ALTER VIEW ais_targets_current OWNER TO admin;
+
+-- Indexing for spatial and time-series performance
+CREATE INDEX index_ais_targets_latest ON ais_targets (ais_target_mmsi, time DESC);
+ALTER INDEX index_ais_targets_latest OWNER TO admin;
+
+-- Records the dynamic, potentially fast changing data about AIS targets.
+CREATE TABLE ais_dynamics (
+        ais_dynamic_uuid                  uuid           default uuidv7()    not null,
+        ais_dynamic_ais_target_mmsi       text                               not null,
+        ais_dynamic_location              geography(point, 4326)             not null,
+        ais_dynamic_speed_over_ground     real                               not null,
+        ais_dynamic_course_over_ground    real                               not null,
+        ais_dynamic_heading               real                               not null,
+        ais_dynamic_rate_of_turn          real                               not null,
+        ais_dynamic_navigation_status     smallint                           not null, -- 
+        ais_dynamic_data                  jsonb                              not null, -- JSON of destination, ETA, static draght, cargo category, etc
+        time                              timestamptz    default now()       not null,
+
+        PRIMARY KEY(ais_dynamic_uuid), 
+        FOREIGN KEY(ais_dynamic_ais_target_mmsi) REFERENCES ais_targets(ais_target_mmsi)
+);
+ALTER TABLE ais_dynamics OWNER TO admin;
+
+-- View to quickly access the most recent cell data.
+CREATE OR REPLACE VIEW ais_dynamics_current AS SELECT DISTINCT ON (ais_dynamic_ais_target_mmsi) * FROM ais_dynamics ORDER BY ais_dynamic_ais_target_mmsi, time DESC;
+ALTER VIEW ais_dynamics_current OWNER TO admin;
+
+-- Indexing for spatial and time-series performance
+CREATE INDEX index_ais_dynamics_latest ON ais_dynamics (ais_dynamic_ais_target_mmsi, time DESC);
+CREATE INDEX index_ais_dynamics_spatial ON ais_dynamics USING GIST (ais_dynamic_location);
+ALTER INDEX index_ais_dynamics_latest OWNER TO admin;
+ALTER INDEX index_ais_dynamics_spatial OWNER TO admin;
 
 -- This is not likely to be recorded to that often, so not creating indexes or views yet.
 CREATE TABLE events (
