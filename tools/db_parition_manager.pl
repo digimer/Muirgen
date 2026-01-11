@@ -10,7 +10,7 @@ use POSIX qw(strftime);
 
 our $conf = {
 	database	=>	{
-		name     => "mr-scifi-ui",
+		name     => "muirgen",
 		user     => "admin",
 		password => "Initial1",
 		handle   => "",

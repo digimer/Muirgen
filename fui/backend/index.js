@@ -30,11 +30,12 @@ app.get('/api/test-db', async (req, res) => {
 
 app.get('/api/get-vessel', async (req, res) => {
   try {
-    const result = await pool.query('SELECT vessel_uuid, vessel_name, vessel_official_number, modified_date FROM vessel ORDER BY modified_date DESC LIMIT 1;');
+    const result = await pool.query('SELECT vessel_uuid, vessel_name, vessel_official_number, vessel_hin, modified_date FROM vessels ORDER BY modified_date DESC LIMIT 1;');
     res.json({ 
       vesselUuid: result.rows[0].vessel_uuid, 
       vesselName: result.rows[0].vessel_name, 
-      vesselOfficialNumber: result.rows[0].vessel_official_number
+      vesselOfficialNumber: result.rows[0].vessel_official_number,
+      vesselHIN: result.rows[0].vessel_hin
     });
   } catch (err) {
     console.error(err);

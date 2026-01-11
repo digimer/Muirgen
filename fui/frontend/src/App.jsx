@@ -53,15 +53,27 @@ function App() {
   return (
     <div className="App">
       <div className="crt-overlay" />
-      <div className="wireframe-grid" />
+      
+      {/* dual grid background. */}
+      <div className="grid-container">
+        <div className="wireframe-grid sky" />
+        <div className="wireframe-grid ground" />
+      </div>
 
-      <main style={{ position: 'relative', zIndex: 1, padding: '2rem' }}>
-        <h2 className="flicker">Core Database: {dbData.status}</h2>
-        <div style={{ border: '1px solid var(--neon-red)', padding: '1rem', marginTop: '1rem' }}>
-          <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
-          <p>Vessel: {vessel.vesselName}</p>
-	  <p>Official Number: {vessel.vesselOfficialNumber}</p>
-	  <ButtonBatteries /> <ButtonTank/> 
+      {/* The main container now handles centering */}
+      <main className="main-layout">
+        <div className="content-container">
+          <h2 className="flicker">Core Database: {dbData.status}</h2>
+          
+          <div className="vessel-box">
+            <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
+            <p>Vessel: {vessel.vesselName}</p>
+            <p>Official Number: {vessel.vesselOfficialNumber}</p>
+            
+            <div className="button-row">
+              <ButtonBatteries /> <ButtonTank />
+            </div>
+          </div>
         </div>
       </main>
     </div>
