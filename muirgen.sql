@@ -38,45 +38,37 @@ CREATE TABLE vessels (
 ALTER TABLE vessels OWNER TO admin;
 
 CREATE TABLE history.vessels (
-        history_id          bigserial,
+        history_id          bigint GENERATED ALWAYS AS IDENTITY,
         uuid                uuid,
         name                text,
         official_number     text,
         hull_id_number      text,
         keel_offset         real, 
         waterline_offset    real, 
-        modified_date       timestamptz,
-        
-        PRIMARY KEY(uuid)
+        modified_date       timestamptz
 );
 ALTER TABLE history.vessels OWNER TO admin;
 
-CREATE FUNCTION history_vessels() RETURNS trigger
-AS $$
-DECLARE
-    history_vessels RECORD;
+CREATE OR REPLACE FUNCTION history_vessels() RETURNS trigger AS $$
 BEGIN
-    SELECT INTO history_vessels * FROM vessels WHERE uuid = new.uuid;
-    INSERT INTO history.vessels
-        (uuid,
-         name,
-         official_number,
-         hull_id_number,
-         keel_offset, 
-         waterline_offset, 
-         modified_date)
-    VALUES
-        (history_vessels.uuid,
-         history_vessels.name,
-         history_vessels.official_number,
-         history_vessels.hull_id_number,
-         history_vessels.keel_offset, 
-         history_vessels.waterline_offset, 
-         history_vessels.modified_date);
+    INSERT INTO history.vessels (
+        uuid, 
+        name, 
+        official_number, 
+        hull_id_number,
+        keel_offset, 
+        waterline_offset, 
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.name, 
+        NEW.official_number, 
+        NEW.hull_id_number,
+        NEW.keel_offset, 
+        NEW.waterline_offset, 
+        NEW.modified_date);
     RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_vessels() OWNER TO admin;
 
 CREATE TRIGGER trigger_vessels
@@ -87,8 +79,7 @@ CREATE TRIGGER trigger_vessels
 CREATE TABLE users (
         uuid             uuid           default uuidv7()    not null,
         name             text                               not null,
-        password_hash    text                               not null,
-        password_salt    text                               not null,
+        password_hash    text                               not null, -- Stored using pgcrypto's crypt() function, which embeds a salt
         is_admin         boolean                            not null,
         modified_date    timestamptz    default now()       not null,
         
@@ -97,43 +88,31 @@ CREATE TABLE users (
 ALTER TABLE users OWNER TO admin;
 
 CREATE TABLE history.users (
-        history_id       bigserial,
+        history_id       bigint GENERATED ALWAYS AS IDENTITY,
         uuid             uuid,
         name             text,
         password_hash    text,
-        password_salt    text,
         is_admin         boolean,
-        note             text,
         modified_date    timestamptz
 );
 ALTER TABLE history.users OWNER TO admin;
 
-CREATE FUNCTION history_users() RETURNS trigger
-AS $$
-DECLARE
-    history_users RECORD;
+CREATE OR REPLACE FUNCTION history_users() RETURNS trigger AS $$
 BEGIN
-    SELECT INTO history_users * FROM users WHERE uuid = new.uuid;
-    INSERT INTO history.users
-        (uuid,
-         name,
-         password_hash,
-         password_salt,
-         is_admin,
-         note,
-         modified_date)
-    VALUES
-        (history_users.uuid,
-         history_users.name,
-         history_users.password_hash,
-         history_users.password_salt,
-         history_users.is_admin,
-         history_users.note,
-         history_users.modified_date);
+    INSERT INTO history.users (
+        uuid, 
+        name, 
+        password_hash,
+        is_admin,
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.name, 
+        NEW.password_hash,
+        NEW.is_admin,
+        NEW.modified_date);
     RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_users() OWNER TO admin;
 
 CREATE TRIGGER trigger_users
@@ -143,21 +122,24 @@ CREATE TRIGGER trigger_users
 -- Config values, generic for future use
 CREATE TABLE configs (
         uuid              uuid    default uuidv7()    not null,
-        vessel_uuid       uuid                        not null, 
+        vessel_uuid       uuid,                                 -- If this config is for a vessel, this will be the vessels -> uuis
+        user_uuid         uuid,                                 -- If this config is for a user, this will be their users -> uuid
         variable_name     text                        not null, 
         variable_value    text                        not null, 
         description       text                        not null,
         modified_date     timestamptz                 not null,
 
         PRIMARY KEY(uuid),
-        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
+        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY(user_uuid) REFERENCES users(uuid)
 );
 ALTER TABLE configs OWNER TO admin;
 
 CREATE TABLE history.configs (
-        history_id        bigserial,
+        history_id        bigint GENERATED ALWAYS AS IDENTITY,
         uuid              uuid,
         vessel_uuid       uuid,
+        user_uuid         uuid,
         variable_name     text,
         variable_value    text,
         description       text,
@@ -167,40 +149,36 @@ CREATE TABLE history.configs (
 );
 ALTER TABLE history.configs OWNER TO admin;
 
-CREATE FUNCTION history_configs() RETURNS trigger
-AS $$
-DECLARE
-    history_configs RECORD;
+CREATE OR REPLACE FUNCTION history_configs() RETURNS trigger AS $$
 BEGIN
-    SELECT INTO history_configs * FROM configs WHERE uuid = new.uuid;
-    INSERT INTO history.configs
-        (uuid,
-         vessel_uuid,
-         variable_name,
-         variable_value,
-         description,
-         modified_date)
-    VALUES
-        (history_configs.uuid,
-         history_configs.vessel_uuid,
-         history_configs.variable_name,
-         history_configs.variable_value,
-         history_configs.description,
-         history_configs.modified_date);
+    INSERT INTO history.configs (
+        uuid, 
+        vessel_uuid,
+        user_uuid,
+        variable_name,
+        variable_value,
+        description,
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.vessel_uuid,
+        NEW.user_uuid,
+        NEW.variable_name,
+        NEW.variable_value,
+        NEW.description,
+        NEW.modified_date);
     RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_configs() OWNER TO admin;
 
 CREATE TRIGGER trigger_configs
     AFTER INSERT OR UPDATE ON configs
     FOR EACH ROW EXECUTE PROCEDURE history_configs();
 
--- Config values, generic for future use
+-- Notes that can be attached to anything.
 CREATE TABLE notes (
         uuid              uuid    default uuidv7()    not null,
-        vessel_uuid       uuid                        not null, 
+        vessel_uuid       uuid                        not null, -- The vessel the note is linked to
         user_uuid         uuid                        not null, -- The user who created or last edited the note.
         note_source       text                        not null, -- This is a reference to find this note. Generally '<table>:<tanle uuid>'
         note_name         text                        not null, -- This is a free-form name for the note, meant to find a note in a list
@@ -214,50 +192,90 @@ CREATE TABLE notes (
 ALTER TABLE notes OWNER TO admin;
 
 CREATE TABLE history.notes (
-        history_id        bigserial,
+        history_id        bigint GENERATED ALWAYS AS IDENTITY,
         uuid              uuid,
         vessel_uuid       uuid,
         user_uuid         uuid,
         note_source       text,
         note_name         text,
         note_body         text,
-        modified_date     timestamptz,
-        
-        PRIMARY KEY(uuid)
+        modified_date     timestamptz
 );
 ALTER TABLE history.notes OWNER TO admin;
 
-CREATE FUNCTION history_notes() RETURNS trigger
-AS $$
-DECLARE
-    history_notes RECORD;
+CREATE OR REPLACE FUNCTION history_notes() RETURNS trigger AS $$
 BEGIN
-    SELECT INTO history_notes * FROM notes WHERE uuid = new.uuid;
-    INSERT INTO history.notes
-        (uuid,
-         vessel_uuid,
-         user_uuid,
-         note_source,
-         note_name,
-         note_body,
-         modified_date)
-    VALUES
-        (history_notes.uuid,
-         history_notes.vessel_uuid,
-         history_notes.user_uuid,
-         history_notes.note_source,
-         history_notes.note_name,
-         history_notes.note_body,
-         history_notes.modified_date);
+    INSERT INTO history.notes (
+        uuid, 
+        vessel_uuid,
+        user_uuid,
+        note_source,
+        note_name,
+        note_body,
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.vessel_uuid,
+        NEW.user_uuid,
+        NEW.note_source,
+        NEW.note_name,
+        NEW.note_body,
+        NEW.modified_date);
     RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_notes() OWNER TO admin;
 
 CREATE TRIGGER trigger_notes
     AFTER INSERT OR UPDATE ON notes
     FOR EACH ROW EXECUTE PROCEDURE history_notes();
+    
+-- Config values, generic for future use
+CREATE TABLE images (
+        uuid               uuid    default uuidv7()    not null,
+        image_source       text                        not null, -- This is used to connect an image to a source. Ie: 'vessel:<uuid>:1', 'mmsi:<mmsi>:3', etc
+        image_directory    text                        not null, -- This is the relative directory the image is saved to
+        file_name          text                        not null, -- This is the file name of the image.
+        metadata           jsonb,                                -- This can contain the mime type, when the picture was take, the size, etc.
+        modified_date      timestamptz                 not null,
+
+        PRIMARY KEY(uuid)
+);
+ALTER TABLE images OWNER TO admin;
+
+CREATE TABLE history.images (
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        uuid               uuid,
+        image_source       text,
+        image_directory    text,
+        file_name          text,
+        metadata           jsonb,
+        modified_date      timestamptz
+);
+ALTER TABLE history.images OWNER TO admin;
+
+CREATE OR REPLACE FUNCTION history_images() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.images (
+        uuid, 
+        image_source,
+        image_directory,
+        file_name,
+        metadata,
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.image_source,
+        NEW.image_directory,
+        NEW.file_name,
+        NEW.metadata,
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_images() OWNER TO admin;
+
+CREATE TRIGGER trigger_images
+    AFTER INSERT OR UPDATE ON images
+    FOR EACH ROW EXECUTE PROCEDURE history_images();
 
 -- Manually entered logs of weather, travel, etc.
 CREATE TABLE ship_logs (
@@ -280,7 +298,7 @@ CREATE TABLE ship_logs (
 ALTER TABLE ship_logs OWNER TO admin;
 
 CREATE TABLE history.ship_logs (
-        history_id          bigserial,
+        history_id          bigint GENERATED ALWAYS AS IDENTITY,
         uuid                uuid,
         vessel_uuid         uuid, 
         user_uuid           uuid, 
@@ -298,40 +316,34 @@ ALTER TABLE history.ship_logs OWNER TO admin;
 CREATE INDEX index_ship_logs_location ON ship_logs USING GIST (location);
 ALTER INDEX index_ship_logs_location OWNER TO admin;
 
-CREATE FUNCTION history_ship_logs() RETURNS trigger
-AS $$
-DECLARE
-    history_ship_logs RECORD;
+CREATE OR REPLACE FUNCTION history_ship_logs() RETURNS trigger AS $$
 BEGIN
-    SELECT INTO history_ship_logs * FROM ship_logs WHERE uuid = new.uuid;
-    INSERT INTO history.ship_logs
-        (uuid,
-         vessel_uuid,
-         user_uuid,
-         weather_snapshot,
-         vessel_snapshot,
-         location,
-         vessel_status,
-         sail_plan,
-         sea_state,
-         narrative,
-         modified_date)
-    VALUES
-        (history_ship_logs.uuid,
-         history_ship_logs.vessel_uuid,
-         history_ship_logs.user_uuid,
-         history_ship_logs.weather_snapshot,
-         history_ship_logs.vessel_snapshot,
-         history_ship_logs.location,
-         history_ship_logs.vessel_status,
-         history_ship_logs.sail_plan,
-         history_ship_logs.sea_state,
-         history_ship_logs.narrative,
-         history_ship_logs.modified_date);
+    INSERT INTO history.ship_logs (
+        uuid, 
+        vessel_uuid, 
+        user_uuid, 
+        weather_snapshot, 
+        vessel_snapshot, 
+        location, 
+        vessel_status, 
+        sail_plan, 
+        sea_state, 
+        narrative, 
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.user_uuid, 
+        NEW.weather_snapshot, 
+        NEW.vessel_snapshot, 
+        NEW.location, 
+        NEW.vessel_status, 
+        NEW.sail_plan, 
+        NEW.sea_state, 
+        NEW.narrative, 
+        NEW.modified_date);
     RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_ship_logs() OWNER TO admin;
 
 CREATE TRIGGER trigger_ship_logs
@@ -342,16 +354,16 @@ CREATE TRIGGER trigger_ship_logs
 CREATE TABLE radios (
         uuid             uuid           default uuidv7()    not null,
         vessel_uuid      uuid                               not null,
-        make             text                               not null,
-        model            text                               not null,
-        mmsi             text                               not null,
-        serial_number    text                               not null,
-        tx_power         text                               not null,
-        has_dsc          boolean                            not null,
-        has_gps          boolean                            not null,
-        has_ais_rx       boolean                            not null,
-        has_ais_tx       boolean                            not null,
-        is_portable      boolean                            not null,
+        make             text                               not null, -- The make/brand of the radio
+        model            text                               not null, -- The model of the radio
+        mmsi             text                               not null, -- The MMSI number 
+        serial_number    text                               not null, -- The serial number of the radio
+        tx_power         text                               not null, -- The transmit power, in watts
+        has_dsc          boolean                            not null, -- Set to true if the radio is equipped with digital selective calling
+        has_gps          boolean                            not null, -- Set to true if the radio is equipped with GPS
+        has_ais_rx       boolean                            not null, -- Set to true if the radio is equipped with AIS. If this radio is also a transmitter, create a second entry in the ais_transponders table.
+        is_portable      boolean                            not null, -- Set the true if the radio is a portable / hand-held radio
+        is_active        boolean                            not null, -- Set to false if the radio is lost or destroyed
         modified_date    timestamptz    default now()       not null,
 
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
@@ -360,7 +372,7 @@ CREATE TABLE radios (
 ALTER TABLE radios OWNER TO admin;
 
 CREATE TABLE history.radios (
-        history_id       bigserial,
+        history_id       bigint GENERATED ALWAYS AS IDENTITY,
         uuid             uuid,
         vessel_uuid      uuid,
         make             text,
@@ -371,62 +383,155 @@ CREATE TABLE history.radios (
         has_dsc          boolean,
         has_gps          boolean,
         has_ais_rx       boolean,
-        has_ais_tx       boolean,
         is_portable      boolean,
         modified_date    timestamptz
 );
 ALTER TABLE history.radios OWNER TO admin;
 
-CREATE FUNCTION history_radios() RETURNS trigger
-AS $$
-DECLARE
-    history_radios RECORD;
+CREATE OR REPLACE FUNCTION history_radios() RETURNS trigger AS $$
 BEGIN
-    SELECT INTO history_radios * FROM radios WHERE uuid = new.uuid;
-    INSERT INTO history.radios
-        (uuid,
-         vessel_uuid,
-         make,
-         model,
-         mmsi,
-         serial_number,
-         tx_power,
-         has_dsc,
-         has_gps,
-         has_ais_rx,
-         has_ais_tx,
-         is_portable,
-         modified_date)
-    VALUES
-        (history_radios.uuid,
-         history_radios.vessel_uuid,
-         history_radios.make,
-         history_radios.model,
-         history_radios.mmsi,
-         history_radios.serial_number,
-         history_radios.tx_power,
-         history_radios.has_dsc,
-         history_radios.has_gps,
-         history_radios.has_ais_rx,
-         history_radios.has_ais_tx,
-         history_radios.is_portable,
-         history_radios.modified_date);
+    INSERT INTO history.radios (
+        uuid, 
+        vessel_uuid, 
+        make,
+        model,
+        mmsi,
+        serial_number,
+        tx_power,
+        has_dsc,
+        has_gps,
+        has_ais_rx,
+        is_portable,
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.make,
+        NEW.model,
+        NEW.mmsi,
+        NEW.serial_number,
+        NEW.tx_power,
+        NEW.has_dsc,
+        NEW.has_gps,
+        NEW.has_ais_rx,
+        NEW.is_portable,
+        NEW.modified_date);
     RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_radios() OWNER TO admin;
 
 CREATE TRIGGER trigger_radios
     AFTER INSERT OR UPDATE ON radios
     FOR EACH ROW EXECUTE PROCEDURE history_radios();
 
+-- AIS Transponders
+CREATE TABLE ais_transponders (
+        uuid                 uuid           default uuidv7()    not null,
+        vessel_uuid          uuid                               not null,
+        make                 text                               not null, -- The make/brand of the radio
+        model                text                               not null, -- The model of the radio
+        mmsi                 text                               not null, -- This will match the fixed radio's MMSI generally (in Canada at least)
+        serial_number        text                               not null, -- The serial number of the radio
+        ais_class            text                               not null, -- 'Class B SOTDMA' for B954
+        transmit_power       real                               not null, -- 5.0 (Watts) for B954
+        wifi_mac_address     text                               not null, -- If the AIS has wifi, this is its MAC address
+        bluetooth_address    text                               not null, -- If the AIS has bluetooth, this is the BD_ADDR
+        vhf_splitter         text                               not null, -- If this uses a splitter to share the VHF antenna, set this to the make and model. If it's an internal splitter, set this to 'internal'
+        external_gps         text                               not null, -- If there is an external GPS antenna, set this to the model number of the antenna
+        silent_mode          boolean                            not null, -- This is set true if transmissions are turned off and its only receiving. 
+        last_health_check    jsonb,                                       -- Store internal VSWR or supply voltage
+        modified_date        timestamptz    default now()       not null,
+
+        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
+        PRIMARY KEY(uuid)
+);
+ALTER TABLE ais_transponders OWNER TO admin;
+
+CREATE TABLE history.ais_transponders (
+        history_id           bigint GENERATED ALWAYS AS IDENTITY,
+        uuid                 uuid,
+        vessel_uuid          uuid,
+        make                 text,
+        model                text,
+        mmsi                 text,
+        serial_number        text,
+        ais_class            text,
+        transmit_power       real,
+        wifi_mac_address     text,
+        bluetooth_address    text,
+        vhf_splitter         text,
+        external_gps         text,
+        silent_mode          boolean,
+        last_health_check    jsonb,
+        modified_date        timestamptz
+);
+ALTER TABLE history.ais_transponders OWNER TO admin;
+
+CREATE OR REPLACE FUNCTION history_ais_transponders() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.ais_transponders (
+        uuid, 
+        vessel_uuid, 
+        make,
+        model,
+        mmsi,
+        serial_number,
+        ais_class,
+        transmit_power,
+        wifi_mac_address,
+        bluetooth_address,
+        vhf_splitter,
+        external_gps,
+        silent_mode,
+        last_health_check,
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.make,
+        NEW.model,
+        NEW.mmsi,
+        NEW.serial_number,
+        NEW.ais_class,
+        NEW.transmit_power,
+        NEW.wifi_mac_address,
+        NEW.bluetooth_address,
+        NEW.vhf_splitter,
+        NEW.external_gps,
+        NEW.silent_mode,
+        NEW.last_health_check,
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_ais_transponders() OWNER TO admin;
+
+CREATE TRIGGER trigger_ais_transponders
+    AFTER INSERT OR UPDATE ON ais_transponders
+    FOR EACH ROW EXECUTE PROCEDURE history_ais_transponders();
+
+-- This records whenever we transmit data over VHF or AIS
+CREATE TABLE vessel_transmissions (
+        uuid                   uuid           default uuidv7()    not null,
+        vessel_uuid            uuid                               not null,
+        transmission_source    text                               not null, -- This is the '<table>:<uuid>' referencing the AIS or VHF device sending the transmission
+        transmission_type      text                               not null, -- 'AIS', 'VHF_VOICE', or 'DSC'
+        channel                text                               not null, -- 'A', 'B', or '16', '72', etc.
+        power_watts            real                               not null, -- 25, 5, 1
+        dsc_message_type       text                               not null, -- 'Distress', 'Individual', etc.
+        vswr                   real                               not null, -- Antenna health
+        time                   timestamptz    DEFAULT now()       not null,
+
+        -- PK must include the column used for partitioning
+        PRIMARY KEY (time, uuid),
+        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
+) PARTITION BY RANGE (time);
+ALTER TABLE vessel_transmissions OWNER TO admin;
+
 -- Crew (separate from users)
 CREATE TABLE crew (
         uuid             uuid           default uuidv7()    not null,
         vessel_uuid      uuid                               not null,
         name             text                               not null,
-        image            text                               not null,
         position         text                               not null,
         contact_info     text                               not null,
         disembarked      text                               not null,
@@ -438,11 +543,10 @@ CREATE TABLE crew (
 ALTER TABLE crew OWNER TO admin;
 
 CREATE TABLE history.crew (
-        history_id       bigserial,
+        history_id       bigint GENERATED ALWAYS AS IDENTITY,
         uuid             uuid,
         vessel_uuid      uuid,
         name             text,
-        image            text,
         position         text,
         contact_info     text,
         disembarked      text,
@@ -450,37 +554,31 @@ CREATE TABLE history.crew (
 );
 ALTER TABLE history.crew OWNER TO admin;
 
-CREATE FUNCTION history_crew() RETURNS trigger
-AS $$
-DECLARE
-    history_crew RECORD;
+CREATE OR REPLACE FUNCTION history_crew() RETURNS trigger AS $$
 BEGIN
-    SELECT INTO history_crew * FROM crew WHERE uuid = new.uuid;
-    INSERT INTO history.crew
-        (uuid,
-         vessel_uuid,
-         name,
-         image,
-         position,
-         contact_info, 
-         disembarked,
-         modified_date)
-    VALUES
-        (history_crew.uuid,
-         history_crew.vessel_uuid,
-         history_crew.name,
-         history_crew.image,
-         history_crew.position,
-         history_crew.contact_info, 
-         history_crew.disembarked,
-         history_crew.modified_date);
+    INSERT INTO history.crew (
+        uuid, 
+        vessel_uuid, 
+        name,
+        position,
+        contact_info,
+        disembarked,
+        modified_date)
+    VALUES (
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.name,
+        NEW.position,
+        NEW.contact_info,
+        NEW.disembarked,
+        NEW.modified_date);
     RETURN NULL;
-END;
-$$
-LANGUAGE plpgsql;
+END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_crew() OWNER TO admin;
 
--- Tables below here are frequently updated, so are handled differently and don't have history schema tables.
+CREATE TRIGGER trigger_crew
+    AFTER INSERT OR UPDATE ON crew
+    FOR EACH ROW EXECUTE PROCEDURE history_crew();
 
 -- Store raw PGN traffic. This will generate a massive amount of data and we'll likely rarely ever read it
 -- back, save for debugging. So no index and no WAL. Partiioned daily for faster/easier purging of old 

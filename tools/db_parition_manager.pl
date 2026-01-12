@@ -20,13 +20,21 @@ our $conf = {
 	},
 	debug		=>	1,
 	tables		=>	{
-		n2k_traffic	=>	{
-			keep_days	=>	3,
-			existing_tables =>	{},
+		n2k_traffic		=>	{
+			keep_days		=>	3,
+			existing_tables 	=>	{},
 		},
-		motions		=>	{
-			keep_days	=>	3,
-			existing_tables =>	{},
+		motions			=>	{
+			keep_days		=>	3,
+			existing_tables 	=>	{},
+		},
+		motors			=>	{
+			keep_days		=>	3,
+			existing_tables 	=>	{},
+		},
+		vessel_transmissions	=>	{
+			keep_days		=>	3,
+			existing_tables 	=>	{},
 		},
 	}
 };
