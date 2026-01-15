@@ -27,6 +27,9 @@ CREATE EXTENSION IF NOT EXISTS postgis_raster;
 CREATE TABLE vessels (
         uuid                uuid           default uuidv7()    not null,
         name                text                               not null,
+        flag_nation         text                               not null,
+        port_of_registry    text                               not null,
+        build_details       text                               not null, -- Year, Make, Model
         official_number     text                               not null,
         hull_id_number      text                               not null,
         keel_offset         real                               not null, -- Distance from the transducer to the keel (negative number)
@@ -41,6 +44,9 @@ CREATE TABLE history.vessels (
         history_id          bigint GENERATED ALWAYS AS IDENTITY,
         uuid                uuid,
         name                text,
+        flag_nation         text,
+        port_of_registry    text,
+        build_details       text,
         official_number     text,
         hull_id_number      text,
         keel_offset         real, 
@@ -54,6 +60,9 @@ BEGIN
     INSERT INTO history.vessels (
         uuid, 
         name, 
+        flag_nation,
+        port_of_registry,
+        build_details,
         official_number, 
         hull_id_number,
         keel_offset, 
@@ -62,6 +71,9 @@ BEGIN
     VALUES (
         NEW.uuid, 
         NEW.name, 
+        NEW.flag_nation,
+        NEW.port_of_registry,
+        NEW.build_details,
         NEW.official_number, 
         NEW.hull_id_number,
         NEW.keel_offset, 
@@ -956,3 +968,12 @@ CREATE TABLE events (
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
 );
 ALTER TABLE events OWNER TO admin;
+
+-- These were created automatically
+ALTER TABLE spatial_ref_sys OWNER TO admin;
+ALTER VIEW geography_columns OWNER TO admin;
+ALTER VIEW geometry_columns OWNER TO admin;
+ALTER VIEW health_summary OWNER TO admin;
+ALTER VIEW propulsion_efficiency OWNER TO admin;
+ALTER VIEW raster_columns OWNER TO admin;
+ALTER VIEW raster_overviews OWNER TO admin;

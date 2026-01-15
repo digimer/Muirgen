@@ -1,31 +1,11 @@
 import { useState, useEffect } from 'react';
 import useInterval from './useInterval'; // Import our new hook
 import './App.css';
-
-function ButtonTank() {
-  function ClickTank() {
-    alert('Showing Tank Data...');
-  }
-
-  return (
-    <button onClick={ClickTank}>Tanks</button>
-  );
-}
-
-function ButtonBatteries() {
-  const [count, setCount] = useState(0);
-  
-  function ClickBatteries() {
-    setCount(count + 1);
-  }
-  return (
-    <button onClick={ClickBatteries}>Batteries Click: {count}</button>
-  );
-}
+import VesselSetup from './VesselSetup'; 
 
 function App() {
   const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
-  const [vessel, setVessel] = useState({ vesselName: 'Loading...' });
+  const [vessel, setVessel] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -49,6 +29,15 @@ function App() {
 
   // 2. Poll every 1000ms (1 second)
   useInterval(fetchData, 1000);
+  
+  if (!vessel) {
+    return (
+      <div className="main-layout">
+        <div className="crt-overlay" />
+        <h2 className="flicker">Booting...</h2>
+      </div>
+    );
+  }
 
   return (
     <div className="App">
@@ -64,16 +53,22 @@ function App() {
       <main className="main-layout">
         <div className="content-container">
           <h2 className="flicker">Core Database: {dbData.status}</h2>
+          {vessel.setupRequired ? (
+            <VesselSetup onComplete={fetchData} />
+          ) : (
           
-          <div className="vessel-box">
-            <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
-            <p>Vessel: {vessel.vesselName}</p>
-            <p>Official Number: {vessel.vesselOfficialNumber}</p>
-            
-            <div className="button-row">
-              <ButtonBatteries /> <ButtonTank />
+            <div className="vessel-box">
+              <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
+              <p>Vessel Name: {vessel.vesselName || 'Loading...'}</p>
+              <p>Flag Nation: {vessel.flagNation || 'Loading...'}</p>
+              <p>Home Port: {vessel.portOfRegistry || 'Loading...'}</p>
+              <p>Build Details: {vessel.buildDetails || 'Loading...'}</p>
+              <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
+              <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
+              <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
+              
             </div>
-          </div>
+         )}
         </div>
       </main>
     </div>

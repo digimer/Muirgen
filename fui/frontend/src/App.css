@@ -1,8 +1,11 @@
 /* 1980s Retro Sci-Fi Styling - Night Vision Optimized */
 :root {
   --neon-red: #ff0000;
+  --dim-red: #440000;
+  --soft-red: #880000;
   --dark-bg: #000000;
   --grid-line: rgba(255, 0, 0, 0.15);
+  --inactive-border: rgba(255, 0, 0, 0.5);
 }
 
 body {
@@ -15,7 +18,6 @@ body {
   width: 100vw;
 }
 
-/* 1. LAYOUT CENTERING */
 .main-layout {
   position: relative;
   z-index: 10;
@@ -26,13 +28,6 @@ body {
   width: 100vw;
 }
 
-/* 2. THE BOX (Stays as wide as needed, but aligned left internally) */
-.content-container {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start; /* Keeps H2 and Box left-aligned with each other */
-  text-align: left;        /* Ensures all text inside starts at the left */
-}
 
 .vessel-box {
   border: 2px solid var(--neon-red);
@@ -40,6 +35,11 @@ body {
   margin-top: 1rem;
   background-color: rgba(0, 0, 0, 0.9); /* Opaque so grid doesn't distract */
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+}
+
+.vessel-box.setup-mode {
+  max-width: 900px;
+  width: auto;
 }
 
 /* BACKGROUND EFFECTS */
@@ -96,6 +96,7 @@ body {
 
 .flicker {
   text-shadow: 0 0 10px var(--neon-red);
+  font-family: 'Orbitron', sans-serif;
   margin: 0;
 }
 
@@ -107,4 +108,156 @@ body {
 @keyframes road-move-reverse {
   from { background-position: 0 60px; }
   to { background-position: 0 0; }
+}
+
+/* Touch buttons */
+input, 
+input[type="number"],
+.vessel-box p {
+  background: black;
+  color: var(--neon-red);
+  border: 1px solid var(--inactive-border);
+  padding: 15px; /* Large touch target */
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-weight: 400; 
+  font-size: 1.2rem;
+  width: 100%;
+  margin-bottom: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus {
+  border-color: var(--neon-red);
+  outline: none;
+  box-shadow: 0 0 15px var(--neon-red);
+  color: var(--neon-red) !important;
+}
+
+.touch-button, button {
+  background: var(--soft-red);
+  color: #000000;
+  border: 1px solid var(--soft-red);
+  padding: 20px 40px; /* Large touch target */
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 900;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.1s ease-in-out;
+  box-shadow: 0 0 5px rgba(136, 0, 0, 0.5);
+}
+
+.touch-button:hover,
+.touch-button:focus-visible,
+button:hover,
+button:focus-visible {
+  background: var(--neon-red);   /* Bright Red #ff0000 */
+  color: #000000;                /* Keep text black */
+  box-shadow: 0 0 20px var(--neon-red);
+  outline: none;
+}
+
+.touch-button:active {
+  background: #000000;
+  color: var(--neon-red);
+  transform: translateY(2px);
+}
+
+/* Remove the default outline universally for a cleaner look when custom shadows are applied */
+input:focus,
+input[type="number"]:focus,
+.touch-button:focus,
+button:focus {
+  outline: none; 
+}
+
+.setup-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 30px;
+  width: 100%;
+  max-width: 800px;
+}
+
+/* Responsive Breakpoint, switch to two columns */
+@media (min-width: 700px) {
+  .setup-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  /* Make the button row span across two columns */
+    .button-row {
+    grid-column: span 2; 
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+.setup-form label,
+.field-group label {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 5px;
+  color: var(--neon-red);
+}
+
+.setup-form label::before {
+  content: "> "; /* Terminal prompt style */
+}
+
+/* Grouping the numeric offsets for a "control panel" feel */
+.button-row {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+::selection {
+  background-color: var(--neon-red); /* The background of the highlight */
+  color: black;                      /* The text color when highlighted */
+}
+
+/* Container for all fields */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Default: Single column for very small screens */
+  gap: 0 20px; /* 0 vertical gap, 20px horizontal gap */
+  width: 100%;
+}
+
+/* Individual Label+Input groups */
+.field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem; /* Tighter spacing for multi-column */
+}
+
+.field-group label::before {
+  content: "> ";
+}
+
+/* Fonts */
+@font-face {
+  font-family: 'Orbitron';
+  src: url('./assets/fonts/orbitron.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap; /* Ensures text is visible while loading */
+}
+@font-face {
+  font-family: 'Oxanium';
+  src: url('./assets/fonts/oxanium.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap; /* Keeps text visible while the font loads */
+}
+@font-face {
+  font-family: 'Ubuntu Sans Mono';
+  font-style: normal;
+  font-weight: 400 700; /* Supports regular and bold */
+  font-display: swap;
+  src: url('./assets/fonts/ubuntu_sans_mono.woff2') format('woff2');
 }
