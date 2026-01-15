@@ -1,4 +1,21 @@
-/* 1980s Retro Sci-Fi Styling - Night Vision Optimized */
+/* --- 1. SETTINGS & FONTS --- */
+@font-face {
+  font-family: 'Orbitron';
+  src: url('./assets/fonts/orbitron.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Oxanium';
+  src: url('./assets/fonts/oxanium.woff2') format('woff2');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Ubuntu Sans Mono';
+  src: url('./assets/fonts/ubuntu_sans_mono.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
   --neon-red: #ff0000;
   --dim-red: #440000;
@@ -6,12 +23,14 @@
   --dark-bg: #000000;
   --grid-line: rgba(255, 0, 0, 0.15);
   --inactive-border: rgba(255, 0, 0, 0.5);
+  --crt-scanline: linear-gradient(rgba(18, 0, 0, 0) 50%, rgba(50, 0, 0, 0.05) 50%);
 }
 
+/* --- 2. BASE & LAYOUT --- */
 body {
   background-color: var(--dark-bg);
   color: var(--neon-red);
-  font-family: 'Courier New', Courier, monospace;
+  font-family: 'Ubuntu Sans Mono', monospace;
   margin: 0;
   overflow: hidden;
   height: 100vh;
@@ -22,31 +41,147 @@ body {
   position: relative;
   z-index: 10;
   display: flex;
-  justify-content: center; /* Horizontally centers the box */
-  align-items: center;     /* Vertically centers the box */
-  height: 100vh;           /* Take up full viewport height */
-  width: 100vw;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
 
+.content-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
 
+/* --- 3. COMPONENTS --- */
 .vessel-box {
   border: 2px solid var(--neon-red);
   padding: 2rem;
   margin-top: 1rem;
-  background-color: rgba(0, 0, 0, 0.9); /* Opaque so grid doesn't distract */
+  background-color: rgba(0, 0, 0, 0.9);
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
 }
 
 .vessel-box.setup-mode {
   max-width: 900px;
-  width: auto;
 }
 
-/* BACKGROUND EFFECTS */
+.vessel-box p {
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* --- 4. FORMS & INTERACTIVE --- */
+.setup-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 30px;
+  width: 100%;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+}
+
+.setup-form label, 
+.field-group label {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 5px;
+  color: var(--neon-red);
+}
+
+.setup-form label::before, 
+.field-group label::before {
+  content: "> ";
+}
+
+input, input[type="number"] {
+  background: black;
+  color: var(--neon-red);
+  border: 1px solid var(--inactive-border);
+  padding: 15px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 1.2rem;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+input:focus {
+  border-color: var(--neon-red);
+  outline: none;
+  box-shadow: 0 0 15px var(--neon-red);
+}
+
+/* Disable default outline and apply custom red shadow when focused via keyboard (tab) */
+input:focus,
+input[type="number"]:focus,
+.touch-button:focus,
+button:focus {
+  outline: none; /* Removes the browser's default white outline */
+}
+
+/* Apply the custom red shadow *only* when focused via keyboard navigation (tabbing) */
+.button-row {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.touch-button, button {
+  background: var(--soft-red);
+  color: black;
+  border: 1px solid var(--soft-red);
+  padding: 20px 40px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-weight: 900;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.1s ease-in-out, background-color 0.3s;
+  box-shadow: 0 0 5px rgba(136, 0, 0, 0.5)
+}
+
+.touch-button:hover,
+.touch-button:focus-visible,
+button:hover,
+button:focus-visible {
+  background: var(--neon-red) !important;   /* Use !important to guarantee this color wins */
+  color: #000000;                           
+  box-shadow: 0 0 20px var(--neon-red);
+  outline: none;                            /* Prevents default outline */
+}
+
+.touch-button:active,
+button:active {
+  background: black;
+  color: var(--neon-red);
+  transform: translateY(2px);
+}
+
+/* Hide the spinner buttons for number inputs */
+/* For Chrome, Safari, Edge, Opera (WebKit/Blink) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none; /* Removes the default controls */
+  margin: 0;                /* Corrects a minor margin issue that might remain */
+}
+
+/* For Firefox */
+input[type="number"] {
+  -moz-appearance: textfield; /* Reverts to a standard text field appearance in Firefox */
+  appearance: textfield;      /* Standard property for modern browsers */
+}
+
+/* --- 5. ANIMATIONS & EFFECTS --- */
 .crt-overlay {
   position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100vh;
-  background: linear-gradient(rgba(18, 0, 0, 0) 50%, rgba(50, 0, 0, 0.05) 50%);
+  inset: 0;
+  background: var(--crt-scanline);
   background-size: 100% 6px;
   pointer-events: none;
   z-index: 100;
@@ -57,10 +192,9 @@ body {
   position: fixed;
   inset: 0;
   display: flex;
-  flex-direction: column; /* Sky on top, ground on bottom */
+  flex-direction: column;
   z-index: 0;
   background: black;
-  overflow: hidden;
 }
 
 .wireframe-grid {
@@ -68,7 +202,6 @@ body {
   width: 200%;
   position: relative;
   left: -50%;
-  
   background-image: 
     linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--grid-line) 2px, transparent 2px);
@@ -79,185 +212,28 @@ body {
   transform: perspective(500px) rotateX(-65deg);
   transform-origin: bottom center;
   animation: road-move-reverse 30s linear infinite;
-  border-bottom: 1px solid var(--neon-red);
-  
   mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 50%, black 50%, transparent 100%);
 }
 
 .ground {
   transform: perspective(500px) rotateX(65deg);
   transform-origin: top center;
   animation: road-move 30s linear infinite;
-  
-  mask-image: linear-gradient(to top, black 50%, transparent: 100%);
-  -webkit-mask-image: linear-gradient(to top, black: 50%, transparent: 100%);
+  mask-image: linear-gradient(to top, black 50%, transparent 100%);
 }
 
 .flicker {
   text-shadow: 0 0 10px var(--neon-red);
   font-family: 'Orbitron', sans-serif;
-  margin: 0;
 }
 
-@keyframes road-move {
-  from { background-position: 0 0; } 
-  to { background-position: 0 60px; }
-}
+@keyframes road-move { from { background-position: 0 0; } to { background-position: 0 60px; } }
+@keyframes road-move-reverse { from { background-position: 0 60px; } to { background-position: 0 0; } }
 
-@keyframes road-move-reverse {
-  from { background-position: 0 60px; }
-  to { background-position: 0 0; }
-}
-
-/* Touch buttons */
-input, 
-input[type="number"],
-.vessel-box p {
-  background: black;
-  color: var(--neon-red);
-  border: 1px solid var(--inactive-border);
-  padding: 15px; /* Large touch target */
-  font-family: 'Ubuntu Sans Mono', monospace;
-  font-weight: 400; 
-  font-size: 1.2rem;
-  width: 100%;
-  margin-bottom: 1rem;
-  box-sizing: border-box;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-input:focus {
-  border-color: var(--neon-red);
-  outline: none;
-  box-shadow: 0 0 15px var(--neon-red);
-  color: var(--neon-red) !important;
-}
-
-.touch-button, button {
-  background: var(--soft-red);
-  color: #000000;
-  border: 1px solid var(--soft-red);
-  padding: 20px 40px; /* Large touch target */
-  font-family: 'Courier New', Courier, monospace;
-  font-weight: 900;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: all 0.1s ease-in-out;
-  box-shadow: 0 0 5px rgba(136, 0, 0, 0.5);
-}
-
-.touch-button:hover,
-.touch-button:focus-visible,
-button:hover,
-button:focus-visible {
-  background: var(--neon-red);   /* Bright Red #ff0000 */
-  color: #000000;                /* Keep text black */
-  box-shadow: 0 0 20px var(--neon-red);
-  outline: none;
-}
-
-.touch-button:active {
-  background: #000000;
-  color: var(--neon-red);
-  transform: translateY(2px);
-}
-
-/* Remove the default outline universally for a cleaner look when custom shadows are applied */
-input:focus,
-input[type="number"]:focus,
-.touch-button:focus,
-button:focus {
-  outline: none; 
-}
-
-.setup-form {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0 30px;
-  width: 100%;
-  max-width: 800px;
-}
-
-/* Responsive Breakpoint, switch to two columns */
+/* --- 6. RESPONSIVE --- */
 @media (min-width: 700px) {
-  .setup-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  
-  /* Make the button row span across two columns */
-    .button-row {
-    grid-column: span 2; 
-    margin-top: 1rem;
-    display: flex;
-    justify-content: flex-end;
-  }
+  .setup-form { grid-template-columns: 1fr 1fr; }
+  .button-row { grid-column: span 2; }
 }
 
-.setup-form label,
-.field-group label {
-  font-family: 'Oxanium', sans-serif;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-bottom: 5px;
-  color: var(--neon-red);
-}
-
-.setup-form label::before {
-  content: "> "; /* Terminal prompt style */
-}
-
-/* Grouping the numeric offsets for a "control panel" feel */
-.button-row {
-  margin-top: 2rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
-::selection {
-  background-color: var(--neon-red); /* The background of the highlight */
-  color: black;                      /* The text color when highlighted */
-}
-
-/* Container for all fields */
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr; /* Default: Single column for very small screens */
-  gap: 0 20px; /* 0 vertical gap, 20px horizontal gap */
-  width: 100%;
-}
-
-/* Individual Label+Input groups */
-.field-group {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 0.5rem; /* Tighter spacing for multi-column */
-}
-
-.field-group label::before {
-  content: "> ";
-}
-
-/* Fonts */
-@font-face {
-  font-family: 'Orbitron';
-  src: url('./assets/fonts/orbitron.woff2') format('woff2');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap; /* Ensures text is visible while loading */
-}
-@font-face {
-  font-family: 'Oxanium';
-  src: url('./assets/fonts/oxanium.woff2') format('woff2');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap; /* Keeps text visible while the font loads */
-}
-@font-face {
-  font-family: 'Ubuntu Sans Mono';
-  font-style: normal;
-  font-weight: 400 700; /* Supports regular and bold */
-  font-display: swap;
-  src: url('./assets/fonts/ubuntu_sans_mono.woff2') format('woff2');
-}
+::selection { background: var(--neon-red); color: black; }

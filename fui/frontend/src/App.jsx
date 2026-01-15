@@ -60,9 +60,9 @@ function App() {
             <div className="vessel-box">
               <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
               <p>Vessel Name: {vessel.vesselName || 'Loading...'}</p>
-              <p>Flag Nation: {vessel.flagNation || 'Loading...'}</p>
-              <p>Home Port: {vessel.portOfRegistry || 'Loading...'}</p>
-              <p>Build Details: {vessel.buildDetails || 'Loading...'}</p>
+              <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
+              <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
+              <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
               <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
               <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
               <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>

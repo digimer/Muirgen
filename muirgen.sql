@@ -11,6 +11,7 @@ BEGIN
     END IF;
 END
 $$;
+GRANT USAGE ON SCHEMA history TO admin;
 
 -- Enable Asynchronous IO, restart of postgresql required after changing.
 ALTER SYSTEM SET io_method = 'io_uring';

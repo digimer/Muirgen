@@ -70,12 +70,18 @@ app.post('/api/save-vessel', async (req,res) => {
     );
     res.json({ success: true });
   } catch (err) {
+    console.error('SQL INSERT Error:', err.message); 
     res.status(500).json({ error: err.message });
   }
+});
+
+process.on('uncaughtException', function (err) {
+  console.error('FATAL UNCAUGHT EXCEPTION:', err.message);
+  // Optional: Add more details here
+  process.exit(1); // Exit the process cleanly for PM2 to restart it
 });
 
 const PORT = 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend server running on http://0.0.0.0:${PORT}`);
 });
-
