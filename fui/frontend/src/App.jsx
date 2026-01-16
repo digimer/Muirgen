@@ -2,23 +2,31 @@ import { useState, useEffect } from 'react';
 import useInterval from './useInterval'; // Import our new hook
 import './App.css';
 import VesselSetup from './VesselSetup'; 
+import UserSetup from './UserSetup';
 
 function App() {
   const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
   const [vessel, setVessel] = useState(null);
+  const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
 
   const fetchData = async () => {
     try {
-      const [statusRes, vesselRes] = await Promise.all([
+      const [statusRes, initRes] = await Promise.all([
         fetch('http://mr-scifi-ui:5000/api/test-db'),
-        fetch('http://mr-scifi-ui:5000/api/get-vessel')
+        fetch('http://mr-scifi-ui:5000/api/check-init')
       ]);
       
       const statusData = await statusRes.json();
-      const vesselData = await vesselRes.json();
+      const initData = await initRes.json();
 
       setDbData(statusData);
-      setVessel(vesselData);
+      setSetupState(initData);
+      
+      if (!initData.userRequired && !initData.vesselRequired) {
+        const vesselRes = await fetch('http://mr-scifi-ui:5000/api/get-vessel');
+        const vesselData = await vesselRes.json();
+        setVessel(vesselData);
+      }
     } catch (err) {
       console.error('Fetch error:', err);
     }
@@ -29,15 +37,6 @@ function App() {
 
   // 2. Poll every 1000ms (1 second)
   useInterval(fetchData, 1000);
-  
-  if (!vessel) {
-    return (
-      <div className="main-layout">
-        <div className="crt-overlay" />
-        <h2 className="flicker">Booting...</h2>
-      </div>
-    );
-  }
 
   return (
     <div className="App">
@@ -53,10 +52,13 @@ function App() {
       <main className="main-layout">
         <div className="content-container">
           <h2 className="flicker">Core Database: {dbData.status}</h2>
-          {vessel.setupRequired ? (
+          {setupState.userRequired ? (
+            <UserSetup onComplete={fetchData} />
+          ) : setupState.vesselRequired ? (
             <VesselSetup onComplete={fetchData} />
+          ) : !vessel ? (
+            <h2 className="flicker">Establishing Database Connection...</h2>
           ) : (
-          
             <div className="vessel-box">
               <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
               <p>Vessel Name: {vessel.vesselName || 'Loading...'}</p>
@@ -76,4 +78,3 @@ function App() {
 }
 
 export default App;
-

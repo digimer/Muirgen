@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors'); // Use this to allow React to talk to Node
+const bcrypt = require('bcryptjs');
 
 const app = express();
 app.use(cors()); // Critical for local cross-port communication
@@ -15,6 +16,38 @@ const pool = new Pool({
   database: process.env.DB_DATABASE,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
+});
+
+// Check if any setup is needed.
+app.get('/api/check-init', async (req, res) => {
+  try {
+    const userRes = await pool.query('SELECT uuid FROM users LIMIT 1');
+    const vesselRes = await pool.query('SELECT uuid FROM vessels LIMIT 1');
+    
+    res.json({
+      userRequired: userRes.rows.length === 0,
+      vesselRequired: vesselRes.rows.length === 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Database Offline' });
+  }
+});
+
+// Handle saving users with bcryptjs
+app.post('/api/save-user', async (req, res) => {
+  const { userHandle, userName, userPassword, userIsAdmin } = req.body;
+  try {
+    // Hash password with 12 salt rounds
+    const hashedPassword = await bcrypt.hash(userPassword, 12);
+    await pool.query(
+      'INSERT INTO users (handle, name, password_hash, is_admin) VALUES ($1, $2, $3, $4)',
+      [userHandle, userName, hashedPassword, userIsAdmin]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Test Query Endpoint

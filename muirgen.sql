@@ -91,9 +91,10 @@ CREATE TRIGGER trigger_vessels
 -- User accounts
 CREATE TABLE users (
         uuid             uuid           default uuidv7()    not null,
-        name             text                               not null,
+        handle           text                               not null, -- Nickname
+        name             text                               not null, -- Real name
         password_hash    text                               not null, -- Stored using pgcrypto's crypt() function, which embeds a salt
-        is_admin         boolean                            not null,
+        is_admin         boolean                            not null, -- If set, user can configure things
         modified_date    timestamptz    default now()       not null,
         
         PRIMARY KEY (uuid)
@@ -103,6 +104,7 @@ ALTER TABLE users OWNER TO admin;
 CREATE TABLE history.users (
         history_id       bigint GENERATED ALWAYS AS IDENTITY,
         uuid             uuid,
+        handle           text,
         name             text,
         password_hash    text,
         is_admin         boolean,
@@ -114,12 +116,14 @@ CREATE OR REPLACE FUNCTION history_users() RETURNS trigger AS $$
 BEGIN
     INSERT INTO history.users (
         uuid, 
+        handle, 
         name, 
         password_hash,
         is_admin,
         modified_date)
     VALUES (
         NEW.uuid, 
+        NEW.handle, 
         NEW.name, 
         NEW.password_hash,
         NEW.is_admin,

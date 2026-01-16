@@ -177,6 +177,73 @@ input[type="number"] {
   appearance: textfield;      /* Standard property for modern browsers */
 }
 
+/* Checkbox handling */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  position: relative;
+  padding-left: 45px; /* Space for the box */
+}
+
+/* Hide the default checkbox */
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* The custom box (The "off" state) */
+.retro-checkmark {
+  position: absolute;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: black;
+  border: 2px solid var(--soft-red);
+  box-shadow: 0 0 5px var(--dim-red);
+  transition: all 0.2s ease;
+}
+
+/* On hover */
+.checkbox-container:hover input ~ .retro-checkmark {
+  border-color: var(--neon-red);
+}
+
+/* When checked (The "on" state) */
+.checkbox-container input:checked ~ .retro-checkmark {
+  background-color: var(--neon-red);
+  box-shadow: 0 0 15px var(--neon-red);
+}
+
+/* Add a small black square inside when checked for extra detail */
+.retro-checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 7px;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  background: black;
+}
+
+.checkbox-container input:checked ~ .retro-checkmark:after {
+  display: block;
+}
+
 /* --- 5. ANIMATIONS & EFFECTS --- */
 .crt-overlay {
   position: fixed;
