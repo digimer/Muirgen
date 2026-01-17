@@ -3,17 +3,26 @@ import useInterval from './useInterval'; // Import our new hook
 import './App.css';
 import VesselSetup from './VesselSetup'; 
 import UserSetup from './UserSetup';
+import Login from './Login';
 
 function App() {
   const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
   const [vessel, setVessel] = useState(null);
   const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const fetchData = async () => {
+    // Check if we've got a saved token
+    const savedToken = localStorage.getItem('muirgen_token');
     try {
       const [statusRes, initRes] = await Promise.all([
         fetch('http://mr-scifi-ui:5000/api/test-db'),
-        fetch('http://mr-scifi-ui:5000/api/check-init')
+        fetch('http://mr-scifi-ui:5000/api/check-init', {
+          // Attach the token.
+          headers: {
+            'Authorization': savedToken ? `Bearer ${savedToken}` : ''
+          }
+        })
       ]);
       
       const statusData = await statusRes.json();
@@ -22,7 +31,11 @@ function App() {
       setDbData(statusData);
       setSetupState(initData);
       
-      if (!initData.userRequired && !initData.vesselRequired) {
+      // Should return 'isLoggedIn: true' if the token is valid.
+      setIsLoggedIn(initData.isLoggedIn);
+      
+      // Get vessel data if the user is logged in.
+      if (!initData.userRequired && !initData.vesselRequired && initData.isLoggedIn) {
         const vesselRes = await fetch('http://mr-scifi-ui:5000/api/get-vessel');
         const vesselData = await vesselRes.json();
         setVessel(vesselData);
@@ -56,6 +69,8 @@ function App() {
             <UserSetup onComplete={fetchData} />
           ) : setupState.vesselRequired ? (
             <VesselSetup onComplete={fetchData} />
+          ) : !isLoggedIn ? (
+            <Login onLoginSuccess={() => setIsLoggedIn(true)} />
           ) : !vessel ? (
             <h2 className="flicker">Establishing Database Connection...</h2>
           ) : (
@@ -68,7 +83,6 @@ function App() {
               <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
               <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
               <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
-              
             </div>
          )}
         </div>

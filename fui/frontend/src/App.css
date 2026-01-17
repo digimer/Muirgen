@@ -53,6 +53,33 @@ body {
 }
 
 /* --- 3. COMPONENTS --- */
+.login-form {
+  display: grid;
+  grid-template-columns: 1fr; /* Default: Stacked (mobile/narrow) */
+  gap: 20px;
+  align-items: end; /* Aligns button with input fields */
+  width: 100%;
+}
+
+.status-display {
+  padding: 15px;
+  margin-bottom: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  border: 2px solid var(--neon-red);
+}
+
+.status-display.success {
+  background-color: var(--neon-red);
+  color: black;
+}
+
+.status-display.error {
+  color: var(--neon-red);
+  background-color: transparent;
+  animation: pulse 1s infinite;
+}
+
 .vessel-box {
   border: 2px solid var(--neon-red);
   padding: 2rem;
@@ -62,7 +89,13 @@ body {
 }
 
 .vessel-box.setup-mode {
-  max-width: 900px;
+  max-width: 800px;
+  width: 90%;
+}
+
+.vessel-box.login-mode {
+  max-width: 800px;
+  width: 90%;
 }
 
 .vessel-box p {
@@ -160,6 +193,7 @@ button:focus-visible {
 button:active {
   background: black;
   color: var(--neon-red);
+  box-shadow: 0 0 30px var(--neon-red);
   transform: translateY(2px);
 }
 
@@ -226,6 +260,12 @@ input[type="number"] {
 .checkbox-container input:checked ~ .retro-checkmark {
   background-color: var(--neon-red);
   box-shadow: 0 0 15px var(--neon-red);
+}
+
+/* Used when the creating the first user, forcing the admin flag. */
+.checkbox-container.disabled-logic {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Add a small black square inside when checked for extra detail */
@@ -301,6 +341,7 @@ input[type="number"] {
 @media (min-width: 700px) {
   .setup-form { grid-template-columns: 1fr 1fr; }
   .button-row { grid-column: span 2; }
+  .login-form { grid-template-columns: 1fr 1fr auto; }
 }
 
 ::selection { background: var(--neon-red); color: black; }

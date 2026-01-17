@@ -18,15 +18,61 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
+// Check if the user is logged in.
+const jwt = require('jsonwebtoken');
+app.post('/api/login', async (req, res) => {
+  const { userHandle, userPassword } = req.body;
+  try {
+    const result = await pool.query('SELECT uuid, handle, password_hash, is_admin FROM users WHERE handle = $1;', [userHandle]);
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid Operator" });
+    }
+    
+    const user = result.rows[0];
+    const match = await bcrypt.compare(userPassword, user.password_hash);
+    
+    if (match) {
+      // Create the password / token.
+      const token = jwt.sign(
+        { uuid: user.uuid, handle: user.handle, isAdmin: user.is_admin }, 
+        process.env.JWT_SECRET || 'this_is_bad_fallback_key', 
+        { expiresIn: '30d' } // This is more to keep sessions active than for security
+      );
+      
+      res.json({ success: true, token });
+    } else {
+      res.status(401).json({ error: "Access Denied" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "System Error. Database Offline?" });
+  }
+});
+
 // Check if any setup is needed.
 app.get('/api/check-init', async (req, res) => {
   try {
     const userRes = await pool.query('SELECT uuid FROM users LIMIT 1');
     const vesselRes = await pool.query('SELECT uuid FROM vessels LIMIT 1');
     
+    // Check for a passport in the headers.
+    const authHeader = req.headers.authorization;
+    let loggedIn = false;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key');
+        loggedIn = true; // Valid token
+      } catch (err) {
+        loggedIn = false; // Token is expired or invalid
+      }
+    }
+    
     res.json({
       userRequired: userRes.rows.length === 0,
-      vesselRequired: vesselRes.rows.length === 0
+      vesselRequired: vesselRes.rows.length === 0, 
+      isLoggedIn: loggedIn
     });
   } catch (err) {
     res.status(500).json({ error: 'Database Offline' });
@@ -37,11 +83,16 @@ app.get('/api/check-init', async (req, res) => {
 app.post('/api/save-user', async (req, res) => {
   const { userHandle, userName, userPassword, userIsAdmin } = req.body;
   try {
+    // If there are no users yet, this first user will be forced to be an admin.
+    const userCount = await pool.query('SELECT COUNT(*) FROM users;');
+    const isFirstUser = parseInt(userCount.rows[0].count) === 0;
+    const finalAdminStatus = isFirstUser ? true : userIsAdmin;
+    
     // Hash password with 12 salt rounds
     const hashedPassword = await bcrypt.hash(userPassword, 12);
     await pool.query(
       'INSERT INTO users (handle, name, password_hash, is_admin) VALUES ($1, $2, $3, $4)',
-      [userHandle, userName, hashedPassword, userIsAdmin]
+      [userHandle, userName, hashedPassword, finalAdminStatus]
     );
     res.json({ success: true });
   } catch (err) {

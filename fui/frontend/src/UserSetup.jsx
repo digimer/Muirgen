@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function UserSetup({ onComplete }) {
   const [formData, setFormData] = useState({
@@ -20,10 +20,17 @@ function UserSetup({ onComplete }) {
       setStatus({ type: 'error', message: "Security: Password Mismatch" });
       return;
     }
+    
+    // Read the token.
+    const token = localStorage.getItem('muirgen_token');
+    
     try {
       const res = await fetch('http://mr-scifi-ui:5000/api/save-user', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         body: JSON.stringify({
           userHandle: formData.userHandle, 
           userName: formData.userName, 
@@ -34,18 +41,28 @@ function UserSetup({ onComplete }) {
       
       if (res.ok) {
         setStatus({ type: 'success', message: 'Registration Successful.' });
-        
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
+        setTimeout(() => { onComplete(); }, 2000);
       } else {
         const data = await res.json();
-        setStatus({ type: 'error', message: data.error || "Registration Failed, Unknown Error" });
+        setStatus({ type: 'error', message: data.error || "User Registration Failed, Unknown Database Error." });
       }
     } catch(err) {
-      setStatus({ type: 'error', message: 'Registration Failed. Failed Database Write' });
+      setStatus({ type: 'error', message: 'User Registration Failed. Unknown API Error.' });
     }
   };
+  
+  // Check if this is the first user. If so, 'is_admin' will be forced to true.
+  const [isFirstUser, setIsFirstUser] = useState(false);
+  useEffect(() => {
+    fetch('http://mr-scifi-ui:5000/api/check-init')
+      .then(res => res.json())
+      .then(data => {
+        if (data.userRequired) {
+          setIsFirstUser(true);
+          setFormData(prev => ({ ...prev, userIsAdmin: true}));
+        }
+      });
+  }, []);
 
   return (
     <div className="vessel-box setup-mode">
@@ -82,16 +99,15 @@ function UserSetup({ onComplete }) {
           />
         </div>
         <div className="field-group">
-          <label>Password</label>
+          <label>Access Code</label>
           <input type="password" required 
             value={formData.userPassword} 
             onChange={e => setFormData({...formData, userPassword: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>Re-enter PW</label>
-          <input 
-            type="password" 
+          <label>Re-enter AC</label>
+          <input type="password" 
             required 
             value={formData.userPasswordConfirm} 
             onChange={e => setFormData({...formData, userPasswordConfirm: e.target.value})} 
@@ -99,20 +115,21 @@ function UserSetup({ onComplete }) {
         </div>
         {/* Checkbox for Admin Rights */}
         <div className="field-group checkbox-group">
-          <label className="checkbox-container">
-            Administrator
-            <input 
-              type="checkbox" 
+          <label className={`checkbox-container ${isFirstUser ? 'disabled-logic' : ''}`}>
+            Administrator {isFirstUser && "(Required For User 1)"}
+            <input type="checkbox" 
               checked={formData.userIsAdmin} 
-              onChange={e => setFormData({...formData, userIsAdmin: e.target.checked})} 
-            />
+              disabled={isFirstUser} // Disabled if this is the first user
+              onChange={e => setFormData({...formData, userIsAdmin: e.target.checked})} />
             <span className="retro-checkmark"></span>
           </label>
         </div>
 
         <div className="button-row">
-          <button type="submit" className="touch-button" disabled={status.type === 'success'}>
-            {status.type === 'success' ? "Initialising..." : "Register Account"}
+          <button type="submit" 
+            className="touch-button" 
+            disabled={status.type === 'success'}>
+            {status.type === 'success' ? "Recording..." : "Record User"}
           </button>
         </div>
       </form>
