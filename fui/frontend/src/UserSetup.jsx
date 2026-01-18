@@ -86,28 +86,28 @@ function UserSetup({ onComplete }) {
       
       <form onSubmit={handleSubmit} className="setup-form">
         <div className="field-group">
-          <label>Operator Handle</label>
+          <label>&#9722; Operator Handle</label>
           <input type="text" required 
             value={formData.userHandle} 
             onChange={e => setFormData({...formData, userHandle: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>Full Name</label>
+          <label>&#9722; Full Name</label>
           <input type="text" required 
             value={formData.userName} 
             onChange={e => setFormData({...formData, userName: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>Access Code</label>
+          <label>&#9722; Access Code</label>
           <input type="password" required 
             value={formData.userPassword} 
             onChange={e => setFormData({...formData, userPassword: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>Re-enter AC</label>
+          <label>&#9722; Re-enter AC</label>
           <input type="password" 
             required 
             value={formData.userPasswordConfirm} 
@@ -117,7 +117,7 @@ function UserSetup({ onComplete }) {
         {/* Checkbox for Admin Rights */}
         <div className="field-group checkbox-group">
           <label className={`checkbox-container ${isFirstUser ? 'disabled-logic' : ''}`}>
-            Administrator {isFirstUser && "(Operator 1)"}
+            &#9722; Administrator {isFirstUser && (<><br />&nbsp; &nbsp; (Operator 1)</>)}
             <input type="checkbox" 
               checked={formData.userIsAdmin} 
               disabled={isFirstUser} // Disabled if this is the first user

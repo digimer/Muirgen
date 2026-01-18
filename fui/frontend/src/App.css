@@ -118,19 +118,13 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.setup-form label, 
-.field-group label {
+.setup-form label {
   font-family: 'Oxanium', sans-serif;
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 2px;
   margin-bottom: 5px;
   color: var(--neon-red);
-}
-
-.setup-form label::before, 
-.field-group label::before {
-  content: "> ";
 }
 
 input, input[type="number"] {
