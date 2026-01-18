@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import config from '@shared/config.js';
 
 function UserSetup({ onComplete }) {
   const [formData, setFormData] = useState({
@@ -25,7 +26,7 @@ function UserSetup({ onComplete }) {
     const token = localStorage.getItem('muirgen_token');
     
     try {
-      const res = await fetch('http://mr-scifi-ui:5000/api/save-user', {
+      const res = await fetch(`/api/save-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +55,7 @@ function UserSetup({ onComplete }) {
   // Check if this is the first user. If so, 'is_admin' will be forced to true.
   const [isFirstUser, setIsFirstUser] = useState(false);
   useEffect(() => {
-    fetch('http://mr-scifi-ui:5000/api/check-init')
+    fetch(`/api/check-init`)
       .then(res => res.json())
       .then(data => {
         if (data.userRequired) {
@@ -116,7 +117,7 @@ function UserSetup({ onComplete }) {
         {/* Checkbox for Admin Rights */}
         <div className="field-group checkbox-group">
           <label className={`checkbox-container ${isFirstUser ? 'disabled-logic' : ''}`}>
-            Administrator {isFirstUser && "(Required For User 1)"}
+            Administrator {isFirstUser && "(Operator 1)"}
             <input type="checkbox" 
               checked={formData.userIsAdmin} 
               disabled={isFirstUser} // Disabled if this is the first user

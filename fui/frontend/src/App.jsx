@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import useInterval from './useInterval'; // Import our new hook
+import config from '@shared/config.js';
 import './App.css';
 import VesselSetup from './VesselSetup'; 
 import UserSetup from './UserSetup';
@@ -10,14 +11,15 @@ function App() {
   const [vessel, setVessel] = useState(null);
   const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const API_URL = config.apiBaseUrl;
 
   const fetchData = async () => {
     // Check if we've got a saved token
     const savedToken = localStorage.getItem('muirgen_token');
     try {
       const [statusRes, initRes] = await Promise.all([
-        fetch('http://mr-scifi-ui:5000/api/test-db'),
-        fetch('http://mr-scifi-ui:5000/api/check-init', {
+        fetch(`/api/test-db`),
+        fetch(`/api/check-init`, {
           // Attach the token.
           headers: {
             'Authorization': savedToken ? `Bearer ${savedToken}` : ''
@@ -36,7 +38,7 @@ function App() {
       
       // Get vessel data if the user is logged in.
       if (!initData.userRequired && !initData.vesselRequired && initData.isLoggedIn) {
-        const vesselRes = await fetch('http://mr-scifi-ui:5000/api/get-vessel');
+        const vesselRes = await fetch(`/api/get-vessel`);
         const vesselData = await vesselRes.json();
         setVessel(vesselData);
       }

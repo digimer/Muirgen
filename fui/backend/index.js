@@ -1,10 +1,21 @@
-// ./backend/index.js
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-const express = require('express');
-const { Pool } = require('pg');
-const cors = require('cors'); // Use this to allow React to talk to Node
-const bcrypt = require('bcryptjs');
+// ~/fui/backend/index.js
+import path from 'path';
+import { fileURLToPath } from 'url';
+import express from 'express';
+import pkg from 'pg';
+const { Pool } = pkg;
+import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+import config from '../config.js';
+
+// Setup __dirname for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Initialise the dotenv using the explicit path
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 app.use(cors()); // Critical for local cross-port communication
@@ -19,7 +30,6 @@ const pool = new Pool({
 });
 
 // Check if the user is logged in.
-const jwt = require('jsonwebtoken');
 app.post('/api/login', async (req, res) => {
   const { userHandle, userPassword } = req.body;
   try {
@@ -165,7 +175,7 @@ process.on('uncaughtException', function (err) {
   process.exit(1); // Exit the process cleanly for PM2 to restart it
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || config.apiPort || 5000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend server running on http://0.0.0.0:${PORT}`);
+  console.log(`Backend online on port ${PORT}`);
 });

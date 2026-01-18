@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import config from '@shared/config.js';
 
-function Login ({ onComplete }) {
+function Login ({ onLoginSuccess }) {
   const [formData, setFormData] = useState({
     userHandle: '', 
     userPassword: ''
@@ -12,7 +13,7 @@ function Login ({ onComplete }) {
     setStatus({ type: '', message: '' });
     
     try {
-      const res = await fetch('http://mr-scifi-ui:5000/api/login', {
+      const res = await fetch(`/api/login`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify(formData)

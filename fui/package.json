@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "dependencies": {
     "@arwes/react": "^1.0.0-next.25020502",
     "cors": "^2.8.5",
