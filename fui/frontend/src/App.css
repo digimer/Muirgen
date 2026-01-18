@@ -415,3 +415,66 @@ input[type="number"] {
 }
 
 ::selection { background: var(--neon-red); color: black; }
+
+/* --- 7. Main System Components --- */
+/* Styles used after logging in, the main app */
+.system-controls {
+  position: fixed;
+  top: 20px;
+  right: 20px; 
+  z-index: 1000;
+}
+
+.logout-button {
+  background: transparent; 
+  color: var(--soft-red);
+  border: 1px solid var(--inactive-border);
+  padding: 8px 12px;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+  background: var(--dim-red);
+  color: #000000;
+  border-color: var(--neon-red);
+  box-shadow: 0 0 10px var(--dim-red);
+}
+
+.logout-button .glyph {
+  font-size: 1rem;
+}
+
+/* Logout and redaction effect */
+.blur-active {
+  /* Heavy blur, remove color, and adjust brightness for clarity through a physical red filter */
+  filter: blur(10px) grayscale(1) brightness(0.3);
+  opacity: 0.3;         /* Dims the data on screen */
+  pointer-events: none; /* Disables buttons */
+  transition: filter 0.5s ease, opacity 0.5s ease;  
+}
+
+/* Make sure the unblurred success message is above the blur layer */
+.content-container .status-display.success {
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 20px var(--neon-red);
+  z-index: 1001;
+  position: relative;
+}
+
+.logout-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  white-space: nowrap;
+  pointer-events: none;
+}

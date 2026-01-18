@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useInterval from './useInterval'; // Import our new hook
 import config from '@shared/config.js';
 import './App.css';
@@ -12,10 +12,42 @@ function App() {
   const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const API_URL = config.apiBaseUrl;
+  // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const isLoggingOutRef = useRef(false);
+  
+  // Handle Logging the user out
+  const handleLogout = () => {
+    // blurs the screen during the logout confirmation
+    setIsLoggingOut(true);
+    isLoggingOutRef.current = true;
+    
+    // Clear the token immediately
+    localStorage.removeItem('muirgen_token');
+    
+    // Show the hang-up message for 2 seconds. 
+    setTimeout(() => {
+      setIsLoggedIn(false);
+      setVessel(null);
+      // unblur for the next session
+      setIsLoggingOut(false);
+      isLoggingOutRef.current = false;
+    }, 2000);
+  }
 
   const fetchData = async () => {
-    // Check if we've got a saved token
+    // If we're logging out, return, don't do anything else.
+    if (isLoggingOutRef.current) return;
+    
     const savedToken = localStorage.getItem('muirgen_token');
+    
+    // Backup check to see if we're logging out.
+    if (!savedToken && isLoggingOut)
+    {
+      return;
+    }
+    
+    // Check if we've got a saved token
     try {
       const [statusRes, initRes] = await Promise.all([
         fetch(`/api/test-db`),
@@ -33,8 +65,10 @@ function App() {
       setDbData(statusData);
       setSetupState(initData);
       
-      // Should return 'isLoggedIn: true' if the token is valid.
-      setIsLoggedIn(initData.isLoggedIn);
+      // Only update if we're not actively logging out
+      if (!isLoggingOutRef.current) {
+        setIsLoggedIn(initData.isLoggedIn);
+      }
       
       // Get vessel data if the user is logged in.
       if (!initData.userRequired && !initData.vesselRequired && initData.isLoggedIn) {
@@ -54,22 +88,33 @@ function App() {
     <div className="App">
       <div className="crt-overlay" />
       
-      {/* dual grid background. */}
-      <div className="grid-container">
+      {/* sky-ground walking grid background. Blurred during log-out */}
+      <div className={`grid-container ${isLoggingOut ? 'blur-active' : ''}`}>
         <div className="wireframe-grid sky" />
         <div className="wireframe-grid ground" />
       </div>
 
-      {/* The main container now handles centering */}
       <main className="main-layout">
-        <div className="content-container">
+        {/* To make sure the success message remains visible during the 2s logout sequence, this needs to be
+            the top priority. */}
+        {isLoggingOut && (
+          <div className="status-display success logout-overlay">
+            Carrier Disconnected, Session Closed
+          </div>
+        )}
+        
+        {/* Main body */}
+        <div className={`content-container ${isLoggingOut? 'blur-active' : ''}`}>
           <h2 className="flicker">Core Database: {dbData.status}</h2>
           {setupState.userRequired ? (
             <UserSetup onComplete={fetchData} />
           ) : setupState.vesselRequired ? (
             <VesselSetup onComplete={fetchData} />
           ) : !isLoggedIn ? (
-            <Login onLoginSuccess={() => setIsLoggedIn(true)} />
+            <Login onLoginSuccess={() => {
+              setIsLoggedIn(true);
+              fetchData();
+            }} />
           ) : !vessel ? (
             <h2 className="flicker">Establishing Database Connection...</h2>
           ) : (
@@ -85,6 +130,16 @@ function App() {
             </div>
          )}
         </div>
+        
+        {/* System Controls */}
+        {isLoggedIn && !isLoggingOut && (
+          <div className="system-controls">
+            <button onClick={handleLogout} className="logout-button">
+              <span className="glyph">&#9708;</span>
+              <span className="label-text">End Session</span>
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

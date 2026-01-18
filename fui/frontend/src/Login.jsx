@@ -25,7 +25,7 @@ function Login ({ onLoginSuccess }) {
         // Success; Save the token
         localStorage.setItem('muirgen_token', data.token);
         
-        setStatus({ type: 'success', message: 'ACCESS GRANTED' });
+        setStatus({ type: 'success', message: 'Access Granted, Establishing Connection.' });
         setTimeout(() => {
           onLoginSuccess();
         }, 2000);
@@ -60,7 +60,6 @@ function Login ({ onLoginSuccess }) {
             id="userHandle"
             required 
             autoFocus 
-            autoComplete="off"
             value={formData.userHandle}
             onChange={e => setFormData({...formData, userHandle: e.target.value})}
           />
@@ -76,7 +75,6 @@ function Login ({ onLoginSuccess }) {
           <input type="password" 
             id="userPassword"
             required 
-            autoComplete="off"
             value={formData.userPassword}
             onChange={e => setFormData({...formData, userPassword: e.target.value})}
           />
