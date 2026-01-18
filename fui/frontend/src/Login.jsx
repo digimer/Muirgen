@@ -50,21 +50,33 @@ function Login ({ onLoginSuccess }) {
 
       <form onSubmit={handleSubmit} className="login-form">
         <div className="field-group">
-          <label>Handle</label>
-          <input 
-            type="text" 
+          <div className="setup-field-header">
+            <span className="cursor-prompt">&#9722;</span>
+            <label htmlFor="userPassword">
+              <span className="label-text">Handle</span>
+            </label>
+          </div>
+          <input type="text" 
+            id="userHandle"
             required 
             autoFocus 
+            autoComplete="off"
             value={formData.userHandle}
             onChange={e => setFormData({...formData, userHandle: e.target.value})}
           />
         </div>
 
         <div className="field-group">
-          <label>Access Code</label>
-          <input 
-            type="password" 
+           <div className="setup-field-header">
+            <span className="cursor-prompt">&#9722;</span>
+            <label htmlFor="userPassword">
+              <span className="label-text">Access Code</span>
+            </label>
+          </div>
+          <input type="password" 
+            id="userPassword"
             required 
+            autoComplete="off"
             value={formData.userPassword}
             onChange={e => setFormData({...formData, userPassword: e.target.value})}
           />

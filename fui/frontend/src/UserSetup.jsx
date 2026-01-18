@@ -42,7 +42,10 @@ function UserSetup({ onComplete }) {
       
       if (res.ok) {
         setStatus({ type: 'success', message: 'Registration Successful.' });
-        setTimeout(() => { onComplete(); }, 2000);
+        setTimeout(() => { 
+          setStatus({ type: '', message: '' }); // Reset status locally
+          onComplete(); 
+        }, 2000);
       } else {
         const data = await res.json();
         setStatus({ type: 'error', message: data.error || "User Registration Failed, Unknown Database Error." });
@@ -86,50 +89,61 @@ function UserSetup({ onComplete }) {
       
       <form onSubmit={handleSubmit} className="setup-form">
         <div className="field-group">
-          <label>
-            <div className="setup-field-header">
-              <span className="glyph">&#9722;</span>
+          <div className="setup-field-header">
+            <span className="cursor-prompt">&#9722;</span>
+            <label htmlFor="userHandle">
               <span className="label-text">Operator Handle</span>
-            </div>
-          </label>
-          <input type="text" required 
+            </label>
+          </div>
+          <input type="text" 
+            id="userHandle"
+            required 
+            autoComplete="off"
             value={formData.userHandle} 
             onChange={e => setFormData({...formData, userHandle: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>
-            <div className="setup-field-header">
-              <span className="glyph">&#9722;</span>
+          <div className="setup-field-header">
+            <span className="cursor-prompt">&#9722;</span>
+            <label htmlFor="userName">
               <span className="label-text">Full Name</span>
-            </div>
-          </label>
-          <input type="text" required 
+            </label>
+          </div>
+          <input type="text" 
+            id="userName"
+            required 
+            autoComplete="off"
             value={formData.userName} 
             onChange={e => setFormData({...formData, userName: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>
-            <div className="setup-field-header">
-              <span className="glyph">&#9722;</span>
+          <div className="setup-field-header">
+            <span className="cursor-prompt">&#9722;</span>
+            <label htmlFor="userPassword">
               <span className="label-text">Access Code</span>
-            </div>
-          </label>
-          <input type="password" required 
+            </label>
+          </div>
+          <input type="password" 
+            id="userPassword"
+            required 
+            autoComplete="off"
             value={formData.userPassword} 
             onChange={e => setFormData({...formData, userPassword: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>
-            <div className="setup-field-header">
-              <span className="glyph">&#9722;</span>
-              <span className="label-text">Re-enter AC</span>
-            </div>
-          </label>
+          <div className="setup-field-header">
+            <span className="cursor-prompt">&#9722;</span>
+            <label htmlFor="userPasswordConfirm">
+              <span className="label-text">Repeat AC</span>
+            </label>
+          </div>
           <input type="password" 
+            id="userPasswordConfirm"
             required 
+            autoComplete="off"
             value={formData.userPasswordConfirm} 
             onChange={e => setFormData({...formData, userPasswordConfirm: e.target.value})} 
           />

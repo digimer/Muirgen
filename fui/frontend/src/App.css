@@ -21,6 +21,7 @@
   --dim-red: #440000;
   --soft-red: #880000;
   --dark-bg: #000000;
+  --box-max-width: 900px;
   --grid-line: rgba(255, 0, 0, 0.15);
   --inactive-border: rgba(255, 0, 0, 0.5);
   --crt-scanline: linear-gradient(rgba(18, 0, 0, 0) 50%, rgba(50, 0, 0, 0.05) 50%);
@@ -50,6 +51,24 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+}
+
+/* Target the browser's autofill state */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px black inset !important; /* This trick "freezes" the background as transparent/black */
+    -webkit-text-fill-color: var(--neon-red) !important; /* Sets the text color to your neon red */
+    caret-color: var(--neon-red); /* keep the cursor red */
+    font-family: 'Ubuntu Sans Mono', monospace !important; /* Ensure the font matches your terminal aesthetic */
+    transition: background-color 5000s ease-in-out 0s; /* Smooth out the transition so the white doesn't "flash" on load */
+}
+
+/* Style the placeholder text to match the rest of the UI */
+::placeholder {
+  color: var(--dim-red);
+  opacity: 0.7;
 }
 
 /* --- 3. COMPONENTS --- */
@@ -89,12 +108,12 @@ body {
 }
 
 .vessel-box.setup-mode {
-  max-width: 800px;
+  max-width: var(--box-max-width);
   width: 90%;
 }
 
 .vessel-box.login-mode {
-  max-width: 800px;
+  max-width: var(--box-max-width);
   width: 90%;
 }
 
@@ -118,6 +137,15 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.field-group input:focus {
+  box-shadow: 0 0 10px var(--neon-red);
+}
+
+/* Triggers the pulse when the input inside the group is focused */
+.field-group:focus-within .cursor-prompt {
+  animation: pulse-fade 1s ease-in-out infinite alternate;
+}
+
 .setup-form label {
   font-family: 'Oxanium', sans-serif;
   font-size: 0.9rem;
@@ -125,23 +153,27 @@ body {
   letter-spacing: 2px;
   margin-bottom: 5px;
   color: var(--neon-red);
+  white-space: nowrap;
 }
 
-input, input[type="number"] {
+input, 
+input[type="number"],
+.field-group input {
   background: black;
   color: var(--neon-red);
-  border: 1px solid var(--inactive-border);
+  border: 1px solid var(--inactive-border); /* 0.5 opacity red */
   padding: 15px;
   font-family: 'Ubuntu Sans Mono', monospace;
   font-size: 1.2rem;
   width: 100%;
   box-sizing: border-box;
   transition: all 0.3s ease;
+  outline: none;
 }
 
-input:focus {
-  border-color: var(--neon-red);
-  outline: none;
+input:focus,
+input[type="number"]:focus {
+  border-color: var(--neon-red) !important;
   box-shadow: 0 0 15px var(--neon-red);
 }
 
@@ -302,6 +334,13 @@ input[type="number"] {
   margin-top: 4px; /* Margin to separate it from text labels */
 }
 
+.cursor-prompt {
+  display: inline-block;
+  color: var(--neon-red);
+  margin-right: 8px;
+  transition: color 0.3s ease;
+}
+
 /* --- 5. ANIMATIONS & EFFECTS --- */
 .crt-overlay {
   position: fixed;
@@ -354,10 +393,23 @@ input[type="number"] {
 
 @keyframes road-move { from { background-position: 0 0; } to { background-position: 0 60px; } }
 @keyframes road-move-reverse { from { background-position: 0 60px; } to { background-position: 0 0; } }
+@keyframes blink { 50% { opacity: 0; } }
+@keyframes pulse-fade { 
+  from {
+    color: #FF0000;
+    text-shadow: 0 0 0px rgba(255, 0, 0, 0.8); /* Adds a CRT type glow */
+  } to {
+    color: #770000;
+    text-shadow: 0 0 0px rgba(255, 0, 0, 0);
+  }
+}
 
 /* --- 6. RESPONSIVE --- */
-@media (min-width: 700px) {
-  .setup-form { grid-template-columns: 1fr 1fr; }
+@media (min-width: 800px) {
+  .setup-form { 
+    grid-template-columns: 1fr 1fr;
+    column-gap: 40px;
+  }
   .button-row { grid-column: span 2; }
   .login-form { grid-template-columns: 1fr 1fr auto; }
 }

@@ -47,11 +47,8 @@ function App() {
     }
   };
 
-  // 1. Initial load
+  // Initial load
   useEffect(() => { fetchData(); }, []);
-
-  // 2. Poll every 1000ms (1 second)
-  useInterval(fetchData, 1000);
 
   return (
     <div className="App">
