@@ -140,10 +140,12 @@ function UserSetup({ onComplete }) {
           
             <div className="setup-field-header">
               <span className="glyph">&#9722;</span>
-              <span className="label-text">Administrator</span>
-            </div>
-            <div className="operator-subtitle">
-              (Operator 1)
+              <div>
+                <span className="label-text">Administrator</span>
+                <div className="operator-subtitle">
+                  (Operator 1)
+                </div>
+              </div>
             </div>
             <input type="checkbox" 
               checked={formData.userIsAdmin} 
