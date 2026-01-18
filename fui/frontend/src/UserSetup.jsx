@@ -86,28 +86,48 @@ function UserSetup({ onComplete }) {
       
       <form onSubmit={handleSubmit} className="setup-form">
         <div className="field-group">
-          <label>&#9722; Operator Handle</label>
+          <label>
+            <div className="setup-field-header">
+              <span className="glyph">&#9722;</span>
+              <span className="label-text">Operator Handle</span>
+            </div>
+          </label>
           <input type="text" required 
             value={formData.userHandle} 
             onChange={e => setFormData({...formData, userHandle: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>&#9722; Full Name</label>
+          <label>
+            <div className="setup-field-header">
+              <span className="glyph">&#9722;</span>
+              <span className="label-text">Full Name</span>
+            </div>
+          </label>
           <input type="text" required 
             value={formData.userName} 
             onChange={e => setFormData({...formData, userName: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>&#9722; Access Code</label>
+          <label>
+            <div className="setup-field-header">
+              <span className="glyph">&#9722;</span>
+              <span className="label-text">Access Code</span>
+            </div>
+          </label>
           <input type="password" required 
             value={formData.userPassword} 
             onChange={e => setFormData({...formData, userPassword: e.target.value})} 
           />
         </div>
         <div className="field-group">
-          <label>&#9722; Re-enter AC</label>
+          <label>
+            <div className="setup-field-header">
+              <span className="glyph">&#9722;</span>
+              <span className="label-text">Re-enter AC</span>
+            </div>
+          </label>
           <input type="password" 
             required 
             value={formData.userPasswordConfirm} 
@@ -117,7 +137,14 @@ function UserSetup({ onComplete }) {
         {/* Checkbox for Admin Rights */}
         <div className="field-group checkbox-group">
           <label className={`checkbox-container ${isFirstUser ? 'disabled-logic' : ''}`}>
-            &#9722; Administrator {isFirstUser && (<><br />&nbsp; &nbsp; (Operator 1)</>)}
+          
+            <div className="setup-field-header">
+              <span className="glyph">&#9722;</span>
+              <span className="label-text">Administrator</span>
+            </div>
+            <div className="operator-subtitle">
+              (Operator 1)
+            </div>
             <input type="checkbox" 
               checked={formData.userIsAdmin} 
               disabled={isFirstUser} // Disabled if this is the first user

@@ -279,6 +279,29 @@ input[type="number"] {
   display: block;
 }
 
+/* Glyph handling */
+.setup-field-header {
+  display: flex;
+  align-items: top; /* vertically aligns glyphs with the top of the text */
+  gap: 8px;         /* Controls width of glyphs */
+  margin-bottom: 4px;
+}
+
+.glyph {
+  display: inline-block;
+  width: 20px; /* Set this to the width of the glyph (currently using ◺ / &#9722; */
+  text-align: left; /* Left-justifies the glyph within the 20px box */
+}
+
+.label-text {
+  font-weight: bold; /* ?? */
+}
+
+.operator-subtitles {
+  margin-left: 28px; /* This is the .glyph -> width + .setup-field-header -> gap */
+  margin-top: 4px; /* Margin to separate it from text labels */
+}
+
 /* --- 5. ANIMATIONS & EFFECTS --- */
 .crt-overlay {
   position: fixed;
