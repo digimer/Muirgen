@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import config from '@shared/config.js';
 
+// TODO: Now that the user must be linked to a vessel, we need to re-order the creation, and add the vessel 
+//       selection to the UserSetup.jsx
+
 function Login ({ onLoginSuccess }) {
   const [formData, setFormData] = useState({
     userHandle: '', 
