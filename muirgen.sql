@@ -314,7 +314,7 @@ CREATE TABLE notes (
         is_active          boolean        default true        not null, -- If set to false, the note will not be shown except to administrators
         modified_date      timestamptz    default now()       not null,
 
-        PRIMARY KEY(uuid), 
+        PRIMARY KEY (uuid), 
         FOREIGN KEY (user_uuid) REFERENCES users(uuid)
 );
 ALTER TABLE notes OWNER TO admin;
@@ -382,7 +382,7 @@ CREATE TABLE files (
         is_active          boolean        default true        not null, -- If set to false, the file will not be shown except to administrators
         modified_date      timestamptz    default now()       not null,
 
-        PRIMARY KEY(uuid), 
+        PRIMARY KEY (uuid), 
         FOREIGN KEY (user_uuid) REFERENCES users(uuid)
 );
 ALTER TABLE files OWNER TO admin;
@@ -443,6 +443,119 @@ CREATE TRIGGER trigger_files
     AFTER INSERT OR UPDATE ON files
     FOR EACH ROW EXECUTE PROCEDURE history_files();
 
+-- This will store 3D models for various devices and items on the boat, to be used in visually indication
+-- state information in the UT.
+CREATE TABLE component_geometries (
+        uuid               uuid           default uuidv7()    not null,
+        vessel_uuid        uuid                               not null, -- This is the vessel the model is connected to.
+        user_uuid          uuid                               not null, -- This is the user who added or replaced a file.
+        model_file_uuid    uuid,                                        -- Link to the .obj or .gltf file
+        reference_table    text,                                        -- If this file refers to a table, this will be the table name
+        reference_id       text,                                        -- If this file references a table, this is the ID (uuid or mmsi) used to reference the specific column
+        component_type     text                               not null, -- The type will indicate how the model is displayed / animated. ie (tank:water, battery:pack, battery:cell, pump:water, fan:vent)
+        position_x         real           default 0,                    -- Meters from the origin point (center of the pedestal at the deck/pedestal base interface)
+        position_y         real           default 0,
+        position_z         real           default 0,
+        scale_x            real           default 1,
+        scale_y            real           default 1,
+        scale_z            real           default 1,
+        rotation_x         real           default 0,
+        rotation_y         real           default 0,
+        rotation_z         real           default 0,
+        extended_data      jsonb,                                       -- This can contain additional information specific to the component or component type
+        is_active          boolean        default true        not null, -- If set to false, the file will not be shown except to administrators
+        modified_date      timestamptz    default now()       not null,
+
+        PRIMARY KEY (uuid), 
+        FOREIGN KEY (vessel_uuid) REFERENCES vessels(uuid), 
+        FOREIGN KEY (user_uuid) REFERENCES users(uuid), 
+        FOREIGN KEY (model_file_uuid) REFERENCES files(uuid) 
+);
+ALTER TABLE component_geometries OWNER TO admin;
+
+CREATE TABLE history.component_geometries (
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        action_type        text,
+        uuid               uuid,
+        vessel_uuid        uuid,
+        user_uuid          uuid,
+        model_file_uuid    uuid,
+        reference_table    text,
+        reference_id       text,
+        component_type     text, 
+        position_x         real, 
+        position_y         real, 
+        position_z         real, 
+        scale_x            real, 
+        scale_y            real, 
+        scale_z            real, 
+        rotation_x         real,
+        rotation_y         real,
+        rotation_z         real,
+        extended_data      jsonb,
+        is_active          boolean, 
+        modified_date      timestamptz
+);
+ALTER TABLE history.component_geometries OWNER TO admin;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE TRIGGER update_component_geometries_modtime
+    BEFORE UPDATE ON component_geometries
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+
+CREATE OR REPLACE FUNCTION history_component_geometries() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.component_geometries (
+        action_type, 
+        uuid, 
+        vessel_uuid,
+        user_uuid,
+        model_file_uuid,
+        reference_table,
+        reference_id,
+        component_type,
+        position_x,
+        position_y,
+        position_z,
+        scale_x,
+        scale_y, 
+        scale_z, 
+        rotation_x,
+        rotation_y,
+        rotation_z,
+        extended_data,
+        is_active, 
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.uuid, 
+        NEW.vessel_uuid,
+        NEW.user_uuid,
+        NEW.model_file_uuid,
+        NEW.reference_table,
+        NEW.reference_id,
+        NEW.component_type,
+        NEW.position_x,
+        NEW.position_y,
+        NEW.position_z,
+        NEW.scale_x,
+        NEW.scale_y, 
+        NEW.scale_z, 
+        NEW.rotation_x,
+        NEW.rotation_y,
+        NEW.rotation_z,
+        NEW.extended_data,
+        NEW.is_active, 
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_component_geometries() OWNER TO admin;
+
+CREATE TRIGGER trigger_component_geometries
+    AFTER INSERT OR UPDATE ON component_geometries
+    FOR EACH ROW EXECUTE PROCEDURE history_component_geometries();
+
 -- Manually entered logs of weather, travel, etc. They can be edited, but not deleted. Using 'is_active' 
 -- doesn't make sense here, as only the user who created the log entry, or an administrator can view them 
 -- anyway.
@@ -459,7 +572,7 @@ CREATE TABLE ship_logs (
         narrative           text                         not null, -- The free-form textual narrative of the log
         modified_date       timestamptz default now()    not null,
         
-        PRIMARY KEY(uuid),
+        PRIMARY KEY (uuid),
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
         FOREIGN KEY(user_uuid) REFERENCES users(uuid)
 );
@@ -544,7 +657,7 @@ CREATE TABLE radios (
         modified_date    timestamptz    default now()       not null,
 
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
-        PRIMARY KEY(uuid),
+        PRIMARY KEY (uuid),
         CONSTRAINT radio_mmsi CHECK (mmsi ~ '^[0-9]{9}$')
 );
 ALTER TABLE radios OWNER TO admin;
@@ -634,7 +747,7 @@ CREATE TABLE ais_transponders (
         modified_date        timestamptz    default now()       not null,
 
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
-        PRIMARY KEY(uuid), 
+        PRIMARY KEY (uuid), 
         CONSTRAINT ais_transponder_mmsi CHECK (mmsi ~ '^[0-9]{9}$')
 );
 ALTER TABLE ais_transponders OWNER TO admin;
@@ -791,6 +904,7 @@ CREATE TRIGGER trigger_motor_controllers
 CREATE TABLE motors (
         uuid                     uuid           default uuidv7()    not null,
         motor_controller_uuid    uuid                               not null, -- This is the motor controller controlling this motor.
+        name                     text                               not null, -- This is a free-form text label for the motor. This must be unique to allow separation on multi-motor vessels.
         make                     text                               not null, -- The motor manufacturer (ie: Golden motor)
         model                    text                               not null, -- The model of the motor. 
         serial_number            text                               not null, -- The serial number, if available. Use '' if n/a.
@@ -801,6 +915,7 @@ CREATE TABLE motors (
         is_active                boolean        default true        not null, -- Set to false if the motor fails or is replaced.
         modified_date            timestamptz    default now()       not null,
 
+        CONSTRAINT unique_motor_name UNIQUE(name),
         FOREIGN KEY(motor_controller_uuid) REFERENCES motor_controllers(uuid),
         PRIMARY KEY(uuid)
 );
@@ -811,6 +926,7 @@ CREATE TABLE history.motors (
         action_type              text,
         uuid                     uuid,
         motor_controller_uuid    uuid, 
+        name                     text,
         make                     text, 
         model                    text, 
         serial_number            text, 
@@ -835,6 +951,7 @@ BEGIN
         action_type, 
         uuid, 
         motor_controller_uuid, 
+        name, 
         make, 
         model, 
         serial_number, 
@@ -848,6 +965,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.motor_controller_uuid, 
+        NEW.name, 
         NEW.make, 
         NEW.model, 
         NEW.serial_number, 
@@ -871,6 +989,7 @@ CREATE TRIGGER trigger_motors
 CREATE TABLE batteries (
         uuid               uuid           default uuidv7()    not null,
         vessel_uuid        uuid                               not null,
+        name               text                               not null, -- This is a text label that describes the pack. It must be unique (ie: 'Propulsion bank, top row, aft' or '51.2v Pack D')
         make               text                               not null, -- The BMS or premade Battery make
         model              text                               not null, -- The BMS or premade Battery model
         serial_number      text                               not null, -- The BMS or premade Battery SN
@@ -878,9 +997,11 @@ CREATE TABLE batteries (
         capacity           real                               not null, -- Capacity in Ah
         last_capacity      real                               not null, -- The realised capacity at the last full discharge, used to calculate a more accurate estimated remaining charge and track pack degredation over time
         chemistry          text                               not null, -- LiFePO4, NMC, etc
+        extended_data      jsonb,                                       -- JSON data for any other fields we end up wanting that might be specific to a given pack.
         is_active          boolean        default true        not null, -- Set to false if the battery fails or is replaced.
         modified_date      timestamptz    default now()       not null,
-
+        
+        CONSTRAINT unique_battery_name UNIQUE(name),
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
         PRIMARY KEY(uuid)
 );
@@ -891,6 +1012,7 @@ CREATE TABLE history.batteries (
         action_type        text,
         uuid               uuid,
         vessel_uuid        uuid,
+        name               text, 
         make               text, 
         model              text, 
         serial_number      text, 
@@ -898,6 +1020,7 @@ CREATE TABLE history.batteries (
         capacity           real, 
         last_capacity      real, 
         chemistry          text, 
+        extended_data      jsonb,
         is_active          boolean, 
         modified_date      timestamptz
 );
@@ -915,6 +1038,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        name, 
         make, 
         model, 
         serial_number, 
@@ -922,12 +1046,14 @@ BEGIN
         capacity, 
         last_capacity, 
         chemistry, 
+        extended_data,
         is_active, 
         modified_date)
     VALUES (
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.name, 
         NEW.make, 
         NEW.model, 
         NEW.serial_number, 
@@ -935,6 +1061,7 @@ BEGIN
         NEW.capacity, 
         NEW.last_capacity, 
         NEW.chemistry, 
+        NEW.extended_data,
         NEW.is_active, 
         NEW.modified_date);
     RETURN NULL;
@@ -952,6 +1079,7 @@ CREATE TABLE tanks (
         liquid_type        text                               not null, -- This will be 'water', 'diesel', etc.
         capacity           real                               not null, -- Capacity in liters
         location           text                               not null, -- Textual description of the tank location, (ie: 'Port Settee')
+        extended_data      jsonb,
         modified_date      timestamptz    default now()       not null,
 
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
@@ -967,6 +1095,7 @@ CREATE TABLE history.tanks (
         liquid_type        text, 
         capacity           real, 
         location           text, 
+        extended_data      jsonb,
         modified_date      timestamptz
 );
 ALTER TABLE history.tanks OWNER TO admin;
@@ -986,6 +1115,7 @@ BEGIN
         liquid_type, 
         capacity, 
         location, 
+        extended_data,
         modified_date)
     VALUES (
         TG_OP, 
@@ -994,6 +1124,7 @@ BEGIN
         NEW.liquid_type, 
         NEW.capacity, 
         NEW.location, 
+        NEW.extended_data,
         NEW.modified_date);
     RETURN NULL;
 END; $$ LANGUAGE plpgsql;
@@ -1005,30 +1136,82 @@ CREATE TRIGGER trigger_tanks
 
 -- This is not likely to be recorded to that often, so not creating indexes or views yet.
 CREATE TABLE events (
-        uuid            uuid           default uuidv7()    not null,
-        vessel_uuid     uuid                               not null,
-        event_source    text                               not null, -- ie: 'MR Autopilot'
-        event_type      text                               not null, -- ie: 'calibration', 'tare', 'boot', etc
-        details         jsonb                              not null, -- ie: {"pitch_offset": 2.1, "roll_offset": -0.5}
-        time            timestamptz    default now()       not null,
+        uuid               uuid           default uuidv7()    not null,
+        vessel_uuid        uuid                               not null,
+        reference_table    text,
+        reference_uuid     uuid,
+        event_source       text                               not null, -- ie: 'MR Autopilot'
+        event_type         text                               not null, -- ie: 'calibration', 'tare', 'boot', etc
+        details            jsonb                              not null, -- ie: {"pitch_offset": 2.1, "roll_offset": -0.5}
+        modified_date      timestamptz    default now()       not null,
 
-        PRIMARY KEY(uuid), 
+        PRIMARY KEY (uuid), 
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
 );
 ALTER TABLE events OWNER TO admin;
 
+CREATE TABLE history.events (
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        action_type        text,
+        uuid               uuid,
+        vessel_uuid        uuid,
+        reference_table    text,
+        reference_uuid     uuid,
+        event_source       text, 
+        event_type         text, 
+        details            jsonb, 
+        modified_date      timestamptz
+);
+ALTER TABLE history.events OWNER TO admin;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE TRIGGER update_events_modtime
+    BEFORE UPDATE ON events
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+
+CREATE OR REPLACE FUNCTION history_events() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.events (
+        action_type, 
+        uuid, 
+        vessel_uuid, 
+        reference_table, 
+        reference_uuid, 
+        event_source, 
+        event_type, 
+        details, 
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.reference_table, 
+        NEW.reference_uuid, 
+        NEW.event_source, 
+        NEW.event_type, 
+        NEW.details, 
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_events() OWNER TO admin;
+
+CREATE TRIGGER trigger_events
+    AFTER INSERT OR UPDATE ON events
+    FOR EACH ROW EXECUTE PROCEDURE history_events();
+
 -- NOTE: https://emsa.europa.eu/cise-documentation/cise-data-model-1.5.3/model/guidelines/687507181.html
--- Records of AIS targets, static data. This will grow over time, but not enough to justify a hypertable,
--- Even if it did, it can't be one, as 'aid_dynamics' has a foreign key pointing here.
+-- Records of AIS targets. This will grow over time, but not enough to justify a hypertable, Even if it did, 
+-- it can't be one, as 'aid_dynamics' has a foreign key pointing here.
 CREATE TABLE ais_targets (
-        mmsi           text                               not null,
-        vessel_uuid    uuid                               not null,
-        imo            text                               not null, -- When available
-        name           text                               not null, -- Vessel name or call sign
-        length         numeric(4,2)                       not null, -- Vessel length, meters
-        beam           numeric(4,2)                       not null, -- Vessel width, meters
-        vessel_type    text                               not null, -- cargo, tanker, passenger, pleasure, etc
-        time           timestamptz    default now()       not null,
+        mmsi             text                            not null,
+        vessel_uuid      uuid                            not null,
+        imo              text                            not null, -- When available
+        name             text                            not null, -- Vessel name or call sign
+        length           real                            not null, -- Vessel length, meters
+        beam             real                            not null, -- Vessel width, meters
+        vessel_type      text                            not null, -- cargo, tanker, passenger, pleasure, etc
+        modified_date    timestamptz    default now()    not null,
 
         PRIMARY KEY(mmsi), -- NOTE: This is different from other tables! The MMSI acts as the UUID for locating records
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid), 
@@ -1036,12 +1219,62 @@ CREATE TABLE ais_targets (
 );
 ALTER TABLE ais_targets OWNER TO admin;
 
+CREATE TABLE history.ais_targets (
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        action_type        text,
+        mmsi               text,
+        vessel_uuid        uuid,
+        imo                text, 
+        name               text, 
+        length             real, 
+        beam               real, 
+        vessel_type        text, 
+        modified_date      timestamptz
+);
+ALTER TABLE history.ais_targets OWNER TO admin;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE TRIGGER update_ais_targets_modtime
+    BEFORE UPDATE ON ais_targets
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+
+CREATE OR REPLACE FUNCTION history_ais_targets() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.ais_targets (
+        action_type, 
+        mmsi, 
+        vessel_uuid, 
+        imo,
+        name,
+        length,
+        beam,
+        vessel_type,
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.mmsi, 
+        NEW.vessel_uuid, 
+        NEW.imo,
+        NEW.name,
+        NEW.length,
+        NEW.beam,
+        NEW.vessel_type,
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_ais_targets() OWNER TO admin;
+
+CREATE TRIGGER trigger_ais_targets
+    AFTER INSERT OR UPDATE ON ais_targets
+    FOR EACH ROW EXECUTE PROCEDURE history_ais_targets();
+
 -- View to quickly access the most recent cell data.
-CREATE OR REPLACE VIEW current_ais_targets AS SELECT DISTINCT ON (mmsi) * FROM ais_targets ORDER BY mmsi, time DESC;
+CREATE OR REPLACE VIEW current_ais_targets AS SELECT DISTINCT ON (mmsi) * FROM ais_targets ORDER BY mmsi, modified_date DESC;
 ALTER VIEW current_ais_targets OWNER TO admin;
 
 -- Indexing for spatial and time-series performance
-CREATE INDEX index_ais_targets_latest ON ais_targets (mmsi, time DESC);
+CREATE INDEX index_ais_targets_latest ON ais_targets (mmsi, modified_date DESC);
 ALTER INDEX index_ais_targets_latest OWNER TO admin;
 
 -- ### Below here are (potentially) high rate of change tables. These use hypertables to better handle their
@@ -1055,11 +1288,10 @@ CREATE TABLE vessel_transmissions (
         transmission_type      text                               not null, -- 'AIS', 'VHF_VOICE', or 'DSC'
         channel                text                               not null, -- 'A', 'B', or '16', '72', etc.
         power_watts            real                               not null, -- 25, 5, 1
-        dsc_message_type       text                               not null, -- 'Distress', 'Individual', etc.
-        vswr                   real                               not null, -- Antenna health
-        time                   timestamptz    DEFAULT now()       not null,
+        dsc_message_type       text,                                        -- 'Distress', 'Individual', etc.
+        vswr                   real                               not null, -- Antenna health, if this climbs over time, the antenna or a connection on the coax is degrading.
+        time                   timestamptz    default now()       not null,
 
-        -- PK must include the column used for partitioning
         PRIMARY KEY (time, uuid),
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
 );
@@ -1067,15 +1299,14 @@ ALTER TABLE vessel_transmissions OWNER TO admin;
 SELECT create_hypertable('vessel_transmissions', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE vessel_transmissions SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'vessel_uuid',
+  timescaledb.compress_segmentby = 'transmission_type, transmission_source',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('vessel_transmissions', INTERVAL '30 days');
+SELECT add_retention_policy('vessel_transmissions', INTERVAL '60 days');
 SELECT add_compression_policy('vessel_transmissions', INTERVAL '1 day');
 
 -- Store raw PGN traffic. This will generate a massive amount of data and we'll likely rarely ever read it
--- back, save for debugging. So no index and no WAL. Partiioned daily for faster/easier purging of old 
--- records.
+-- back, save for debugging. So no index and no WAL.
 CREATE TABLE n2k_traffic (
         uuid           uuid           default uuidv7()    not null,
         vessel_uuid    uuid                               not null,
@@ -1085,7 +1316,6 @@ CREATE TABLE n2k_traffic (
         payload        bytea                              not null,
         time           timestamptz    default now()       not null,
 
-        -- PK must include the column used for partitioning
         PRIMARY KEY (time, uuid),
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
 );
@@ -1093,10 +1323,10 @@ ALTER TABLE n2k_traffic OWNER TO admin;
 SELECT create_hypertable('n2k_traffic', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE n2k_traffic SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'vessel_uuid',
+  timescaledb.compress_segmentby = 'pgn, source_id',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('n2k_traffic', INTERVAL '30 days');
+SELECT add_retention_policy('n2k_traffic', INTERVAL '7 days');
 SELECT add_compression_policy('n2k_traffic', INTERVAL '1 day');
 
 -- This will record all sensor data related to the motion of the boat (in 3D space and over the planet).
@@ -1104,21 +1334,21 @@ CREATE TABLE motion_data (
         uuid                  uuid           default uuidv7()    not null,
         vessel_uuid           uuid                               not null,
         sensor_source         text                               not null,
-        accelerometer_x       real                               not null, -- Accelerometer (m/s^2) - For Slamming and Heave
-        accelerometer_y       real                               not null, 
-        accelerometer_z       real                               not null,
-        gyroscope_x           real                               not null, -- Gyroscope (deg/s) - Crucial for the Autopilot's "Rate of Turn"
-        gyroscope_y           real                               not null, 
-        gyroscope_z           real                               not null,
-        pitch                 real                               not null, -- Processed Orientation (Degrees)
-        roll                  real                               not null,
-        heading_magnetic      real                               not null,
-        rate_of_turn          real                               not null, -- Other data from the 200WX
-        speed_over_ground     real                               not null,
-        course_over_ground    real                               not null,
-        heave                 real                               not null,
-        gps_quality           jsonb                              not null, -- Possibly useful for diagnostics
-        sensor_voltage        real                               not null,
+        accelerometer_x       real,                                        -- Accelerometer (m/s^2) - For Slamming and Heave
+        accelerometer_y       real,
+        accelerometer_z       real,
+        gyroscope_x           real,                                        -- Gyroscope (deg/s) - Crucial for the Autopilot's "Rate of Turn"
+        gyroscope_y           real,
+        gyroscope_z           real,
+        pitch                 real,                                        -- Processed Orientation (Degrees)
+        roll                  real,
+        heading_magnetic      real,
+        rate_of_turn          real,                                        -- Other data from the 200WX
+        speed_over_ground     real,
+        course_over_ground    real,
+        heave                 real,
+        gps_quality           jsonb,                                       -- Possibly useful for diagnostics
+        sensor_voltage        real,
         time                  timestamptz    default now()       not null,
 
         PRIMARY KEY (time, uuid),
@@ -1128,10 +1358,10 @@ ALTER TABLE motion_data OWNER TO admin;
 SELECT create_hypertable('motion_data', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE motion_data SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'vessel_uuid',
+  timescaledb.compress_segmentby = 'sensor_source',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('motion_data', INTERVAL '30 days');
+SELECT add_retention_policy('motion_data', INTERVAL '60 days');
 SELECT add_compression_policy('motion_data', INTERVAL '1 day');
 
 -- View to quickly access the most recent cell data.
@@ -1142,7 +1372,7 @@ ALTER VIEW current_motion_data OWNER TO admin;
 -- Temperature Data
 CREATE TABLE temperature_data (
         vessel_uuid      uuid           not null,
-        sensor_source    text           not null, -- Source + Name
+        sensor_source    text           not null, -- Either '<table>:<uuid>' or a string consistent with the source (ie: '<device>:<serial_number>'
         sensor_value     real           not null, -- Celcius (converted from Kelvin, -273.15)
         time             timestamptz    not null,
 
@@ -1156,7 +1386,7 @@ ALTER TABLE temperature_data SET (
   timescaledb.compress_segmentby = 'vessel_uuid, sensor_source',
   timescaledb.compress_orderby = 'time DESC'
 );
-SELECT add_retention_policy('temperature_data', INTERVAL '30 days');
+SELECT add_retention_policy('temperature_data', INTERVAL '60 days');
 SELECT add_compression_policy('temperature_data', INTERVAL '1 day');
 
 -- Use a View for your real-time dashboard
@@ -1181,7 +1411,7 @@ CREATE TABLE motor_data (
         throttle_raw        real                                 not null, -- Raw voltage (e.g., 0.0 to 5.0V)
         throttle_percent    real                                 not null, -- Calculated -100% to +100%
         speed_mode          text                                 not null, -- 'low', 'medium', 'high'
-        error_code          text                                 not null, -- Diagnostic data. Uses 'text' as we can't guarantee all motor controllers use numeric error codes.
+        error_code          text,                                          -- Diagnostic data. Uses 'text' as we can't guarantee all motor controllers use numeric error codes.
         time                timestamptz    default now()         not null,
 
         PRIMARY KEY (time, uuid),
@@ -1194,45 +1424,58 @@ ALTER TABLE motor_data SET (
   timescaledb.compress_segmentby = 'motor_uuid',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('motor_data', INTERVAL '30 days');
+SELECT add_retention_policy('motor_data', INTERVAL '60 days');
 SELECT add_compression_policy('motor_data', INTERVAL '1 day');
 
 -- View to quickly access the most recent cell data.
 CREATE OR REPLACE VIEW current_motor_data AS SELECT DISTINCT ON (motor_uuid) * FROM motor_data ORDER BY motor_uuid, time DESC;
 ALTER VIEW current_motor_data OWNER TO admin;
 
--- TODO: The gear ration has moved to the 'motors' table, so this needs to be reworked to pull the data from there.
 -- Calculate Shaft RPM for propeller analysis
 -- Calculate Watts per Shaft Revolution (Load Metric)
---CREATE OR REPLACE VIEW propulsion_efficiency AS
---SELECT time, motor_uuid, (rpm / gear_ratio) AS shaft_rpm, ((voltage * current_dc) / NULLIF(ABS(rpm / gear_ratio), 0)) AS watts_per_rev FROM motor_data;
+CREATE OR REPLACE VIEW propulsion_efficiency AS
+SELECT 
+    md.time, 
+    md.motor_uuid,
+    m.name AS motor_name,
+    (md.rpm / NULLIF(m.gear_ratio, 0)) AS shaft_rpm, 
+    (md.watts / NULLIF(ABS(md.rpm / m.gear_ratio), 0)) AS watts_per_rev 
+FROM motor_data md
+JOIN motors m ON md.motor_uuid = m.uuid;
 
--- TODO: The motor is now referenced to the motors table, so these need to be reworked to replace 'motor_source'.
 -- Motor:10kW:Controller
 -- Motor:10kW:Winding
 -- Motor:5kW:Controller
 -- Motor:5kW:Winding
--- CREATE OR REPLACE VIEW health_summary AS
--- SELECT m.time, m.motor_source, m.voltage, m.current_dc, m.rpm, ct.sensor_value AS controller_temp, wt.sensor_value AS temp
--- FROM motors m
--- -- Nearest Controller Temp
--- LEFT JOIN LATERAL (
---     SELECT sensor_value 
---     FROM temperatures t
---     WHERE t.sensor_source = m.motor_source || ':Controller'
---       AND t.time BETWEEN m.time - INTERVAL '5 seconds' AND m.time + INTERVAL '5 seconds'
---     ORDER BY ABS(EXTRACT(EPOCH FROM (t.time - m.time))) ASC
---     LIMIT 1
--- ) ct ON true
--- -- Nearest Winding Temp
--- LEFT JOIN LATERAL (
---     SELECT sensor_value 
---     FROM temperatures t
---     WHERE t.sensor_source = m.motor_source || ':Winding'
---       AND t.time BETWEEN m.time - INTERVAL '5 seconds' AND m.time + INTERVAL '5 seconds'
---     ORDER BY ABS(EXTRACT(EPOCH FROM (t.time - m.time))) ASC
---     LIMIT 1
--- ) wt ON true;
+CREATE OR REPLACE VIEW motor_health_summary AS
+SELECT 
+    md.time, 
+    m.name AS motor_name,
+    md.voltage, 
+    md.current_dc, 
+    md.rpm, 
+    ct.sensor_value AS controller_temp, 
+    wt.sensor_value AS winding_temp
+FROM motor_data md
+JOIN motors m ON md.motor_uuid = m.uuid
+-- Nearest Controller Temp via sensor_source string match
+LEFT JOIN LATERAL (
+     SELECT sensor_value 
+     FROM temperature_data t
+     WHERE t.sensor_source = 'motors:' || m.uuid || ':Controller'
+       AND t.time BETWEEN md.time - INTERVAL '10 seconds' AND md.time + INTERVAL '10 seconds'
+     ORDER BY ABS(EXTRACT(EPOCH FROM (t.time - md.time))) ASC
+     LIMIT 1
+) ct ON true
+-- Nearest Winding Temp
+LEFT JOIN LATERAL (
+     SELECT sensor_value 
+     FROM temperature_data t
+     WHERE t.sensor_source = 'motors:' || m.uuid || ':Winding'
+       AND t.time BETWEEN md.time - INTERVAL '10 seconds' AND md.time + INTERVAL '10 seconds'
+     ORDER BY ABS(EXTRACT(EPOCH FROM (t.time - md.time))) ASC
+     LIMIT 1
+) wt ON true;
 
 -- Depth sounder data
 CREATE TABLE depth_data (
@@ -1252,10 +1495,10 @@ ALTER TABLE depth_data OWNER TO admin;
 SELECT create_hypertable('depth_data', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE depth_data SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'vessel_uuid',
+  timescaledb.compress_segmentby = 'vessel_uuid, sensor_source',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('depth_data', INTERVAL '30 days');
+SELECT add_retention_policy('depth_data', INTERVAL '60 days');
 SELECT add_compression_policy('depth_data', INTERVAL '1 day');
 
 -- View to quickly access the most recent cell data.
@@ -1266,11 +1509,19 @@ ALTER VIEW current_depth_data OWNER TO admin;
 -- 1. vertical        - Vertical correction for heel/pitch (Geometric depth)
 -- 2. below_keel      - Depth Below Keel (DBK) = Measured + (Negative Keel Offset)
 -- 3. below_waterline - Depth Below Waterline (DBW) = Measured + (Positive Waterline Offset)
-CREATE OR REPLACE VIEW corrected_depth AS SELECT d.*, v.name,
-    (d.measured * cos(radians(d.sensor_roll)) * cos(radians(d.sensor_pitch))) AS vertical,
+CREATE OR REPLACE VIEW corrected_depth AS 
+SELECT 
+    d.time,
+    d.sensor_source,
+    d.quality,
+    -- Geometric Vertical Correction: Measured * cos(roll) * cos(pitch)
+    (d.measured * cos(radians(d.sensor_roll)) * cos(radians(d.sensor_pitch))) AS vertical_depth,
+    -- Distance below the lowest point of the boat
     (d.measured + v.keel_offset) AS below_keel,
+    -- Total depth of the water column
     (d.measured + v.waterline_offset) AS below_waterline
-FROM depth_data d JOIN vessels v ON d.vessel_uuid = v.uuid;
+FROM depth_data d 
+JOIN vessels v ON d.vessel_uuid = v.uuid;
 ALTER VIEW corrected_depth OWNER TO admin;
 
 -- Indexing for spatial and time-series performance
@@ -1298,6 +1549,7 @@ CREATE TABLE wind_data (
         
         -- Constraints to prevent "impossible" sensor data
         CONSTRAINT check_true_direction CHECK (true_direction >= 0 AND true_direction < 360),
+        CONSTRAINT check_ground_direction   CHECK (ground_direction >= 0 AND ground_direction < 360),
         CONSTRAINT check_apparent_direction  CHECK (apparent_direction >= 0 AND apparent_direction < 360),
 
         PRIMARY KEY(time, uuid),
@@ -1307,14 +1559,16 @@ ALTER TABLE wind_data OWNER TO admin;
 SELECT create_hypertable('wind_data', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE wind_data SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'vessel_uuid',
+  timescaledb.compress_segmentby = 'vessel_uuid, sensor_source',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('wind_data', INTERVAL '30 days');
+SELECT add_retention_policy('wind_data', INTERVAL '60 days');
 SELECT add_compression_policy('wind_data', INTERVAL '1 day');
 
 -- Use a View for your real-time dashboard
-CREATE OR REPLACE VIEW current_wind_data AS SELECT DISTINCT ON (sensor_source) * FROM wind_data ORDER BY sensor_source, time DESC;
+CREATE OR REPLACE VIEW current_wind_data AS 
+    SELECT DISTINCT ON (sensor_source) * FROM wind_data 
+    ORDER BY sensor_source, time DESC;
 ALTER VIEW current_wind_data OWNER TO admin;
 
 CREATE INDEX index_wind_data_latest ON wind_data (sensor_source, time DESC);
@@ -1345,10 +1599,10 @@ ALTER TABLE weather_data OWNER TO admin;
 SELECT create_hypertable('weather_data', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE weather_data SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'vessel_uuid',
+  timescaledb.compress_segmentby = 'vessel_uuid, sensor_source',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('weather_data', INTERVAL '30 days');
+SELECT add_retention_policy('weather_data', INTERVAL '60 days');
 SELECT add_compression_policy('weather_data', INTERVAL '1 day');
 
 -- View to quickly access the most recent weather data.
@@ -1362,8 +1616,31 @@ ALTER INDEX index_weather_data_time OWNER TO admin;
 ALTER INDEX index_weather_data_location OWNER TO admin;
 
 -- The 'Live' view for the FUI
-CREATE VIEW latest_weather_data AS SELECT DISTINCT ON (uuid) * FROM weather_data ORDER BY uuid, time DESC;
+CREATE VIEW latest_weather_data AS SELECT DISTINCT ON (sensor_source) * FROM weather_data ORDER BY sensor_source, time DESC;
 ALTER VIEW latest_weather_data OWNER TO admin;
+
+-- Lightning Detection (AS3935)
+CREATE TABLE lightning_events (
+        uuid                 uuid           default uuidv7()    not null,
+        vessel_uuid          uuid                               not null,
+        sensor_source        text                               not null, -- e.g., 'sparkfun_15441:<id>'
+        distance_km          real                               not null, -- Distance estimate in kilometers (AS3935 provides this)
+        energy               bigint,                                      -- Relative energy scale (dimensionless, used for trending)
+        event_type           text           default 'strike',             -- Detected lightning type; 'strike', 'disturber', 'noise'
+        location             geography(point, 4326),                      -- Vessel position at time of strike for heatmapping
+        time                 timestamptz    default now()       not null,
+
+        PRIMARY KEY (time, uuid),
+        FOREIGN KEY (vessel_uuid) REFERENCES vessels(uuid)
+);
+ALTER TABLE lightning_events OWNER TO admin;
+SELECT create_hypertable('lightning_events', 'time', chunk_time_interval => INTERVAL '1 week');
+ALTER TABLE lightning_events SET (
+  timescaledb.compress,
+  timescaledb.compress_segmentby = 'vessel_uuid, sensor_source'
+);
+SELECT add_compression_policy('lightning_events', INTERVAL '1 day');
+SELECT add_retention_policy('lightning_events', INTERVAL '60 days');
 
 -- Battery data
 CREATE TABLE battery_data (
@@ -1385,7 +1662,7 @@ ALTER TABLE battery_data SET (
   timescaledb.compress_segmentby = 'battery_uuid',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('battery_data', INTERVAL '30 days');
+SELECT add_retention_policy('battery_data', INTERVAL '60 days');
 SELECT add_compression_policy('battery_data', INTERVAL '1 day');
 
 -- View to quickly access the most recent battery pack data.
@@ -1412,15 +1689,53 @@ ALTER TABLE battery_cell_data OWNER TO admin;
 SELECT create_hypertable('battery_cell_data', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE battery_cell_data SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'battery_uuid',
+  timescaledb.compress_segmentby = 'battery_uuid, cell_id',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('battery_cell_data', INTERVAL '30 days');
+SELECT add_retention_policy('battery_cell_data', INTERVAL '60 days');
 SELECT add_compression_policy('battery_cell_data', INTERVAL '1 day');
 
 -- Indexing for spatial and time-series performance
 CREATE INDEX index_battery_cell_data_latest ON battery_cell_data (battery_uuid, cell_id, time DESC);
 ALTER INDEX index_battery_cell_data_latest OWNER TO admin;
+
+-- View to show pack health over the pack and the cells.
+CREATE OR REPLACE VIEW battery_health_summary AS
+SELECT 
+    bd.time,
+    b.name AS battery_name,
+    bd.pack_voltage,
+    bd.pack_current,
+    bd.state_of_charge,
+    stats.min_cell,
+    stats.max_cell,
+    (stats.max_cell - stats.min_cell) AS cell_delta,
+    stats.avg_cell
+FROM battery_data bd
+JOIN batteries b ON bd.battery_uuid = b.uuid
+LEFT JOIN LATERAL (
+    -- Aggregating cell data for the same timestamp
+    SELECT 
+        MIN(cell_voltage) AS min_cell,
+        MAX(cell_voltage) AS max_cell,
+        AVG(cell_voltage) AS avg_cell
+    FROM battery_cell_data bcd
+    WHERE bcd.battery_uuid = bd.battery_uuid
+    AND bcd.time BETWEEN bd.time - INTERVAL '2 seconds' AND bd.time + INTERVAL '2 seconds'
+) stats ON true;
+ALTER VIEW battery_health_summary OWNER TO admin;
+
+-- Total Vessel Energy Balance
+CREATE OR REPLACE VIEW energy_balance_sheet AS
+SELECT 
+    time,
+    SUM(CASE WHEN nominal_voltage > 24 THEN pack_voltage * pack_current ELSE 0 END) AS propulsion_wattage,
+    SUM(CASE WHEN nominal_voltage < 24 THEN pack_voltage * pack_current ELSE 0 END) AS house_wattage,
+    AVG(CASE WHEN nominal_voltage > 24 THEN state_of_charge ELSE NULL END) AS propulsion_soc_avg,
+    AVG(CASE WHEN nominal_voltage < 24 THEN state_of_charge ELSE NULL END) AS house_soc_avg
+FROM current_battery_data
+GROUP BY time;
+ALTER VIEW energy_balance_sheet OWNER TO admin;
 
 -- Liquid tanks
 CREATE TABLE tank_data (
@@ -1441,7 +1756,7 @@ ALTER TABLE tank_data SET (
   timescaledb.compress_segmentby = 'tank_uuid',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('tank_data', INTERVAL '30 days');
+SELECT add_retention_policy('tank_data', INTERVAL '60 days');
 SELECT add_compression_policy('tank_data', INTERVAL '1 day');
 
 -- View to quickly access the most recent cell data.
@@ -1452,6 +1767,28 @@ ALTER VIEW current_tank_data OWNER TO admin;
 CREATE INDEX index_tank_data_latest ON tank_data (tank_uuid, time DESC);
 ALTER INDEX index_tank_data_latest OWNER TO admin;
 
+-- Records the dynamic, but slower changing data.
+CREATE TABLE ais_voyage_data (
+        uuid                  uuid           default uuidv7()    not null,
+        ais_target_mmsi       text                               not null,
+        navigation_status     smallint                           not null, -- 
+        data                  jsonb                              not null, -- JSON of destination, ETA, static draght, cargo category, etc
+        time                  timestamptz    default now()       not null,
+
+        PRIMARY KEY(time, uuid), 
+        FOREIGN KEY(ais_target_mmsi) REFERENCES ais_targets(mmsi), 
+        CONSTRAINT ais_dynamic_mmsi CHECK (ais_target_mmsi ~ '^[0-9]{9}$')
+);
+ALTER TABLE ais_voyage_data OWNER TO admin;
+SELECT create_hypertable('ais_voyage_data', 'time', chunk_time_interval => INTERVAL '1 day');
+ALTER TABLE ais_voyage_data SET (
+  timescaledb.compress,
+  timescaledb.compress_segmentby = 'ais_target_mmsi',
+  timescaledb.compress_orderby = 'time DESC, uuid'
+);
+SELECT add_retention_policy('ais_voyage_data', INTERVAL '60 days');
+SELECT add_compression_policy('ais_voyage_data', INTERVAL '1 day');
+
 -- Records the dynamic, potentially fast changing data about AIS targets.
 CREATE TABLE ais_dynamics (
         uuid                  uuid           default uuidv7()    not null,
@@ -1461,8 +1798,6 @@ CREATE TABLE ais_dynamics (
         course_over_ground    real                               not null,
         heading               real                               not null,
         rate_of_turn          real                               not null,
-        navigation_status     smallint                           not null, -- 
-        data                  jsonb                              not null, -- JSON of destination, ETA, static draght, cargo category, etc
         time                  timestamptz    default now()       not null,
 
         PRIMARY KEY(time, uuid), 
@@ -1476,12 +1811,22 @@ ALTER TABLE ais_dynamics SET (
   timescaledb.compress_segmentby = 'ais_target_mmsi',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
-SELECT add_retention_policy('ais_dynamics', INTERVAL '30 days');
+SELECT add_retention_policy('ais_dynamics', INTERVAL '60 days');
 SELECT add_compression_policy('ais_dynamics', INTERVAL '1 day');
 
 -- View to quickly access the most recent cell data.
 CREATE OR REPLACE VIEW current_ais_dynamics AS SELECT DISTINCT ON (ais_target_mmsi) * FROM ais_dynamics ORDER BY ais_target_mmsi, time DESC;
 ALTER VIEW current_ais_dynamics OWNER TO admin;
+
+-- Simple Proximity View
+CREATE OR REPLACE VIEW nearby_vessels AS
+SELECT 
+    ais_target_mmsi,
+    location,
+    ST_Distance(location, (SELECT location FROM weather_data ORDER BY time DESC LIMIT 1)) as distance_meters
+FROM current_ais_dynamics
+WHERE ST_DWithin(location, (SELECT location FROM weather_data ORDER BY time DESC LIMIT 1), 9260); -- 5nm
+ALTER VIEW nearby_vessels OWNER TO admin;
 
 -- Indexing for spatial and time-series performance
 CREATE INDEX index_ais_dynamics_latest ON ais_dynamics (ais_target_mmsi, time DESC);
