@@ -1277,6 +1277,91 @@ ALTER VIEW current_ais_targets OWNER TO admin;
 CREATE INDEX index_ais_targets_latest ON ais_targets (mmsi, modified_date DESC);
 ALTER INDEX index_ais_targets_latest OWNER TO admin;
 
+-- This records devices related to power management; chargers, inverters, etc. These can vary wildly, so 
+-- we're going to lean into the extended_data to store a given device's detailed capabilities in there. This
+-- is to avoid having countless tables for the various types of power equipment on boats.
+CREATE TABLE power_devices (
+        uuid             uuid           default uuidv7()    not null,
+        vessel_uuid      uuid                               not null,
+        name             text           unique              not null, -- This is a free-form name for the device (ie: 'MPPT #1', 'Backup DC/DC Converter', Whatever makes sense of the user.)
+        make             text                               not null, -- The brand; Victron, Mastervolt, Renogy, etc
+        model            text                               not null, -- The model number of the device (ie: 'Multiplus-II 48|5000')
+        serial_number    text,                                        -- This is not-null to support DIY devices.
+        type             text                               not null, -- This indicates the class of device ('inverter', 'charger', 'dc/dc converter', 'alternator', etc)
+        is_charger       boolean        default false       not null, -- Set to true if the device can charge batteris, details in extended_data. This is true for boost/buck converters with built in charge profiles, but not if they only output fixed voltage
+        is_inverter      boolean        default false       not null, -- Set to true if the device can generate AC from DC, details in extended_data
+        is_converter     boolean        default false       not null, -- Set to true if the device converts power (Boost/Buck converters)
+        is_source        boolean        default false       not null, -- Set to true if the device acts as a power source 
+        extended_data    jsonb,                                       -- This can contain additional information specific to the component or component type
+        modified_date    timestamptz    default now()    not null,
+
+        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
+        PRIMARY KEY(uuid)
+);
+ALTER TABLE power_devices OWNER TO admin;
+
+CREATE TABLE history.power_devices (
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        vessel_uuid      uuid,
+        name             text,
+        make             text,
+        model            text, 
+        serial_number    text,
+        type             text, 
+        is_charger       boolean, 
+        is_inverter      boolean, 
+        is_converter     boolean, 
+        extended_data    jsonb,
+        modified_date    timestamptz    default now()    not null
+);
+ALTER TABLE history.power_devices OWNER TO admin;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE TRIGGER update_power_devices_modtime
+    BEFORE UPDATE ON power_devices
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+
+CREATE OR REPLACE FUNCTION history_power_devices() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.power_devices (
+        action_type, 
+        uuid, 
+        vessel_uuid, 
+        name,
+        make,
+        model, 
+        serial_number,
+        type, 
+        is_charger, 
+        is_inverter, 
+        is_converter, 
+        extended_data,
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.name,
+        NEW.make,
+        NEW.model, 
+        NEW.serial_number,
+        NEW.type, 
+        NEW.is_charger, 
+        NEW.is_inverter, 
+        NEW.is_converter, 
+        NEW.extended_data,
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_power_devices() OWNER TO admin;
+
+CREATE TRIGGER trigger_power_devices
+    AFTER INSERT OR UPDATE ON power_devices
+    FOR EACH ROW EXECUTE PROCEDURE history_power_devices();
+
+
+
 -- ### Below here are (potentially) high rate of change tables. These use hypertables to better handle their
 -- ### large volume of time-series data.
 
@@ -1818,6 +1903,38 @@ SELECT add_compression_policy('ais_dynamics', INTERVAL '1 day');
 CREATE OR REPLACE VIEW current_ais_dynamics AS SELECT DISTINCT ON (ais_target_mmsi) * FROM ais_dynamics ORDER BY ais_target_mmsi, time DESC;
 ALTER VIEW current_ais_dynamics OWNER TO admin;
 
+-- Records the dynamic, potentially fast changing data about voltages
+CREATE TABLE power_dynamics (
+        uuid               uuid           default uuidv7()    not null,
+        reference_table    text                               not null, -- This is the table name the associated device is in.
+        reference_id       uuid                               not null, -- This is the UUID of the reference column.
+        port_name          text                               not null, -- This is a label that indicates what the voltage reading relates to. Ie: 'Shore In', 'AC out #2', 'Motor Phace W', etc) This should map to 'voltage:<name>' in the device's extended_data JSON.
+        is_ac              BOOLEAN                            not null, -- True if the value is AC, false for DC
+        volts              numeric(6,3),                                -- This is the read voltage.
+        amps               numeric(8,3),                                -- This is the read amerage. Negative is output, positive is input
+        watts              numeric(9,3),                                -- This is the read wattage
+        power_factor       real,                                        -- If applicable, this is the power factor.
+        time               timestamptz    default now()       not null,
+
+        PRIMARY KEY(time, uuid)
+);
+ALTER TABLE power_dynamics OWNER TO admin;
+SELECT create_hypertable('power_dynamics', 'time', chunk_time_interval => INTERVAL '1 day');
+ALTER TABLE power_dynamics SET (
+  timescaledb.compress,
+  timescaledb.compress_segmentby = 'reference_table, reference_id, port_name',
+  timescaledb.compress_orderby = 'time DESC, uuid'
+);
+SELECT add_retention_policy('power_dynamics', INTERVAL '60 days');
+SELECT add_compression_policy('power_dynamics', INTERVAL '1 day');
+
+-- Galvanic leakage alarm
+SELECT time, reference_id, amps 
+FROM power_dynamics 
+WHERE reference_table = 'batteries' 
+  AND ABS(amps) > 0.005 -- 5mA threshold
+  AND time > now() - interval '5 minutes';
+  
 -- Simple Proximity View
 CREATE OR REPLACE VIEW nearby_vessels AS
 SELECT 
