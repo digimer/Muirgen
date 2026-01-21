@@ -65,8 +65,13 @@ function App() {
       setDbData(statusData);
       setSetupState(initData);
       
-      // Only update if we're not actively logging out
-      if (!isLoggingOutRef.current) {
+      // If, for some reason, the setup is required but a stale token remains, delete it.
+      if (initData.userRequired || initData.vesselRequired) {
+        if (localStorage.getItem('muirgen_token')) {
+          localStorage.removeItem('muirgen_token');
+        }
+        setIsLoggedIn(false);
+      } else if (!isLoggingOutRef.current) {
         setIsLoggedIn(initData.isLoggedIn);
       }
       
@@ -106,10 +111,10 @@ function App() {
         {/* Main body */}
         <div className={`content-container ${isLoggingOut? 'blur-active' : ''}`}>
           <h2 className="flicker">Core Database: {dbData.status}</h2>
-          {setupState.userRequired ? (
-            <UserSetup onComplete={fetchData} />
-          ) : setupState.vesselRequired ? (
+          {setupState.vesselRequired ? (
             <VesselSetup onComplete={fetchData} />
+          ) : setupState.userRequired ? (
+            <UserSetup onComplete={fetchData} />
           ) : !isLoggedIn ? (
             <Login onLoginSuccess={() => {
               setIsLoggedIn(true);

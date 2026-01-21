@@ -22,6 +22,12 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- TODO: The app that disables the vessel's "is_active" MUST set all linked devices as 'is_active = false' as
+--       well. Alternative, the UI should provide a list of equipment and ask the user at the time of the 
+--       vessel being disabled what is being kept / moved to the new vessel (assuming a vessel was sold and a
+--       new one purchased, and some equipment being moved), and reassing their respective vessel_uuid values
+--       to the new active vessel. To this end, do not allow a vessel to be disabled until a new active 
+--       vessel exists, and user 1 is linked to it.
 -- Main vessel data
 CREATE TABLE vessels (
         uuid                uuid           default uuidv7()    not null,
@@ -33,6 +39,7 @@ CREATE TABLE vessels (
         hull_id_number      text                               not null,
         keel_offset         numeric(4,2)                       not null, -- Distance from the transducer to the keel (negative number)
         waterline_offset    numeric(4,2)                       not null, -- Distance above the transducer to the waterline
+        is_active           boolean        default true        not null, -- If set to false, the vessel is no longer available.
         modified_date       timestamptz    default now()       not null,
         
         PRIMARY KEY (uuid)
@@ -51,6 +58,7 @@ CREATE TABLE history.vessels (
         hull_id_number      text,
         keel_offset         numeric(4,2), 
         waterline_offset    numeric(4,2), 
+        is_active           boolean, 
         modified_date       timestamptz
 );
 ALTER TABLE history.vessels OWNER TO admin;
@@ -74,6 +82,7 @@ BEGIN
         hull_id_number,
         keel_offset, 
         waterline_offset, 
+        is_active, 
         modified_date)
     VALUES (
         TG_OP, 
@@ -86,6 +95,7 @@ BEGIN
         NEW.hull_id_number,
         NEW.keel_offset, 
         NEW.waterline_offset, 
+        NEW.is_active, 
         NEW.modified_date);
     RETURN NULL;
 END; $$ LANGUAGE plpgsql;

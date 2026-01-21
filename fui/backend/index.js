@@ -33,7 +33,7 @@ const pool = new Pool({
 app.post('/api/login', async (req, res) => {
   const { userHandle, userPassword } = req.body;
   try {
-    const result = await pool.query('SELECT uuid, handle, password_hash, is_admin FROM users WHERE handle = $1;', [userHandle]);
+    const result = await pool.query('SELECT uuid, vessel_uuid, name, password_hash, is_admin FROM users WHERE is_active = TRUE AND handle = $1;', [userHandle]);
     
     if (result.rows.length === 0) {
       return res.status(401).json({ error: "Invalid Operator" });
@@ -62,8 +62,8 @@ app.post('/api/login', async (req, res) => {
 // Check if any setup is needed.
 app.get('/api/check-init', async (req, res) => {
   try {
-    const userRes = await pool.query('SELECT uuid FROM users LIMIT 1');
-    const vesselRes = await pool.query('SELECT uuid FROM vessels LIMIT 1');
+    const userRes = await pool.query('SELECT uuid FROM users WHERE is_active = TRUE LIMIT 1;');
+    const vesselRes = await pool.query('SELECT uuid FROM vessels WHERE is_active = TRUE LIMIT 1;');
     
     // Check for a passport in the headers.
     const authHeader = req.headers.authorization;
@@ -71,14 +71,25 @@ app.get('/api/check-init', async (req, res) => {
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
+      
+      // Verify that the UUID in the token exists and is (still) active.
       try {
-        jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key');
-        loggedIn = true; // Valid token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key');
+        const userCheck = await pool.query(
+          'SELECT uuid FROM users WHERE is_active = TRUE AND uuid = $1;', 
+          [decoded.uuid]
+        );
+        if (userCheck.rows.length > 0) {
+          loggedIn = true;
+        } else {
+          // The user has either been deactivated or deleted entirely.
+          loggedIn = false;
+        }
       } catch (err) {
-        loggedIn = false; // Token is expired or invalid
+        // The token has expired or is invalid.
+        loggedIn = false;
       }
-    }
-    
+      
     res.json({
       userRequired: userRes.rows.length === 0,
       vesselRequired: vesselRes.rows.length === 0, 
@@ -92,6 +103,7 @@ app.get('/api/check-init', async (req, res) => {
 // Handle saving users with bcryptjs
 app.post('/api/save-user', async (req, res) => {
   const { userHandle, userName, userPassword, userIsAdmin } = req.body;
+  // const { userHandle, userName, userPassword, userIsAdmin, userVesselUuid } = req.body;
   try {
     // If there are no users yet, this first user will be forced to be an admin.
     const userCount = await pool.query('SELECT COUNT(*) FROM users;');
@@ -101,20 +113,21 @@ app.post('/api/save-user', async (req, res) => {
     // Hash password with 12 salt rounds
     const hashedPassword = await bcrypt.hash(userPassword, 12);
     await pool.query(
-      'INSERT INTO users (handle, name, password_hash, is_admin) VALUES ($1, $2, $3, $4)',
-      [userHandle, userName, hashedPassword, finalAdminStatus]
+      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid) VALUES ($1, $2, $3, $4, $5);',
+      [userHandle, userName, hashedPassword, finalAdminStatus, userVesselUuid]
     );
     res.json({ success: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: `Database error: ${err.message}` });
   }
 });
 
+// TODO: Delete this, we don't need it anymore.
 // Test Query Endpoint
 app.get('/api/test-db', async (req, res) => {
   try {
-    const result = await pool.query('SELECT TO_CHAR(LOCALTIMESTAMP, \'YYYY-MM-DD HH24:MI:SS\') AS current_time');
+    const result = await pool.query('SELECT TO_CHAR(LOCALTIMESTAMP, \'YYYY-MM-DD HH24:MI:SS\') AS current_time;');
     res.json({ status: 'Online', serverTime: result.rows[0].current_time });
   } catch (err) {
     console.error(err);
@@ -122,9 +135,11 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// TODO: We need to either pass in a vessels.uuid, or handle when there's multiple vessels database. If this
+//       is used to let an admin see inactive vessels (to re-active them), this won't work.
 app.get('/api/get-vessel', async (req, res) => {
   try {
-    const result = await pool.query('SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset FROM vessels LIMIT 1;');
+    const result = await pool.query('SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset FROM vessels WHERE is_active = TRUE LIMIT 1;');
     if (result.rows.length === 0) {
       return res.json({ setupRequired: true });
     }
@@ -147,6 +162,8 @@ app.get('/api/get-vessel', async (req, res) => {
   }
 });
 
+// TODO: This needs to support UPDATEs of existing vessels so the user can make changes to existing vessels,
+//       disable or re-enable a vessel, etc.
 app.post('/api/save-vessel', async (req,res) => {
   const { 
     vesselName, 
@@ -165,6 +182,19 @@ app.post('/api/save-vessel', async (req,res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('SQL INSERT Error:', err.message); 
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get a list of active vessels
+app.get('/api/vessels/get-active', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT uuid, name FROM vessels WHERE is_active = TRUE ORDER BY name ASC;'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('SQL SELECT error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

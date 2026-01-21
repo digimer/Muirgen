@@ -2,23 +2,36 @@ import { useState, useEffect } from 'react';
 import config from '@shared/config.js';
 
 function UserSetup({ onComplete }) {
+  const [shakeField, setShakeField] = useState(null);
   const [formData, setFormData] = useState({
     userHandle: '',
     userName: '',
     userPassword: '',
     userPasswordConfirm: '',
-    userIsAdmin: false // Boolean for the checkbox
+    userIsAdmin: false,
+    userVesselUuid: ''
   });
   
   const [status, setStatus] = useState({ type: '', message: '' });
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ type: '', message: '' });
     
     // Password validation
     if (formData.userPassword !== formData.userPasswordConfirm) {
-      setStatus({ type: 'error', message: "Security: Password Mismatch" });
+      setStatus({ type: 'error', message: "Security: Access Code Mismatch" });
+      setShakeField('userPasswordConfirm');
+      setTimeout(() => setShakeField(null), 1000);
+      
+      return;
+    }
+    
+    if(!formData.userVesselUuid) {
+      // trigger the pulse
+      setShakeField('vessel');
+      setStatus({ type: 'error', message: "Vessel Assignment Required!" });
+      // Clear the animation after it finishes.(0.3s * 3 == .9s / 900ms)
+      setTimeout(() => setShakeField(null), 1000);
       return;
     }
     
@@ -36,7 +49,8 @@ function UserSetup({ onComplete }) {
           userHandle: formData.userHandle, 
           userName: formData.userName, 
           userPassword: formData.userPassword, 
-          userIsAdmin: formData.userIsAdmin
+          userIsAdmin: formData.userIsAdmin, 
+          userVesselUuid: formData.userVesselUuid
         })
       });
       
@@ -67,6 +81,25 @@ function UserSetup({ onComplete }) {
         }
       });
   }, []);
+  
+  // We will auto-select the user's vessel if there is only one active vessel. If there are two or more, show
+  // a select box.
+  const [vessels, setVessels] = useState([]);
+  const [selectedVessel, setSelectedVessel] = useState('');
+  useEffect(() => {
+    // Get active vessels
+    fetch('/api/vessels/get-active')
+      .then(res => res.json())
+      .then(data => {
+        setVessels(data);
+        if (data.length === 1) {
+          const singleUuid = data[0].uuid;
+          setSelectedVessel(singleUuid);
+          // Store the UUID for the form to use
+          setFormData(prev => ({ ...prev, userVesselUuid: singleUuid }));
+        }
+      })
+  }, []);
 
   return (
     <div className="vessel-box setup-mode">
@@ -75,8 +108,10 @@ function UserSetup({ onComplete }) {
       
       {status.message && (
         <div style={{
-          color: 'black',
-          backgroundColor: status.type === 'success' ? `var(--neon-red)` : 'transparent', 
+          /* On succes, use it's black text on a red background.
+             On failure, use red text on a black background. */
+          color: status.type === 'success' ? 'black' : 'var(--neon-red)',
+          backgroundColor: status.type === 'success' ? 'var(--neon-red)' : 'transparent', 
           border: `2px solid var(--neon-red)`, 
           padding: '15px', 
           marginBottom: '20px', 
@@ -87,6 +122,7 @@ function UserSetup({ onComplete }) {
         </div>
       )}
       
+      {/* "Operator Handle (username) field */}
       <form onSubmit={handleSubmit} className="setup-form">
         <div className="field-group">
           <div className="setup-field-header">
@@ -103,6 +139,7 @@ function UserSetup({ onComplete }) {
             onChange={e => setFormData({...formData, userHandle: e.target.value})} 
           />
         </div>
+        {/* Full (real) name of the user */}
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">&#9722;</span>
@@ -118,6 +155,7 @@ function UserSetup({ onComplete }) {
             onChange={e => setFormData({...formData, userName: e.target.value})} 
           />
         </div>
+        {/* "Access Code" (password) field */}
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">&#9722;</span>
@@ -133,6 +171,7 @@ function UserSetup({ onComplete }) {
             onChange={e => setFormData({...formData, userPassword: e.target.value})} 
           />
         </div>
+        {/* Access code verification field */}
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">&#9722;</span>
@@ -142,11 +181,42 @@ function UserSetup({ onComplete }) {
           </div>
           <input type="password" 
             id="userPasswordConfirm"
+            className={shakeField === 'userPasswordConfirm' ? 'field-error-shake' : ''}
             required 
             autoComplete="off"
             value={formData.userPasswordConfirm} 
             onChange={e => setFormData({...formData, userPasswordConfirm: e.target.value})} 
           />
+        </div>
+        {/* Vessel selection (either displayed if only one, or select box if 2+ */}
+        <div className="field-group">
+          <div className="setup-field-header">
+            <span className="cursor-prompt">&#9722;</span>
+            <label htmlFor="userVessel">
+              <span className="label-text">Vessel Assignment</span>
+            </label>
+          </div>
+        
+          {vessels.length > 1 ? (
+            <select 
+              id="userVessel" 
+              className={`setup-input-select ${shakeField === 'vessel' ? 'field-error-shake' : ''}`}
+              value={selectedVessel} 
+              onChange={(e) => {
+                setSelectedVessel(e.target.value);
+                setFormData({...formData, userVesselUuid: e.target.value});
+              }}
+            >
+              <option value="" disabled>&#9659; Vessel Assignment</option>
+              {vessels.map((v) => (
+                <option key={v.uuid} value={v.uuid}>{v.name}</option>
+              ))}
+            </select>
+          ) : (
+            <div className="setup-field-value-static">
+              {vessels[0]?.name || 'E: NAME LOAD FAILED'}
+            </div>
+          )}
         </div>
         {/* Checkbox for Admin Rights */}
         <div className="field-group checkbox-group">
@@ -168,7 +238,7 @@ function UserSetup({ onComplete }) {
             <span className="retro-checkmark"></span>
           </label>
         </div>
-
+        {/* The submit button */}
         <div className="button-row">
           <button type="submit" 
             className="touch-button" 

@@ -135,6 +135,7 @@ input:-webkit-autofill:active {
   display: flex;
   flex-direction: column;
   margin-bottom: 0.5rem;
+  min-width: 325px;
 }
 
 .field-group input:focus {
@@ -341,6 +342,64 @@ input[type="number"] {
   transition: color 0.3s ease;
 }
 
+/* Select box, inherents from the base input with a styled arrow */
+.setup-input-select {
+  background: black;
+  color: var(--neon-red);
+  border: 1px solid var(--inactive-border);
+  padding: 15px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 1.2rem;
+  width: 100%;
+  box-sizing: border-box;
+  appearance: none; /* removes the browser's defaullt arrow */
+  -webkit-appearance: none;
+  cursor: pointer; 
+  /* Geometric path version of the ▽ (&#9661;) glyph */
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNNiA4bDYgOCA2LThINnoiIHN0cm9rZT0iI2ZmMDAwMCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+");
+  background-repeat: no-repeat;
+  background-position: right 15px center; /* Positions glyph on the right */
+  background-size: 18px;
+  /* Make sure the text in the select doesn't underrun the glyph */
+  padding-right: 35px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 325px;
+}
+
+/* Makes select options dark */
+.setup-input-select option {
+  background: black;
+  color: var(--neon-red);
+}
+
+/* The read-only, static display */
+.setup-field-value-static {
+  background: rgb(255, 0, 0, 0.05); /* faint red */
+  color: var(--neon-red);
+  border: 1px solid var(--dim-red);
+  padding: 15px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 1.2rem;
+  width: 100%;
+  box-sizing: border-box;
+  letter-spacing: 1px;
+  text-shadow: 0 0 5px var(--dim-red);
+}
+
+.setup-input-select:focus {
+  border-color: var(--neon-red) !important;
+  box-shadow: 0 0 15px var(--neon-red);
+  outline: none; /* Kills the browser's default blue/white ring */
+  background-color: black; /* Forces it to stay dark */
+}
+
+/* Specific fix for some browsers that try to highlight the text background */
+.setup-input-select::-moz-focus-inner {
+  border: 0;
+}
+
 /* --- 5. ANIMATIONS & EFFECTS --- */
 .crt-overlay {
   position: fixed;
@@ -391,6 +450,17 @@ input[type="number"] {
   font-family: 'Orbitron', sans-serif;
 }
 
+/* Pulse effect to draw the user's attention to problem fields in a form */
+.field-error-shake {
+  animation: error-pulse-glow 0.3s ease-in-out 3;
+  border: 2px solid var(--neon-red) !important;
+}
+
+@keyframes error-pulse-glow {
+  0% { border-color: var(--inactive-border); box-shadow: none; }
+  50% { border-color: var(--neon-red); box-shadow: 0 0 20px var(--neon-red); }
+  100% { border-color: var(--inactive-border); box-shadow: none; }
+}
 @keyframes road-move { from { background-position: 0 0; } to { background-position: 0 60px; } }
 @keyframes road-move-reverse { from { background-position: 0 60px; } to { background-position: 0 0; } }
 @keyframes blink { 50% { opacity: 0; } }
