@@ -89,6 +89,7 @@ app.get('/api/check-init', async (req, res) => {
         // The token has expired or is invalid.
         loggedIn = false;
       }
+    }
       
     res.json({
       userRequired: userRes.rows.length === 0,
@@ -102,8 +103,7 @@ app.get('/api/check-init', async (req, res) => {
 
 // Handle saving users with bcryptjs
 app.post('/api/save-user', async (req, res) => {
-  const { userHandle, userName, userPassword, userIsAdmin } = req.body;
-  // const { userHandle, userName, userPassword, userIsAdmin, userVesselUuid } = req.body;
+  const { userHandle, userName, userPassword, userIsAdmin, userVesselUuid } = req.body;
   try {
     // If there are no users yet, this first user will be forced to be an admin.
     const userCount = await pool.query('SELECT COUNT(*) FROM users;');
