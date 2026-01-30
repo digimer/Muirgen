@@ -50,8 +50,8 @@ function App() {
     // Check if we've got a saved token
     try {
       const [statusRes, initRes] = await Promise.all([
-        fetch(`/api/test-db`),
-        fetch(`/api/check-init`, {
+        fetch(`/api/system/test-db`),
+        fetch(`/api/system/check-init`, {
           // Attach the token.
           headers: {
             'Authorization': savedToken ? `Bearer ${savedToken}` : ''
@@ -77,7 +77,7 @@ function App() {
       
       // Get vessel data if the user is logged in.
       if (!initData.userRequired && !initData.vesselRequired && initData.isLoggedIn) {
-        const vesselRes = await fetch(`/api/get-vessel`);
+        const vesselRes = await fetch(`/api/vessels/get-vessel`);
         const vesselData = await vesselRes.json();
         setVessel(vesselData);
       }

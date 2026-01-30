@@ -39,7 +39,7 @@ function UserSetup({ onComplete }) {
     const token = localStorage.getItem('muirgen_token');
     
     try {
-      const res = await fetch(`/api/save-user`, {
+      const res = await fetch(`/api/users/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ function UserSetup({ onComplete }) {
   // Check if this is the first user. If so, 'is_admin' will be forced to true.
   const [isFirstUser, setIsFirstUser] = useState(false);
   useEffect(() => {
-    fetch(`/api/check-init`)
+    fetch(`/api/system/check-init`)
       .then(res => res.json())
       .then(data => {
         if (data.userRequired) {
@@ -243,7 +243,7 @@ function UserSetup({ onComplete }) {
           <button type="submit" 
             className="touch-button" 
             disabled={status.type === 'success'}>
-            {status.type === 'success' ? "Recording..." : "Record User"}
+            {status.type === 'success' ? "Recording..." : "Register Master SysOp"}
           </button>
         </div>
       </form>

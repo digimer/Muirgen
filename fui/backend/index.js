@@ -9,6 +9,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import config from '../config.js';
+const app = express();
+app.use(cors()); // Critical for local cross-port communication
+app.use(express.json());
 
 // Setup __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -17,9 +20,18 @@ const __dirname = path.dirname(__filename);
 // Initialise the dotenv using the explicit path
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const app = express();
-app.use(cors()); // Critical for local cross-port communication
-app.use(express.json());
+// Middleware to protect routes and extract user data.
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+  
+  jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key', (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  }) 
+};
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -29,38 +41,12 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
-// Check if the user is logged in.
-app.post('/api/login', async (req, res) => {
-  const { userHandle, userPassword } = req.body;
-  try {
-    const result = await pool.query('SELECT uuid, vessel_uuid, name, password_hash, is_admin FROM users WHERE is_active = TRUE AND handle = $1;', [userHandle]);
-    
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Invalid Operator" });
-    }
-    
-    const user = result.rows[0];
-    const match = await bcrypt.compare(userPassword, user.password_hash);
-    
-    if (match) {
-      // Create the password / token.
-      const token = jwt.sign(
-        { uuid: user.uuid, handle: user.handle, isAdmin: user.is_admin }, 
-        process.env.JWT_SECRET || 'this_is_bad_fallback_key', 
-        { expiresIn: '30d' } // This is more to keep sessions active than for security
-      );
-      
-      res.json({ success: true, token });
-    } else {
-      res.status(401).json({ error: "Access Denied" });
-    }
-  } catch (err) {
-    res.status(500).json({ error: "System Error. Database Offline?" });
-  }
-});
+/* *********************************************************************************************************/
+/* Section 1: System Endpoints                                                                             */
+/* *********************************************************************************************************/
 
 // Check if any setup is needed.
-app.get('/api/check-init', async (req, res) => {
+app.get('/api/system/check-init', async (req, res) => {
   try {
     const userRes = await pool.query('SELECT uuid FROM users WHERE is_active = TRUE LIMIT 1;');
     const vesselRes = await pool.query('SELECT uuid FROM vessels WHERE is_active = TRUE LIMIT 1;');
@@ -101,31 +87,9 @@ app.get('/api/check-init', async (req, res) => {
   }
 });
 
-// Handle saving users with bcryptjs
-app.post('/api/save-user', async (req, res) => {
-  const { userHandle, userName, userPassword, userIsAdmin, userVesselUuid } = req.body;
-  try {
-    // If there are no users yet, this first user will be forced to be an admin.
-    const userCount = await pool.query('SELECT COUNT(*) FROM users;');
-    const isFirstUser = parseInt(userCount.rows[0].count) === 0;
-    const finalAdminStatus = isFirstUser ? true : userIsAdmin;
-    
-    // Hash password with 12 salt rounds
-    const hashedPassword = await bcrypt.hash(userPassword, 12);
-    await pool.query(
-      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid) VALUES ($1, $2, $3, $4, $5);',
-      [userHandle, userName, hashedPassword, finalAdminStatus, userVesselUuid]
-    );
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: `Database error: ${err.message}` });
-  }
-});
-
 // TODO: Delete this, we don't need it anymore.
 // Test Query Endpoint
-app.get('/api/test-db', async (req, res) => {
+app.get('/api/system/test-db', async (req, res) => {
   try {
     const result = await pool.query('SELECT TO_CHAR(LOCALTIMESTAMP, \'YYYY-MM-DD HH24:MI:SS\') AS current_time;');
     res.json({ status: 'Online', serverTime: result.rows[0].current_time });
@@ -135,9 +99,253 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// TODO: We need to either pass in a vessels.uuid, or handle when there's multiple vessels database. If this
-//       is used to let an admin see inactive vessels (to re-active them), this won't work.
-app.get('/api/get-vessel', async (req, res) => {
+/* *********************************************************************************************************/
+/* Section 2: User (SysOp) Endpoints                                                                       */
+/* *********************************************************************************************************/
+
+// Delete (well, deactivate) a user
+app.delete('/api/users/delete/:uuid', authenticateToken, async (req, res) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: "Security: You Are Not An Administrator!"});
+  
+  const targetUuid = req.params.uuid; // The passed in UUID
+  const requesterUuid = req.user.uuid;
+  const requesterVesselUuid = req.user.vessel_uuid;
+  const requesterHandle = req.user.handle;
+  
+  try {
+    // TODO: Replace this with a central auditing function later.
+    // Get the user's handle for the audit log;
+    const userLookup = await pool.query('SELECT handle FROM users WHERE uuid = $1;', [targetUuid]);
+    const targetHandle = userLookup.rows[0]?.handle || 'Unknown';
+    
+    await pool.query(
+      'UPDATE users SET is_active = FALSE WHERE uuid = $1;', 
+      [targetUuid]
+    );
+    
+    // Log the delete
+    await pool.query(
+      'INSERT INTO audit_logs (vessel_uuid, user_uuid, task, details) VALUES ($1, $2, $3, $4);',
+      [requesterVesselUuid, requesterUuid, 'Delete::User', `Operator: [${requesterHandle}] revoked access for the user: [${targetHandle}] UUID: [${targetUuid}].`]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: `Operator Deactivation Failed: ${err.message}` })
+  }
+});
+
+// Get a list of all users
+app.get('/api/users/list', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT uuid, handle, name, is_admin, is_active FROM users ORDER BY handle ASC;'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: `Operator Load Failed: ${err.message}` })
+  }
+});
+
+// Update existing users
+app.put('/api/users/update/:uuid', authenticateToken, async (req, res) => {
+  if (!req.user.isAdmin) return res.status(403).json({ error: "Security: You Are Not An Administrator!"});
+  
+  // The user_uuid of the user being edited
+  const targetUuid = req.params.uuid;
+  // This comes the JWT middleware (muirgen token) and is the user_uuid of the user doing the update.
+  const requesterUuid       = req.user?.uuid;
+  const requesterHandle     = req.user?.handle;
+  const requesterVesselUuid = req.user?.vessel_uuid;
+  
+  const { 
+    userHandle, 
+    userPassword,
+    userCurrentPassword, 
+    userName, 
+    userIsAdmin, 
+    userIsActive
+  } = req.body;
+  
+  try {
+    // Find the user in the database
+    const result = await pool.query('SELECT * FROM users WHERE uuid = $1',  [targetUuid]);
+    const user = result.rows[0];
+    
+    // If the editing user is editing themselves, verify the curren password.
+    if (targetUuid === requesterUuid) {
+      const isValid = await bcrypt.compare(userCurrentPassword, user.password_hash);
+      if (!isValid) {
+        return res.status(401).json({ error: "Security Violation: Current Access Code not Correct." });
+      }
+    }
+    
+    // Create an audit log for this update.
+    await pool.query(
+      'INSERT INTO audit_logs (vessel_uuid, user_uuid, task, details) VALUES ($1, $2, $3, $4);',
+      [requesterVesselUuid, requesterUuid, 'Update::User', `Operator: [${requesterHandle}] update the record for user: [${userHandle}].`]
+    );
+    
+    // Update the record
+    if (userPassword) {
+      // Update with the password set.
+      const encryptedPassword = await bcrypt.hash(userPassword, 12);
+      await pool.query(
+        'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4, password_hash = $5 WHERE uuid = $6;',
+        [userName, userHandle, userIsAdmin, userIsActive, encryptedPassword, req.params.uuid]
+      );
+      res.json({ success: true })
+    } else {
+      // Update without the password column.
+      await pool.query(
+        'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4 WHERE uuid = $5;',
+        [userName, userHandle, userIsAdmin, userIsActive, req.params.uuid]
+      );
+      res.json({ success: true })
+    }
+  } catch (err) {
+    res.status(500).json({ error: `Operator Update Failed: ${err.message}`});
+  }
+})
+
+// Check if the user is logged in.
+app.post('/api/users/login', async (req, res) => {
+  const { userHandle, userPassword } = req.body;
+  
+  try {
+    // Get details about the logging in user for the audit log
+    const result = await pool.query(
+      'SELECT uuid, vessel_uuid, name, password_hash, is_admin FROM users WHERE is_active = TRUE AND handle = $1;', 
+      [userHandle]
+    );
+    
+    // Is the handle valid?
+    if (result.rows.length === 0) {
+      // Nope.
+      await pool.query(
+        'INSERT INTO audit_logs (task, details) VALUES ($1, $2);', 
+        ['Login::Failure', `An attempt to login as: [${userHandle}] was made, which is not a valid operator.`]
+      );
+      return res.status(401).json({ error: "Security: Invalid Operator" });
+    }
+    
+    const user = result.rows[0];
+    const match = await bcrypt.compare(userPassword, user.password_hash);
+    
+    if (match) {
+      // Create the password / token.
+      const token = jwt.sign(
+        { 
+          uuid: user.uuid, 
+          handle: userHandle, 
+          isAdmin: user.is_admin, 
+          vesselUuid: user.vessel_uuid
+        }, 
+        process.env.JWT_SECRET || 'this_is_bad_fallback_key', 
+        { expiresIn: '30d' } // This is more to keep sessions active than for security
+      );
+      await pool.query(
+        'INSERT INTO audit_logs (user_uuid, vessel_uuid, task, details) VALUES ($1, $2, $3, $4);', 
+        [user.uuid, user.vessel_uuid, 'Login::Success', `The operator: [${userHandle}] has successfully logged in.`]
+      );
+      
+      res.json({ success: true, token });
+    } else {
+      // Bad password.
+      await pool.query(
+        'INSERT INTO audit_logs (user_uuid, vessel_uuid, task, details) VALUES ($1, $2, $3, $4);', 
+        [user.uuid, user.vessel_uuid, 'Login::Failed', `Security: Invalid access code used for the operator: [${userHandle}]!`]
+      );
+      res.status(401).json({ error: "Access Denied" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "System Error. Database Offline?" });
+  }
+});
+
+// Handle saving users with bcryptjs
+app.post('/api/users/save', async (req, res) => {
+  const { userHandle, userName, userPassword, userIsAdmin, userVesselUuid } = req.body;
+  try {
+    // If there are no users yet, this first user will be forced to be an admin. If there is one or more 
+    // users, then we need to authenticate that the requesting user is a verified SysOp.
+    const userCountResults = await pool.query('SELECT COUNT(*) FROM users;');
+    const userCount = parseInt(userCountResults.rows[0].count) === 0;
+    const isFirstUser = userCount === 0;
+    
+    // Is there a requesting admin to validate?
+    if (!isFirstUser) {
+      const authHeader = req.headers['authorization'];
+      const token  = authHeader && authHeader.split(' ')[1];
+      
+      if (!token) {
+        return res.status(403).json({ error: "Security: Authentication token missing." });
+      }
+      
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key');
+        if (!decoded.isAdmin) {
+          return res.status(403).json({ error: "Security: You are not a SysOp!" });
+        }
+        
+        // Valid requesting user; record for log.
+        req.requester = decoded;
+      } catch (err) {
+        return res.status(403).json({ error: "Security: Authentication token expired or corrupt!" });
+      }
+    }
+    
+    // Prevent duplicate handles.
+    const existing = await pool.query('SELECT uuid FROM users WHERE handle = $1;', [userHandle]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: "Conflict: User handle already in use!" });
+    }
+    
+    // Prepare to record
+    const finalAdminStatus = isFirstUser ? true : userIsAdmin;
+    // Hash password with 12 salt rounds
+    const hashedPassword = await bcrypt.hash(userPassword, 12);
+    
+    // We're good, record the new user.
+    const newUser = await pool.query(
+      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid) VALUES ($1, $2, $3, $4, $5);',
+      [userHandle, userName, hashedPassword, finalAdminStatus, userVesselUuid]
+    );
+    
+    // Log who created it.
+    if (!isFirstUser && req.requester) {
+      await pool.query(
+        'INSERT INTO audit_logs (vessel_uuid, user_uuid, task, details) VALUES ($1, $2, $3, $4);', 
+        [userVesselUuid, req.requester.uuid, 'Create::User', `Operator: [${req.requester.handle}] registered the new user: [${userHandle}]`]
+      );
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: `Database error: ${err.message}` });
+  }
+});
+
+/* *********************************************************************************************************/
+/* Section 3: Vessel Endpoints                                                                             */
+/* *********************************************************************************************************/
+
+// Get a list of active vessels
+app.get('/api/vessels/get-active', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT uuid, name FROM vessels WHERE is_active = TRUE ORDER BY name ASC;'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('SQL SELECT error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// TODO: This pulls the first active vessel, which is not right because what if there are two active vessels?
+app.get('/api/vessels/get-vessel', async (req, res) => {
   try {
     const result = await pool.query('SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset FROM vessels WHERE is_active = TRUE LIMIT 1;');
     if (result.rows.length === 0) {
@@ -157,14 +365,14 @@ app.get('/api/get-vessel', async (req, res) => {
       setupRequired: false
     });
   } catch (err) {
-    console.error('Error in /api/get-vessel:', err); 
+    console.error('Error in /api/vessel/get-vessel:', err); 
     res.status(500).json({ error: 'Database Offline' });
   }
 });
 
 // TODO: This needs to support UPDATEs of existing vessels so the user can make changes to existing vessels,
 //       disable or re-enable a vessel, etc.
-app.post('/api/save-vessel', async (req,res) => {
+app.post('/api/vessels/save-vessel', async (req,res) => {
   const { 
     vesselName, 
     vesselFlagNation,
@@ -186,18 +394,9 @@ app.post('/api/save-vessel', async (req,res) => {
   }
 });
 
-// Get a list of active vessels
-app.get('/api/vessels/get-active', async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT uuid, name FROM vessels WHERE is_active = TRUE ORDER BY name ASC;'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('SQL SELECT error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
+/* *********************************************************************************************************/
+/* Section 4: Non-endpoint stuff                                                                           */
+/* *********************************************************************************************************/
 
 process.on('uncaughtException', function (err) {
   console.error('FATAL UNCAUGHT EXCEPTION:', err.message);

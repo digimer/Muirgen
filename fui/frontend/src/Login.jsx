@@ -16,7 +16,7 @@ function Login ({ onLoginSuccess }) {
     setStatus({ type: '', message: '' });
     
     try {
-      const res = await fetch(`/api/login`, {
+      const res = await fetch(`/api/users/login`, {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify(formData)

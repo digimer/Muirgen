@@ -836,6 +836,66 @@ CREATE TRIGGER trigger_ais_transponders
     AFTER INSERT OR UPDATE ON ais_transponders
     FOR EACH ROW EXECUTE PROCEDURE history_ais_transponders();
 
+-- This records events worthy of being audited.
+CREATE TABLE audit_logs (
+        uuid             uuid           default uuidv7()    not null,
+        vessel_uuid      uuid,                                        -- Can be null when logging failed login attempts
+        user_uuid        uuid,                                        -- What she said ^
+        task             text                               not null, -- Short string to group actions by
+        details          text                               not null, -- The details of the event being logged.
+        modified_date    timestamptz    default now()       not null,
+        
+        PRIMARY KEY (uuid), 
+        FOREIGN KEY (vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (user_uuid) REFERENCES users(uuid)
+);
+ALTER TABLE audit_logs OWNER TO admin;
+
+CREATE TABLE history.audit_logs (
+        history_id       bigint GENERATED ALWAYS AS IDENTITY,
+        action_type      text,
+        uuid             uuid,
+        vessel_uuid      uuid,
+        user_uuid        uuid,
+        task             text,
+        details          text,
+        modified_date    timestamptz
+);
+ALTER TABLE history.audit_logs OWNER TO admin;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE TRIGGER update_audit_logs_modtime
+    BEFORE UPDATE ON audit_logs
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+    
+CREATE OR REPLACE FUNCTION history_audit_logs() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.audit_logs (
+        action_type, 
+        uuid, 
+        vessel_uuid, 
+        user_uuid, 
+        task, 
+        details, 
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.user_uuid, 
+        NEW.task, 
+        NEW.details, 
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_audit_logs() OWNER TO admin;
+
+CREATE TRIGGER trigger_users
+    AFTER INSERT OR UPDATE ON audit_logs
+    FOR EACH ROW EXECUTE PROCEDURE history_audit_logs();
+
+    
 -- Motor Controllers. These are the source of much of our data, so this table will be "parent" to the 
 -- 'motors' table.
 -- NOTE: Controllers can have a wide array of config options, like max current uncooled, max current cooled, 

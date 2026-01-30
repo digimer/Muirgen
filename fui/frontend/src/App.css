@@ -123,6 +123,32 @@ input:-webkit-autofill:active {
   margin-bottom: 1rem;
 }
 
+.user-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--dim-red);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.user-card {
+  padding: 15px;
+  border-bottom: 1px solid var(--dim-red);
+  cursor: pointer;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-card:hover {
+  background: rgb(255, 0, 0, 0.1);
+}
+
+.user-card.active-selection {
+  background: var(--dim-red);
+  border-left: 4px solid var(--neon-red);
+}
+
 /* --- 4. FORMS & INTERACTIVE --- */
 .setup-form {
   display: grid;
@@ -398,6 +424,26 @@ input[type="number"] {
 /* Specific fix for some browsers that try to highlight the text background */
 .setup-input-select::-moz-focus-inner {
   border: 0;
+}
+
+.status-text.success { 
+  color: var(--neon-red); 
+  border-left: 3px solid var(--neon-red);
+  padding-left: 8px;
+  margin-top: 10px;
+}
+
+.status-text.error {
+  color: var(--neon-red); 
+  font-weight: bold;
+  animation: error-pulse-glow 2s infinite;
+  margin-top: 10px;
+}
+
+.touch-button.danger {
+  border-color: var{--neon-red); 
+  color: var(--dark-bg); 
+  font-weight: bold;
 }
 
 /* --- 5. ANIMATIONS & EFFECTS --- */
