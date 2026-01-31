@@ -9,9 +9,7 @@ function UserManagement() {
   // Fetch all users on load.
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/users/list', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('muirgen_token')}` }
-      });
+      const res = await apiFetch('/api/users/list');
       const data = await res.json();
       setUsers(data);
     } catch (err) {
@@ -55,7 +53,7 @@ function UserManagement() {
     const vesselUuid = users[0]?.vessel_uuid;
     
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +88,7 @@ function UserManagement() {
     if (!window.confirm(`Revoke access for ${editingUser.handle}?`)) return;
         
     try {
-      const res = await fetch(`/api/users/delete/${editingUser.uuid}`, {
+      const res = await apiFetch(`/api/users/delete/${editingUser.uuid}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('muirgen_token')}` }
       });

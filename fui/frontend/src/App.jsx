@@ -48,7 +48,7 @@ function App() {
     isLoggingOutRef.current = true;
     
     // Log the logout.
-    const logPromise =  apiFetch('/api/users/logout', { method: 'POST' }).catch(err => {
+    const logPromise = apiFetch('/api/users/logout', { method: 'POST' }).catch(err => {
       console.warn("Entering a log in audit_log appears to have failed:", err);
     });
     
@@ -103,7 +103,9 @@ function App() {
       
       // Get vessel data if the user is logged in.
       if (!initData.userRequired && !initData.vesselRequired && initData.isLoggedIn) {
-        const vesselRes = await fetch(`/api/vessels/get-vessel`);
+        const vesselRes = await apiFetch(`/api/vessels/get-vessel`);
+        // prevents crashing on vesselRed.json() if the token was nuked.
+        if (!vesselRes) { return; }
         const vesselData = await vesselRes.json();
         setVessel(vesselData);
       }
