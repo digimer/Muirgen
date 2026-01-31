@@ -15,24 +15,55 @@ function App() {
   // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isLoggingOutRef = useRef(false);
+  const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
+  
+  // Watch for 401 or 403 errors indicating a bad token and triggering a logout.
+  useEffect(() => {
+    const handleAuthFailure = (event) => {
+      // Set the specific error message from api.js
+      setLogoutMessage(event.detail.message);
+      
+      // Trigger the same visual sequence as handleLogout
+      setIsLoggingOut(true);
+      isLoggingOutRef.current = true;
+      
+      setTimeout(() => {
+        setIsLoggedIn(false);
+        setVessel(null);
+        setIsLoggingOut(false);
+        isLoggingOutRef.current = false;
+        // Reset the message for the next use.
+        setLogoutMessage('Carrier dropped, session closed');
+      }, 3000); // Longer detail for easier debugging in case of invalid ejection trigger.
+    };
+    
+    window.addEventListener('muirgen-auth-failure', handleAuthFailure);
+    return () => window.removeEventListener('muirgen-auth-failure', handleAuthFailure);
+  }, []);
   
   // Handle Logging the user out
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // blurs the screen during the logout confirmation
     setIsLoggingOut(true);
     isLoggingOutRef.current = true;
     
-    // Clear the token immediately
-    localStorage.removeItem('muirgen_token');
+    // Log the logout.
+    const logPromise =  apiFetch('/api/users/logout', { method: 'POST' }).catch(err => {
+      console.warn("Entering a log in audit_log appears to have failed:", err);
+    });
     
     // Show the hang-up message for 2 seconds. 
     setTimeout(() => {
+      // Clear the token locally
+      localStorage.removeItem('muirgen_token');
       setIsLoggedIn(false);
       setVessel(null);
       // unblur for the next session
       setIsLoggingOut(false);
       isLoggingOutRef.current = false;
     }, 2000);
+    
+    await logPromise;
   }
 
   const fetchData = async () => {
@@ -51,12 +82,7 @@ function App() {
     try {
       const [statusRes, initRes] = await Promise.all([
         fetch(`/api/system/test-db`),
-        fetch(`/api/system/check-init`, {
-          // Attach the token.
-          headers: {
-            'Authorization': savedToken ? `Bearer ${savedToken}` : ''
-          }
-        })
+        apiFetch(`/api/system/check-init`)
       ]);
       
       const statusData = await statusRes.json();
@@ -104,7 +130,7 @@ function App() {
             the top priority. */}
         {isLoggingOut && (
           <div className="status-display success logout-overlay">
-            Carrier Disconnected, Session Closed
+            {logoutMessage}
           </div>
         )}
         

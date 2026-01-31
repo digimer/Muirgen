@@ -24,10 +24,17 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.sendStatus(401);
+  // No token found.
+  if (!token) {
+    return res.sendStatus(401);
+  }
   
   jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key', (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) {
+      // Token is invalid
+      return res.sendStatus(403);
+    }
+    // Token is valid, 
     req.user = user;
     next();
   }) 
@@ -118,15 +125,15 @@ app.delete('/api/users/delete/:uuid', authenticateToken, async (req, res) => {
     const userLookup = await pool.query('SELECT handle FROM users WHERE uuid = $1;', [targetUuid]);
     const targetHandle = userLookup.rows[0]?.handle || 'Unknown';
     
-    await pool.query(
-      'UPDATE users SET is_active = FALSE WHERE uuid = $1;', 
-      [targetUuid]
-    );
-    
     // Log the delete
     await pool.query(
       'INSERT INTO audit_logs (vessel_uuid, user_uuid, task, details) VALUES ($1, $2, $3, $4);',
       [requesterVesselUuid, requesterUuid, 'Delete::User', `Operator: [${requesterHandle}] revoked access for the user: [${targetHandle}] UUID: [${targetUuid}].`]
+    );
+    
+    await pool.query(
+      'UPDATE users SET is_active = FALSE WHERE uuid = $1;', 
+      [targetUuid]
     );
     
     res.json({ success: true });
@@ -144,6 +151,26 @@ app.get('/api/users/list', authenticateToken, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: `Operator Load Failed: ${err.message}` })
+  }
+});
+
+// Record in the audit log when a user logs out.
+app.post('/api/users/logout', authenticateToken, async (req, res) => {
+  try {
+    // TODO: Replace this with a central auditing function later.
+    // The user_uuid of the user being edited
+    const { uuid, vesselUuid, handle } = req.user;
+    
+    // Log the delete
+    await pool.query(
+      'INSERT INTO audit_logs (vessel_uuid, user_uuid, task, details) VALUES ($1, $2, $3, $4);',
+      [vesselUuid, uuid, 'Logout::User', `Operator: [${handle}] has logged off.`]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in /api/users/logout:', err); 
+    res.status(500).json({ error: 'Database Offline' });
   }
 });
 
@@ -306,12 +333,6 @@ app.post('/api/users/save', async (req, res) => {
     // Hash password with 12 salt rounds
     const hashedPassword = await bcrypt.hash(userPassword, 12);
     
-    // We're good, record the new user.
-    const newUser = await pool.query(
-      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid) VALUES ($1, $2, $3, $4, $5);',
-      [userHandle, userName, hashedPassword, finalAdminStatus, userVesselUuid]
-    );
-    
     // Log who created it.
     if (!isFirstUser && req.requester) {
       await pool.query(
@@ -319,6 +340,12 @@ app.post('/api/users/save', async (req, res) => {
         [userVesselUuid, req.requester.uuid, 'Create::User', `Operator: [${req.requester.handle}] registered the new user: [${userHandle}]`]
       );
     }
+    
+    // We're good, record the new user.
+    const newUser = await pool.query(
+      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid) VALUES ($1, $2, $3, $4, $5);',
+      [userHandle, userName, hashedPassword, finalAdminStatus, userVesselUuid]
+    );
     
     res.json({ success: true });
   } catch (err) {
@@ -383,6 +410,7 @@ app.post('/api/vessels/save-vessel', async (req,res) => {
     vesselKeelOffset, 
     vesselWaterlineOffset } = req.body;
   try {
+    // No audit log yet, as this can be the very first entry. Update it to support modifying and then add logging.
     await pool.query(
       `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
       [vesselName, vesselFlagNation, vesselPortOfRegistry, vesselBuildDetails, vesselOfficialNumber, vesselHullIdentificationNumber, vesselKeelOffset, vesselWaterlineOffset]
