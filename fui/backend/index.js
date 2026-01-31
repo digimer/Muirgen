@@ -21,6 +21,7 @@ import { auditLog } from './utils/logger.js';
 // Initialise the dotenv using the explicit path
 dotenv.config({ path: path.join(__dirname, '.env') });
 
+// Connect to the DB
 import pool from './db.js';
 
 /* *********************************************************************************************************/
@@ -308,6 +309,42 @@ app.post('/api/users/save', async (req, res) => {
 /* Section 3: Vessel Endpoints                                                                             */
 /* *********************************************************************************************************/
 
+// Delete (deactive) a vessel.
+app.delete('/api/vessels/delete/:uuid', authenticateToken, requireAdmin, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  
+  try {
+    // Is there another active vessel?
+    const vessels = await pool.query('SELECT COUNT(*) FROM vessels WHERE is_active = TRUE AND uuid != $1;', [targetUuid]);
+    if (parseInt(vessels.rows[0].count) === 0) {
+      return res.status(400).json({ error: "Abort: Can not deactive a vessel while no other vessel is active!" });
+    }
+    
+    // Are all active users moved over to another vessel?
+    const users = await pool.query('SELECT COUNT(*) FROM users WHERE is_active = TRUE AND vessel_uuid = $1;', [targetUuid]);
+    if (parseInt(users.rows[0].count) !== 0) {
+      return res.status(400).json({ error: "Abort: All users (and crew) must be moved to another vessel before deactiving!" });
+    }
+    
+    // Are all active crew moved over to another vessel?
+    const crew = await pool.query('SELECT COUNT(*) FROM crew WHERE is_active = TRUE AND vessel_uuid = $1;', [targetUuid]);
+    if (parseInt(crew.rows[0].count) !== 0) {
+      return res.status(400).json({ error: "Abort: All crew (and users) must be moved to another vessel before deactiving!" });
+    }
+    
+    // Still alive? Then we're ready. Get the vessel name for the audit log
+    const vesselLookup = await pool.query('SELECT name FROM vessels WHERE uuid = $1;', [targetUuid])
+    const vesselName = vesselLookup.rows[0]?.name || 'Unknown vessel';
+    await pool.query('UPDATE vessels SET is_active = FALSE WHERE uuid = $1;', [targetUuid]);
+    
+    // Log it
+    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Deactivate', `Operator: [${req.user.handle}] deactivated the vessel: [${vesselName}].`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: `Vessel deactivation failed. Error: ${err.message}` });
+  }
+});
+
 // Get a list of active vessels
 app.get('/api/vessels/get-active', async (req, res) => {
   try {
@@ -321,12 +358,17 @@ app.get('/api/vessels/get-active', async (req, res) => {
   }
 });
 
-// TODO: This pulls the first active vessel, which is not right because what if there are two active vessels?
-app.get('/api/vessels/get-vessel', async (req, res) => {
+// Get details for the logged-in user's vessel_uuid
+app.get('/api/vessels/get-vessel', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query('SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset FROM vessels WHERE is_active = TRUE LIMIT 1;');
+    const vesselUuid = req.user.vessel_uuid;
+    const result = await pool.query(
+      'SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset FROM vessels WHERE is_active = TRUE AND uuid = $1;',
+      [vesselUuid]
+    );
     if (result.rows.length === 0) {
-      return res.json({ setupRequired: true });
+      
+      return res.status(404).json({ error: "Vessel not found or has been deactived!" });
     }
     const vessel = result.rows[0];
     res.json({
@@ -342,14 +384,13 @@ app.get('/api/vessels/get-vessel', async (req, res) => {
       setupRequired: false
     });
   } catch (err) {
-    console.error('Error in /api/vessel/get-vessel:', err); 
+    console.error('Error in /api/vessels/get-vessel:', err.message); 
     res.status(500).json({ error: 'Database Offline' });
   }
 });
 
-// TODO: This needs to support UPDATEs of existing vessels so the user can make changes to existing vessels,
-//       disable or re-enable a vessel, etc.
-app.post('/api/vessels/save-vessel', async (req,res) => {
+// Save a new vessel. This is separate from update as it needs logic for initialisation of the system.
+app.post('/api/vessels/save', async (req,res) => {
   // Before proceeding; If this is a fresh setup (no vessels in the DB), allow the save without a valid 
   // token. Otherwise, require authentication.
   try {
@@ -406,6 +447,34 @@ app.post('/api/vessels/save-vessel', async (req,res) => {
   } catch (err) {
     console.error('Adding the vessel failed. Error: :', err.message); 
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Update an existing vessel
+app.put('/api/vessels/update/:uuid', authenticateToken, requireAdmin, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  const {
+    vesselName, 
+    vesselFlagNation, 
+    vesselPortOfRegistry, 
+    vesselBuildDetails, 
+    vesselOfficialNumber, 
+    vesselHullIdentificationNumber, 
+    vesselKeelOffset, 
+    vesselWaterlineOffset
+  } = req.body;
+  
+  try {
+    await pool.query(
+      'UPDATE vessels SET name = $1, flag_nation = $2, port_of_registry = $3, build_details = $4, official_number = $5, hull_id_number = $6, keel_offset = $7, waterline_offset = $8 WHERE uuid = $9;', 
+      [vesselName, vesselFlagNation, vesselPortOfRegistry, vesselBuildDetails, vesselOfficialNumber, vesselHullIdentificationNumber, vesselKeelOffset, vesselWaterlineOffset, targetUuid]
+    );
+    
+    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Update', `Operator: [${req.user.handle}] updated the vessel records for: [${vesselName}].`);
+    res.json({ success: true});
+  } catch (err) {
+    console.error('Vessel update failed! Error: ', err.message);
+    res.status(500).json({ error: `Vessel update failed! Error: ${err.message}` });
   }
 });
 
