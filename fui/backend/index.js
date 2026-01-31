@@ -2,8 +2,6 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
-import pkg from 'pg';
-const { Pool } = pkg;
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -17,49 +15,13 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { authenticateToken, requireAdmin } from './middleware/auth.js';
+import { auditLog } from './utils/logger.js';
+
 // Initialise the dotenv using the explicit path
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-// Middleware to protect routes and extract user data.
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  // No token found.
-  if (!token) {
-    return res.sendStatus(401);
-  }
-  
-  jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key', (err, user) => {
-    if (err) {
-      // Token is invalid
-      return res.sendStatus(403);
-    }
-    // Token is valid, 
-    req.user = user;
-    next();
-  }) 
-};
-
-// Connect to the database.
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_DATABASE,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
-
-// Handles logging records to the audit_log table.
-const auditLog = async (vesselUuid, userUuid, task, details) => {
-  try {
-    await pool.query(
-      'INSERT INTO audit_logs (vessel_uuid, user_uuid, task, details) VALUES ($1, $2, $3, $4);', 
-      [vesselUuid || null, userUuid || null, task, details]
-    );
-  } catch (err) {
-    console.error('Critical: Auditing failed! Error: ', err.message);
-  }
-};
+import pool from './db.js';
 
 /* *********************************************************************************************************/
 /* Section 1: System Endpoints                                                                             */
@@ -124,9 +86,7 @@ app.get('/api/system/test-db', async (req, res) => {
 /* *********************************************************************************************************/
 
 // Delete (well, deactivate) a user
-app.delete('/api/users/delete/:uuid', authenticateToken, async (req, res) => {
-  if (!req.user.is_admin) return res.status(403).json({ error: "Security: You Are Not An Administrator!"});
-  
+app.delete('/api/users/delete/:uuid', authenticateToken, requireAdmin, async (req, res) => {
   const targetUuid = req.params.uuid; // The passed in UUID
   const requesterUuid = req.user.uuid;
   const requesterVesselUuid = req.user.vessel_uuid;
@@ -139,7 +99,7 @@ app.delete('/api/users/delete/:uuid', authenticateToken, async (req, res) => {
     const targetHandle = userLookup.rows[0]?.handle || 'Unknown';
     
     // Log the delete
-    await auditLog(requesterVesselUuid, requesterUuid, 'User::Delete', `Operator: [${requesterHandle}] revoked access for the user: [${targetHandle}] UUID: [${targetUuid}].`);
+    await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Delete', `Operator: [${requesterHandle}] revoked access for the user: [${targetHandle}] UUID: [${targetUuid}].`);
     
     await pool.query(
       'UPDATE users SET is_active = FALSE WHERE uuid = $1;', 
@@ -172,7 +132,7 @@ app.post('/api/users/logout', authenticateToken, async (req, res) => {
     const { uuid, vessel_uuid, handle } = req.user;
     
     // Log the delete
-    await auditLog(vessel_uuid, uuid, 'User::Logout', `Operator: [${handle}] has logged off.`);
+    await auditLog(pool, vessel_uuid, uuid, 'User::Logout', `Operator: [${handle}] has logged off.`);
     
     res.json({ success: true });
   } catch (err) {
@@ -182,9 +142,7 @@ app.post('/api/users/logout', authenticateToken, async (req, res) => {
 });
 
 // Update existing users
-app.put('/api/users/update/:uuid', authenticateToken, async (req, res) => {
-  if (!req.user.is_admin) return res.status(403).json({ error: "Security: You Are Not An Administrator!"});
-  
+app.put('/api/users/update/:uuid', authenticateToken, requireAdmin, async (req, res) => {
   // The user_uuid of the user being edited
   const targetUuid = req.params.uuid;
   // This comes the JWT middleware (muirgen token) and is the user_uuid of the user doing the update.
@@ -223,7 +181,7 @@ app.put('/api/users/update/:uuid', authenticateToken, async (req, res) => {
         [userName, userHandle, userIsAdmin, userIsActive, encryptedPassword, req.params.uuid]
       );
       // Create an audit log for this update.
-      await auditLog(requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the password /record for user: [${userHandle}].`);
+      await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the password /record for user: [${userHandle}].`);
       res.json({ success: true })
     } else {
       // Update without the password column.
@@ -232,7 +190,7 @@ app.put('/api/users/update/:uuid', authenticateToken, async (req, res) => {
         [userName, userHandle, userIsAdmin, userIsActive, req.params.uuid]
       );
       // Create an audit log for this update.
-      await auditLog(requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the record for user: [${userHandle}].`);
+      await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the record for user: [${userHandle}].`);
       res.json({ success: true })
     }
   } catch (err) {
@@ -254,7 +212,7 @@ app.post('/api/users/login', async (req, res) => {
     // Is the handle valid?
     if (result.rows.length === 0) {
       // Nope.
-      await auditLog(null, null, 'Login::Failure', `An attempt to login as: [${userHandle}] was made, which is not a valid operator.`);
+      await auditLog(pool, null, null, 'Login::Failure', `An attempt to login as: [${userHandle}] was made, which is not a valid operator.`);
       return res.status(401).json({ error: "Security: Invalid Operator" });
     }
     
@@ -273,11 +231,11 @@ app.post('/api/users/login', async (req, res) => {
         process.env.JWT_SECRET || 'this_is_bad_fallback_key', 
         { expiresIn: '30d' } // This is more to keep sessions active than for security
       );
-      await auditLog(user.vessel_uuid, user.uuid, 'Login::Success', `The operator: [${userHandle}] has successfully logged in.`);
+      await auditLog(pool, user.vessel_uuid, user.uuid, 'Login::Success', `The operator: [${userHandle}] has successfully logged in.`);
       res.json({ success: true, token });
     } else {
       // Bad password.
-      await auditLog(null, null, 'Login::Failure', `Security: Invalid access code used for the operator: [${userHandle}]!`);
+      await auditLog(pool, null, null, 'Login::Failure', `Security: Invalid access code used for the operator: [${userHandle}]!`);
       res.status(401).json({ error: "Access Denied" });
     }
   } catch (err) {
@@ -336,7 +294,7 @@ app.post('/api/users/save', async (req, res) => {
     
     // Log who created it.
     if (!isFirstUser && req.requester) {
-      await auditLog(userVesselUuid, req.requester.uuid, 'User::Create', `Operator: [${req.requester.handle}] registered the new user: [${userHandle}].`);
+      await auditLog(pool, userVesselUuid, req.requester.uuid, 'User::Create', `Operator: [${req.requester.handle}] registered the new user: [${userHandle}].`);
     }
     
     res.json({ success: true });
@@ -442,7 +400,7 @@ app.post('/api/vessels/save-vessel', async (req,res) => {
     if (!isInitialSetup) {
       // We can log additional vessels, as there must be a user by that point. We can not log the very first
       // vessel though, as it is added before any user exists.
-      await auditLog(requester.vessel_uuid, requester.uuid, 'Create::Vessel', `Vessel [${vesselName}] registered by [${requester.handle}].`);
+      await auditLog(pool, requester.vessel_uuid, requester.uuid, 'Create::Vessel', `Vessel [${vesselName}] registered by [${requester.handle}].`);
     }
     res.json({ success: true });
   } catch (err) {
