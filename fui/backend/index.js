@@ -134,7 +134,7 @@ app.post('/api/users/initial-sysop', async (req, res) => {
     // Record the primary SysOp.
     const hashedPassword = await bcrypt.hash(userPassword, 12);
     const result = await pool.query(
-      'INSERT INTO users (handle, full_name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, TRUE, $4, TRUE) RETURNING uuid;', 
+      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, TRUE, $4, TRUE) RETURNING uuid;', 
       [userHandle, userName, hashedPassword, userVesselUuid]
     );
     
@@ -298,7 +298,7 @@ app.post('/api/users/save', authenticateToken, requireAdmin, async (req, res) =>
     
     // Record the new user.
     const newUser = await pool.query(
-      'INSERT INTO users (handle, full_name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, $4, $5, TRUE);',
+      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, $4, $5, TRUE);',
       [userHandle, userName, hashedPassword, userIsAdmin, userVesselUuid]
     );
     
