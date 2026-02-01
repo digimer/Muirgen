@@ -6,23 +6,26 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import config from '../config.js';
-const app = express();
-app.use(cors()); // Critical for local cross-port communication
-app.use(express.json());
 
 // Setup __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Initialise environment variables;
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Import files that rely on environment variables or shared configs.
+import config from '../config.js';
+import pool from './db.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 import { auditLog } from './utils/logger.js';
 
-// Initialise the dotenv using the explicit path
-dotenv.config({ path: path.join(__dirname, '.env') });
+const app = express();
 
-// Connect to the DB
-import pool from './db.js';
+// Standard middleware
+app.use(cors()); // Critical for local cross-port communication
+app.use(express.json());
+app.use(express.static(path.join(__dirname, '../frontend/dist'))); // points to the compiled UI
 
 /* *********************************************************************************************************/
 /* Section 1: System Endpoints                                                                             */
@@ -489,6 +492,11 @@ process.on('uncaughtException', function (err) {
   console.error('FATAL UNCAUGHT EXCEPTION:', err.message);
   // Optional: Add more details here
   process.exit(1); // Exit the process cleanly for PM2 to restart it
+});
+
+// Ensure that if the page is refreshhed on a sub-route, it still loads index.html
+app.get(/^(?!\/api\/).+/, (req, res, next) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 const PORT = process.env.PORT || config.apiPort || 5000;

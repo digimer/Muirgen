@@ -1,10 +1,24 @@
 {
+  "name": "muirgen-sysop-terminal",
+  "version": "0.1.0", 
   "type": "module",
+  "scripts": {
+    "dev": "vite frontend",
+    "build": "vite build ./frontend --outDir ../frontend/dist",
+    "preview": "vite preview frontend", 
+    "start": "node backend/index.js" 
+  },
   "dependencies": {
     "@arwes/react": "^1.0.0-next.25020502",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3", 
+    "bcryptjs": "^2.4.3", 
+    "jsonwebtoken": "^9.0.2"
+  }, 
+  "devDependencies": {
+    "vite": "^5.0.0", 
+    "@vitejs/plugin-react": "^4.0.0" 
   }
 }
