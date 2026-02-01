@@ -189,9 +189,14 @@ function UserSetup({ onComplete }) {
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">&#9722;</span>
-            <label htmlFor="userVessel">
+            {/* Use a label only if there are 2+ vessels and a <select> is used. */}
+            {vessels.length > 1 ? (
+              <label htmlFor="userVessel">
+                <span className="label-text">Vessel Assignment</span>
+              </label>
+            ) : (
               <span className="label-text">Vessel Assignment</span>
-            </label>
+            )}
           </div>
         
           {vessels.length > 1 ? (
@@ -210,7 +215,7 @@ function UserSetup({ onComplete }) {
               ))}
             </select>
           ) : (
-            <div id="userVessel" className="setup-field-value-static">
+            <div className="setup-field-value-static">
               {vessels[0]?.name || 'E: NAME LOAD FAILED'}
             </div>
           )}
