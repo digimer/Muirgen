@@ -113,6 +113,37 @@ app.delete('/api/users/delete/:uuid', authenticateToken, requireAdmin, async (re
   }
 });
 
+// This is called ONLY during initial setup when no users exist at all. Once even one user exists, this 
+// returns 403.
+app.post('/api/users/initial-sysop', async (req, res) => {
+  try {
+    // If any users exist at all, bail out.
+    const checkUsers = await pool.query('SELECT COUNT(*) FROM users;');
+    if (parseInt(checkUsers.rows[0].count) > 0) {
+      return res.status(403).json({ error: "Security: System Already Initialised! What are you doing here? Shoo" });
+    }
+    
+    const { userHandle, userName, userPassword, userPasswordConfirm, userVesselUuid } = req.body;
+    if (userPassword !== userPasswordConfirm) {
+      return res.status(400).json({ error: 'The access code verification did not match the access code entered.' });
+    }
+    
+    // Record the primary SysOp.
+    const hashedPassword = await bcrypt.hash(userPassword, 12);
+    const result = await pool.query(
+      'INSERT INTO users (handle, full_name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, TRUE, $4, TRUE) RETURNING uuid;', 
+      [userHandle, userName, hashedPassword, userVesselUuid]
+    );
+    
+    // First entry in the audit log.
+    await auditLog(pool, userVesselUuid, result.rows[0].uuid, 'User::Bootstrap', `System Initialised. Primary SysOp is: [${userHandle}]`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Master registration failed! Error: ', err.message);
+    res.status(500).json({ error: `Master registration failed! Error: ${err.message}` });
+  }
+});
+
 // Get a list of all users
 app.get('/api/users/list', authenticateToken, async (req, res) => {
   try {
@@ -245,35 +276,12 @@ app.post('/api/users/login', async (req, res) => {
 });
 
 // Handle saving users with bcryptjs
-app.post('/api/users/save', async (req, res) => {
-  const { userHandle, userName, userPassword, userIsAdmin, userVesselUuid } = req.body;
+app.post('/api/users/save', authenticateToken, requireAdmin, async (req, res) => {
+  const { userHandle, userName, userPassword, userPasswordConfirm, userIsAdmin, userVesselUuid } = req.body;
   try {
-    // If there are no users yet, this first user will be forced to be an admin. If there is one or more 
-    // users, then we need to authenticate that the requesting user is a verified SysOp.
-    const userCountResults = await pool.query('SELECT COUNT(*) FROM users;');
-    const userCount = parseInt(userCountResults.rows[0].count) === 0;
-    const isFirstUser = userCount === 0;
-    
-    // Is there a requesting admin to validate?
-    if (!isFirstUser) {
-      const authHeader = req.headers['authorization'];
-      const token  = authHeader && authHeader.split(' ')[1];
-      
-      if (!token) {
-        return res.status(403).json({ error: "Security: Authentication token missing." });
-      }
-      
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key');
-        if (!decoded.is_admin) {
-          return res.status(403).json({ error: "Security: You are not a SysOp!" });
-        }
-        
-        // Valid requesting user; record for log.
-        req.requester = decoded;
-      } catch (err) {
-        return res.status(403).json({ error: "Security: Authentication token expired or corrupt!" });
-      }
+    // Is the access code and verify code the same?
+    if (userPassword !== userPasswordConfirm) {
+      return res.status(400).json({ error: 'The access code verification did not match the access code entered.' });
     }
     
     // Prevent duplicate handles.
@@ -282,22 +290,17 @@ app.post('/api/users/save', async (req, res) => {
       return res.status(400).json({ error: "Conflict: User handle already in use!" });
     }
     
-    // Prepare to record
-    const finalAdminStatus = isFirstUser ? true : userIsAdmin;
-    // Hash password with 12 salt rounds
+    // Hash the password.
     const hashedPassword = await bcrypt.hash(userPassword, 12);
     
-    // We're good, record the new user.
+    // Record the new user.
     const newUser = await pool.query(
-      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid) VALUES ($1, $2, $3, $4, $5);',
-      [userHandle, userName, hashedPassword, finalAdminStatus, userVesselUuid]
+      'INSERT INTO users (handle, full_name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, $4, $5, TRUE);',
+      [userHandle, userName, hashedPassword, userIsAdmin, userVesselUuid]
     );
     
-    // Log who created it.
-    if (!isFirstUser && req.requester) {
-      await auditLog(pool, userVesselUuid, req.requester.uuid, 'User::Create', `Operator: [${req.requester.handle}] registered the new user: [${userHandle}].`);
-    }
-    
+    // Log who created it and then we're done.
+    await auditLog(pool, userVesselUuid, req.user.uuid, 'User::Create', `Operator: [${req.user.handle}] registered the new user: [${userHandle}].`);
     res.json({ success: true });
   } catch (err) {
     console.error(err);

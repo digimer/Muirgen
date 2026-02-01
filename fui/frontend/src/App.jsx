@@ -5,6 +5,7 @@ import './App.css';
 import VesselSetup from './VesselSetup'; 
 import UserSetup from './UserSetup';
 import Login from './Login';
+import { apiFetch } from './utils/api.js';
 
 function App() {
   const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
@@ -73,10 +74,7 @@ function App() {
     const savedToken = localStorage.getItem('muirgen_token');
     
     // Backup check to see if we're logging out.
-    if (!savedToken && isLoggingOut)
-    {
-      return;
-    }
+    if (!savedToken && isLoggingOut) return;
     
     // Check if we've got a saved token
     try {

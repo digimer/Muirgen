@@ -441,7 +441,7 @@ input[type="number"] {
 }
 
 .touch-button.danger {
-  border-color: var{--neon-red); 
+  border-color: var(--neon-red); 
   color: var(--dark-bg); 
   font-weight: bold;
 }

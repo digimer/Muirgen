@@ -9,3 +9,5 @@ export const auditLog = async (pool, vesselUuid, userUuid, task, details) => {
     console.error('Critical: Auditing failed! Error: ', err.message);
   }
 };
+
+export default auditLog;

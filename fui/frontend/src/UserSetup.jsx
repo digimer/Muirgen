@@ -39,17 +39,14 @@ function UserSetup({ onComplete }) {
     const token = localStorage.getItem('muirgen_token');
     
     try {
-      const res = await fetch(`/api/users/save`, {
+      const res = await fetch(`/api/users/initial-sysop`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userHandle: formData.userHandle, 
           userName: formData.userName, 
           userPassword: formData.userPassword, 
-          userIsAdmin: formData.userIsAdmin, 
+          userPasswordConfirm: formData.userPasswordConfirm, 
           userVesselUuid: formData.userVesselUuid
         })
       });
@@ -199,7 +196,7 @@ function UserSetup({ onComplete }) {
         
           {vessels.length > 1 ? (
             <select 
-              id="userVessel" 
+              id="userVessel"
               className={`setup-input-select ${shakeField === 'vessel' ? 'field-error-shake' : ''}`}
               value={selectedVessel} 
               onChange={(e) => {
@@ -213,7 +210,7 @@ function UserSetup({ onComplete }) {
               ))}
             </select>
           ) : (
-            <div className="setup-field-value-static">
+            <div id="userVessel" className="setup-field-value-static">
               {vessels[0]?.name || 'E: NAME LOAD FAILED'}
             </div>
           )}
@@ -243,7 +240,7 @@ function UserSetup({ onComplete }) {
           <button type="submit" 
             className="touch-button" 
             disabled={status.type === 'success'}>
-            {status.type === 'success' ? "Recording..." : "Register Master SysOp"}
+            {status.type === 'success' ? "Recording..." : "Register Primary SysOp"}
           </button>
         </div>
       </form>
