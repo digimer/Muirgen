@@ -42,9 +42,10 @@ body {
   position: relative;
   z-index: 10;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: flex-start;
+  align-items: stretch;
   height: 100vh;
+  width: 100vw;
 }
 
 .content-container {
@@ -72,12 +73,73 @@ input:-webkit-autofill:active {
 }
 
 /* --- 3. COMPONENTS --- */
+/* TODO: Sort all this alphabetically */
+/* Specific error glyphs to catch the eye without white light */
+.error-text {
+  font-style: italic;
+  letter-spacing: 1px;
+}
+
 .login-form {
   display: grid;
   grid-template-columns: 1fr; /* Default: Stacked (mobile/narrow) */
   gap: 20px;
   align-items: end; /* Aligns button with input fields */
   width: 100%;
+}
+
+.sidebar-button {
+  background: transparent; 
+  border: 1px solid transparent;
+  color: var(--soft-red);
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  transition: all 0,2s ease;
+}
+
+.sidebar-button.active-view {
+  border: 1px solid var(--neon-red);
+  color: var(--neon-red);
+  background: rgba(255, 0, 0, 0.1);
+  box-shadow: inset 0 0 10px rgba(255, 0, 0, 0.2);
+}
+
+.sidebar-divider {
+  height: 2px; 
+  background: var(--dim-red);
+  width: 40px;
+  margin-top: 5px;
+}
+
+.sidebar-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+.sidebar-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 4px;
+  color: var(--soft-red);
+  margin-bottom: 10px;
+  display: block;
+}
+
+.sidebar-nav {
+  width: 200px;
+  background: rgba(20, 0, 0, 0.8);
+  border-right: 2px solid var(--neon-red);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 10px;
+  z-index: 20;
 }
 
 .status-display {
@@ -121,6 +183,42 @@ input:-webkit-autofill:active {
   font-family: 'Ubuntu Sans Mono', monospace;
   font-size: 1.2rem;
   margin-bottom: 1rem;
+}
+
+.vessel-active {
+  color: var(--neon-red);
+  text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+}
+
+/* Dimmed red for de-prioritized data */
+.vessel-inactive {
+  color: var(--dim-red); /* Low luminance, stays within the safe spectrum */
+  opacity: 0.7;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.data-table th {
+  text-align: left;
+  border-bottom: 2px solid var(--neon-red);
+  padding: 10px;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.8rem;
+}
+
+.data-table td {
+  padding: 12pc 10px;
+  border-bottom: 1px solid var(--neon-red);
+}
+
+.button-confirm-state {
+  background-color: var(--neon-red) !important;
+  color: black !important;
+  animation: flicker 0.1s infinite;
 }
 
 .user-list {
@@ -533,6 +631,39 @@ input[type="number"] {
 ::selection { background: var(--neon-red); color: black; }
 
 /* --- 7. Main System Components --- */
+/* Confirmation/Lock timer */
+.interlock-timer-container {
+  display: flex;
+  align-items: center; 
+  justify-content: flex-end;
+  margin-top: 10px;
+  gap: 10px;
+}
+
+.timer-label {
+  font-size: 0.8rem;
+  color: var(--neon-red);
+}
+
+.timer-bar-frame {
+  width: 150px;
+  height: 12px;
+  border: 1px solid var(--neon-red);
+  padding: 1px;
+}
+
+.timer-bar-fill {
+  height: 100%;
+  background-color: var(--neon-red);
+  width: 100%; /* default full, timer drains */
+}
+
+/* The transition over 15s. Must match the timeout used in the JSX files! */
+.animate-shrink {
+  width: 0% !important;
+  transition: width 15s linear;
+}
+
 /* Styles used after logging in, the main app */
 .system-controls {
   position: fixed;
@@ -583,6 +714,12 @@ input[type="number"] {
   box-shadow: 0 0 20px var(--neon-red);
   z-index: 1001;
   position: relative;
+}
+
+.content-viewport {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
 }
 
 .logout-overlay {

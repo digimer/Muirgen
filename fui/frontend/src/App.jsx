@@ -6,6 +6,8 @@ import VesselSetup from './VesselSetup';
 import UserSetup from './UserSetup';
 import Login from './Login';
 import { apiFetch } from './utils/api.js';
+import Sidebar from './Sidebar';
+import VesselManagement from './VesselManagement';
 
 function App() {
   const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
@@ -17,6 +19,12 @@ function App() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isLoggingOutRef = useRef(false);
   const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
+  // Current view support. Options;
+  // HUD               - Default display
+  // VESSEL_MANAGEMENT - Vessel Management view,
+  // USER_MANAGEMENT   - User Management view.
+  const [currentView, setCurrentView] = useState('HUD');
+  const [allVessels, setAllVessels] = useState([]);
   
   // Watch for 401 or 403 errors indicating a bad token and triggering a logout.
   useEffect(() => {
@@ -41,6 +49,37 @@ function App() {
     window.addEventListener('muirgen-auth-failure', handleAuthFailure);
     return () => window.removeEventListener('muirgen-auth-failure', handleAuthFailure);
   }, []);
+  
+  useEffect(() => {
+    if (currentView === 'VESSEL_MANAGEMENT') {
+      fetchManagementData();
+    }
+  }, [currentView]);
+  
+  // Fetch all vessels for management
+  const fetchManagementData = async () => {
+    try {
+      const res = await apiFetch('/api/vessels/list-all');
+      if (res.ok) {
+        const data = await res.json();
+        setAllVessels(data);
+      }
+    } catch (err) {
+      console.error('Management fetch error:', err);
+    }
+  };
+  
+  // Deactivate a vessel
+  const handleVesselDeactivate = async (uuid) => {
+    const res = await apiFetch(`/api/vessels/deactivate/${uuid}`, { method: 'DELETE' });
+    if (res.ok) fetchManagementData();
+  };
+  
+  //Reactivate a vessel
+  const handleVesselReactivation = async (uuid) => {
+    const res = await apiFetch(`/api/vessels/reactivate/${uuid}`, { method: 'PATCH' });
+    if (res.ok) fetchManagementData();
+  };
   
   // Handle Logging the user out
   const handleLogout = async () => {
@@ -126,43 +165,57 @@ function App() {
       </div>
 
       <main className="main-layout">
-        {/* To make sure the success message remains visible during the 2s logout sequence, this needs to be
-            the top priority. */}
-        {isLoggingOut && (
-          <div className="status-display success logout-overlay">
-            {logoutMessage}
-          </div>
+        {/* Navigation Sidebar */}
+        {isLoggedIn && !isLoggingOut && (
+          <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
         )}
         
-        {/* Main body */}
-        <div className={`content-container ${isLoggingOut? 'blur-active' : ''}`}>
+        {/* Dynamic Viewport */}
+        <div className={`content-viewport ${isLoggingOut ? 'blur-active' : ''}`}>
+          {/* Success message must stay inside the viewport to be visible during logout. */}
+          {isLoggingOut && (
+            <div className="status-display success logout-overlay">
+              {logoutMessage}
+            </div>
+          )}
+          
           <h2 className="flicker">Core Database: {dbData.status}</h2>
+          
           {setupState.vesselRequired ? (
             <VesselSetup onComplete={fetchData} />
           ) : setupState.userRequired ? (
             <UserSetup onComplete={fetchData} />
           ) : !isLoggedIn ? (
-            <Login onLoginSuccess={() => {
-              setIsLoggedIn(true);
-              fetchData();
-            }} />
-          ) : !vessel ? (
-            <h2 className="flicker">Establishing Database Connection...</h2>
+            <Login onLoginSuccess={() => { setIsLoggedIn(true); fetchData();}} />
           ) : (
-            <div className="vessel-box">
-              <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
-              <p>Vessel Name: {vessel.vesselName || 'Loading...'}</p>
-              <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
-              <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
-              <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
-              <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
-              <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
-              <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
-            </div>
+            <>
+              {currentView === 'HUD' && vessel && (
+                <div className="vessel-box">
+                  <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
+                  <p>Vessel Name: {vessel.vesselName || 'Loading'}</p>
+                  <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
+                  <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
+                  <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
+                  <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
+                  <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
+                  <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
+                </div>
+              )}
+              
+              {currentView === 'VESSEL_MANAGEMENT' && (
+                <VesselManagement
+                  vessels={allVessels}
+                  onDeactivate={handleVesselDeactivate}
+                  onReactivate={handleVesselReactivation}
+                  onModify={(v) => console.log("Modify", v)}
+                  onRegister={() => console.log("Register New")}
+                />
+              )}
+            </>
          )}
         </div>
         
-        {/* System Controls */}
+        {/* Persustent "End Session" button. (May move to the sidebar later) */}
         {isLoggedIn && !isLoggingOut && (
           <div className="system-controls">
             <button onClick={handleLogout} className="logout-button">
