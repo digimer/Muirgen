@@ -54,7 +54,7 @@ function Login ({ onLoginSuccess }) {
       <form onSubmit={handleSubmit} className="login-form">
         <div className="field-group">
           <div className="setup-field-header">
-            <span className="cursor-prompt">&#9722;</span>
+            <span className="cursor-prompt">◺</span>
             <label htmlFor="userPassword">
               <span className="label-text">Handle</span>
             </label>
@@ -70,7 +70,7 @@ function Login ({ onLoginSuccess }) {
 
         <div className="field-group">
            <div className="setup-field-header">
-            <span className="cursor-prompt">&#9722;</span>
+            <span className="cursor-prompt">◺</span>
             <label htmlFor="userPassword">
               <span className="label-text">Access Code</span>
             </label>

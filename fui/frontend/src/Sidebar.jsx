@@ -2,9 +2,9 @@ import React from 'react';
 
 const Sidebar = ({ currentView, setCurrentView }) => {
   const menuItems = [
-    { id: 'HUD',               label: 'System HUD',   glyph: '&#9707;' },
-    { id: 'VESSEL_MANAGEMENT', label: 'Vessel Index', glyph: '&#9655;' },
-    { id: 'USER_MANAGEMENT',   label: 'User Index',   glyph: '&#9004;' },
+    { id: 'HUD',               label: 'System HUD',   glyph: '◫' },
+    { id: 'VESSEL_MANAGEMENT', label: 'Vessel Index', glyph: '⏃' },
+    { id: 'USER_MANAGEMENT',   label: 'User Index',   glyph: '⏿' },
   ];
   
   return (
@@ -25,7 +25,7 @@ const Sidebar = ({ currentView, setCurrentView }) => {
               <span className="label-text">{item.label}</span>
             </button>
           </li>
-        )}
+        ))}
       </ul>
     </nav>
   );

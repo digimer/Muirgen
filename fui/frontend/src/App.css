@@ -18,8 +18,9 @@
 
 :root {
   --neon-red: #ff0000;
-  --dim-red: #440000;
+  --strong-red: #dd0000;
   --soft-red: #880000;
+  --dim-red: #440000;
   --dark-bg: #000000;
   --box-max-width: 900px;
   --grid-line: rgba(255, 0, 0, 0.15);
@@ -73,7 +74,65 @@ input:-webkit-autofill:active {
 }
 
 /* --- 3. COMPONENTS --- */
-/* TODO: Sort all this alphabetically */
+/* Container for table actions */
+.actions-cell {
+  display: flex;
+  gap: 15px; 
+  align-items: center;
+}
+
+/* Base style for in-row icon buttons */
+.button-icon {
+  background: transparent;
+  border: 1px solid var(--soft-red);
+  color: var(--soft-red);
+  padding: 8px 16px;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  min-height: 35px; /* Ensure uniform height */
+}
+
+/* Hover state: inverts to black text on a red button */
+.button-icon:hover:not(:disabled) {
+  background: var(--neon-red) !important;
+  color: var(--dark-bg) !important;
+  border-color: var(--neon-red);
+  box-shadow: 0 0 10px var(--neon-red);
+}
+
+/* Disabled buttons */
+.button-icon:disabled {
+  border-color: var(--dim-red);
+  color: var(--dim-red);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Danger variant for potentially risky actions */
+.button-danger {
+  border-color: var(--soft-red);
+}
+
+.button-confirm-state {
+  background: var(--neon-red) !important;
+  color: var(--dark-bg) !important;
+  animation: flicker 0.1s infinite;
+}
+
+/* Apply the custom red shadow *only* when focused via keyboard navigation (tabbing) */
+.button-row {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* Specific error glyphs to catch the eye without white light */
 .error-text {
   font-style: italic;
@@ -94,13 +153,16 @@ input:-webkit-autofill:active {
   color: var(--soft-red);
   width: 100%;
   text-align: left;
-  padding: 12px;
-  margin-bottom: 10px;
+  padding: 15px 12px;           /* Extra vertical height for easier button presses */
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.75rem;
-  transition: all 0,2s ease;
+  gap: 12px;
+  font-size: 1rem;              /* Larger font size for easier legibility */
+  font-family: 'Oxanium', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
 }
 
 .sidebar-button.active-view {
@@ -110,11 +172,45 @@ input:-webkit-autofill:active {
   box-shadow: inset 0 0 10px rgba(255, 0, 0, 0.2);
 }
 
+.sidebar-button:hover, 
+.sidebar-button.active-view:hover {
+  background: var(--neon-red) !important;
+  color: var(--dark-bg) !important;
+  box-shadow: 0 0 15px var(--neon-red);
+}
+
+/* Dim the glyphs on inactive buttons */
+.sidebar-button:not(.active-view) .glyph {
+  opacity: 0.8;
+  color: var(--soft-red);
+}
+
+/* Pop the glyphs */
+.sidebar-button .glyph {
+  font-size: 1.6rem;       /* Scale relative to the button height. */
+  line-height: 1;          /* Prevent the glyph from pushing text. */
+  display: flex;           /*  */
+  align-items: center;     /*  */
+  justify-content: center; /*  */
+  width: 24px;             /* Fixed width to keep labels aligned */
+  color: inherit;          /* Inherit the color from the parent so it flips with the text. */
+}
+
 .sidebar-divider {
-  height: 2px; 
-  background: var(--dim-red);
-  width: 40px;
-  margin-top: 5px;
+  height: 2px;                   /*  */
+  background: var(--strong-red); /* Match the title for unified header block */
+  width: calc(100% + 20px);      /* calc accounts for the 10px padding on the .sidebar-nav class */
+  margin-left: -10px;            /* Pull the line left to touch the vertical border */
+  margin-top: 10px;               /*  */
+  opacity: 0.4;                  /* Dim the line so it doesn't over-power the text */
+}
+
+.sidebar-header {
+  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Align the title and divider to the left edge */
+  width: 100%;
 }
 
 .sidebar-list {
@@ -125,11 +221,15 @@ input:-webkit-autofill:active {
 
 .sidebar-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.8rem;
-  letter-spacing: 4px;
-  color: var(--soft-red);
-  margin-bottom: 10px;
-  display: block;
+  font-size: 0.9rem;                   /* Bump the font size */
+  font-weight: 900;                    /* Max boldness for the Orbitron font */
+  color: var(--neon-red);            /* Bright red, but not neon red */
+  letter-spacing: 0.35rem;             /* Spread the text to fill the sidebar */
+  text-align: center;                  /* Centers the title in the sidebar */
+  width: 100%;                         /* Push to use the full sidebar width */
+  display: block;                      /*  */
+  text-shadow: 0 0 5px var(--dim-red); /* Subtle phosphorescent glow */
+  /*margin-bottom: 10px; */                 /*  */
 }
 
 .sidebar-nav {
@@ -213,12 +313,6 @@ input:-webkit-autofill:active {
 .data-table td {
   padding: 12pc 10px;
   border-bottom: 1px solid var(--neon-red);
-}
-
-.button-confirm-state {
-  background-color: var(--neon-red) !important;
-  color: black !important;
-  animation: flicker 0.1s infinite;
 }
 
 .user-list {
@@ -310,13 +404,6 @@ button:focus {
   outline: none; /* Removes the browser's default white outline */
 }
 
-/* Apply the custom red shadow *only* when focused via keyboard navigation (tabbing) */
-.button-row {
-  margin-top: 2rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .touch-button, button {
   background: var(--soft-red);
   color: black;
@@ -335,7 +422,7 @@ button:focus {
 button:hover,
 button:focus-visible {
   background: var(--neon-red) !important;   /* Use !important to guarantee this color wins */
-  color: #000000;                           
+  color: var(--dark-bg);                           
   box-shadow: 0 0 20px var(--neon-red);
   outline: none;                            /* Prevents default outline */
 }
@@ -446,7 +533,7 @@ input[type="number"] {
 
 .glyph {
   display: inline-block;
-  width: 20px; /* Set this to the width of the glyph (currently using ◺ / &#9722; */
+  width: 20px; /* Set this to the width of the glyph (currently using '◺' */
   text-align: left; /* Left-justifies the glyph within the 20px box */
 }
 
@@ -479,7 +566,7 @@ input[type="number"] {
   appearance: none; /* removes the browser's defaullt arrow */
   -webkit-appearance: none;
   cursor: pointer; 
-  /* Geometric path version of the ▽ (&#9661;) glyph */
+  /* Geometric path version of the '▽' glyph */
   background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNNiA4bDYgOCA2LThINnoiIHN0cm9rZT0iI2ZmMDAwMCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+");
   background-repeat: no-repeat;
   background-position: right 15px center; /* Positions glyph on the right */
@@ -689,7 +776,7 @@ input[type="number"] {
 
 .logout-button:hover {
   background: var(--dim-red);
-  color: #000000;
+  color: var(--dark-bg);
   border-color: var(--neon-red);
   box-shadow: 0 0 10px var(--dim-red);
 }

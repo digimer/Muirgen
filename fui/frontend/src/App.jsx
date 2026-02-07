@@ -219,7 +219,7 @@ function App() {
         {isLoggedIn && !isLoggingOut && (
           <div className="system-controls">
             <button onClick={handleLogout} className="logout-button">
-              <span className="glyph">&#9708;</span>
+              <span className="glyph">🞪</span>
               <span className="label-text">End Session</span>
             </button>
           </div>

@@ -105,7 +105,6 @@ function UserManagement() {
     }
   };
   
-  {/* Glyphs; &#9762; = ◈ (admin), &#128924; = 🞜 (create admin), &#9673; = ◉ (user), &#9678; = ◎ (create user) */}
   return(
     <div className="vessel-box setup-mode">
       <div className="setup-display">
@@ -124,7 +123,7 @@ function UserManagement() {
                   setStatus({ type: '', message: '' });
                 }}
               >
-                <span className="glyph">{user.is_admin ? '&#9762;': '&#9673;'}</span>
+                <span className="glyph">{user.is_admin ? '◈': '🞜'}</span>
                 <span className="label-text">{user.handle}</span>
                 <span className="operator-subtitles">{user.name}</span>
               </div>
@@ -139,7 +138,7 @@ function UserManagement() {
               setStatus({ type: '', message: '' });
             }}
             >
-            &#128924; Add SysOp
+            ◇ Add SysOp
           </button>
         </div>
         

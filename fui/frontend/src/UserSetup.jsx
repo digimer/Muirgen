@@ -123,7 +123,7 @@ function UserSetup({ onComplete }) {
       <form onSubmit={handleSubmit} className="setup-form">
         <div className="field-group">
           <div className="setup-field-header">
-            <span className="cursor-prompt">&#9722;</span>
+            <span className="cursor-prompt">◺</span>
             <label htmlFor="userHandle">
               <span className="label-text">Operator Handle</span>
             </label>
@@ -139,7 +139,7 @@ function UserSetup({ onComplete }) {
         {/* Full (real) name of the user */}
         <div className="field-group">
           <div className="setup-field-header">
-            <span className="cursor-prompt">&#9722;</span>
+            <span className="cursor-prompt">◺</span>
             <label htmlFor="userName">
               <span className="label-text">Full Name</span>
             </label>
@@ -155,7 +155,7 @@ function UserSetup({ onComplete }) {
         {/* "Access Code" (password) field */}
         <div className="field-group">
           <div className="setup-field-header">
-            <span className="cursor-prompt">&#9722;</span>
+            <span className="cursor-prompt">◺</span>
             <label htmlFor="userPassword">
               <span className="label-text">Access Code</span>
             </label>
@@ -171,7 +171,7 @@ function UserSetup({ onComplete }) {
         {/* Access code verification field */}
         <div className="field-group">
           <div className="setup-field-header">
-            <span className="cursor-prompt">&#9722;</span>
+            <span className="cursor-prompt">◺</span>
             <label htmlFor="userPasswordConfirm">
               <span className="label-text">Repeat AC</span>
             </label>
@@ -188,7 +188,7 @@ function UserSetup({ onComplete }) {
         {/* Vessel selection (either displayed if only one, or select box if 2+ */}
         <div className="field-group">
           <div className="setup-field-header">
-            <span className="cursor-prompt">&#9722;</span>
+            <span className="cursor-prompt">◺</span>
             {/* Use a label only if there are 2+ vessels and a <select> is used. */}
             {vessels.length > 1 ? (
               <label htmlFor="userVessel">
@@ -209,7 +209,7 @@ function UserSetup({ onComplete }) {
                 setFormData({...formData, userVesselUuid: e.target.value});
               }}
             >
-              <option value="" disabled>&#9659; Vessel Assignment</option>
+              <option value="" disabled>▻ Vessel Assignment</option>
               {vessels.map((v) => (
                 <option key={v.uuid} value={v.uuid}>{v.name}</option>
               ))}
@@ -225,7 +225,7 @@ function UserSetup({ onComplete }) {
           <label className={`checkbox-container ${isFirstUser ? 'disabled-logic' : ''}`}>
           
             <div className="setup-field-header">
-              <span className="glyph">&#9722;</span>
+              <span className="glyph">◺</span>
               <div>
                 <span className="label-text">Administrator</span>
                 <div className="operator-subtitle">
