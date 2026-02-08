@@ -232,23 +232,6 @@ function App() {
             </div>
           )}
           
-          {/* Persistent Telemetry Data */}
-          <div className="telemetry-header">
-            <div className="telemetry-item">
-              <span className="dim-text">System Time //</span> {displayTime}
-            </div>
-            <div className="telemetry-item">
-              <span className="dim-text">Database //</span>
-              <span className={dbData.status === 'Online' ? 'neon-text' : 'danger-text'}>
-                {dbData.status.toUpperCase()}
-              </span>
-            </div>
-            {/* Future placeholder for GPS lat/lon. */}
-            <div className="telemetry-item">
-              <span className="dim-text">Position //</span> ◭ NO SAT LOCK ◮
-            </div>
-          </div>
-          
           <h2 className="flicker">Core Database: {dbData.status}</h2>
           {setupState.vesselRequired ? (
             <VesselSetup onComplete={fetchData} />
@@ -281,7 +264,7 @@ function App() {
                 />
               )}
             </>
-         )}
+          )}
         </div>
         
         {/* Persustent "End Session" button. (May move to the sidebar later) */}
@@ -293,6 +276,23 @@ function App() {
             </button>
           </div>
         )}
+          
+        {/* Persistent Telemetry Data */}
+        <div className="telemetry-footer">
+          <div className="telemetry-item">
+            <span className="soft-text">System Time //</span> {displayTime}
+          </div>
+          <div className="telemetry-item">
+            <span className="soft-text">Database //</span>
+            <span className={dbData.status === 'Online' ? 'neon-text' : 'danger-text'}>
+              {dbData.status.toUpperCase()}
+            </span>
+          </div>
+          {/* Future placeholder for GPS lat/lon. */}
+          <div className="telemetry-item">
+            <span className="soft-text">Position //</span> ◭ NO SAT LOCK ◮
+          </div>
+        </div>
       </main>
     </div>
   );

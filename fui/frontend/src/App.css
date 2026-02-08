@@ -41,12 +41,10 @@ body {
 
 .main-layout {
   position: relative;
-  z-index: 10;
   display: flex;
-  justify-content: flex-start;
-  align-items: stretch;
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
 }
 
 .content-container {
@@ -396,17 +394,23 @@ input[type="number"]:focus {
   box-shadow: 0 0 15px var(--neon-red);
 }
 
-.telemetry-header {
+/* (mostly) static footer telemetry data */
+.telemetry-footer {
+  position: absolute;                         /* Pin it to the bottom of the view port */
+  bottom: 0;
+  left: 0;                                   /* Align with the sidebar width */
+  right: 0;
   display: flex;
   justify-content: space-between;
-  border-bottom: 1px solid var(--soft-red);
+  border-top: 1px solid var(--soft-red);      /* Retain the horizontal separator */
   padding: 10px 20px;
-  margin-bottom: 20px;
   font-family: 'Ubuntu Sans Mono', monospace;
   font-size: 0.85rem;
-  background: rgba(20, 0, 0, 0.4);
+  background: rgba(20, 0, 0, 0.9);
+  z-index: 100;                               /* Make sure it stays above the grid container */
 }
 
+/* Items displayed in the telemetry footer */
 .telemetry-item {
   display: flex;
   gap: 10px;
@@ -414,6 +418,16 @@ input[type="number"]:focus {
 
 .dim-text {
   color: var(--dim-red);
+  letter-spacing: 2px;
+}
+
+.soft-text {
+  color: var(--soft-red);
+  letter-spacing: 2px;
+}
+
+.strong-text {
+  color: var(--strong-red);
   letter-spacing: 2px;
 }
 
@@ -824,9 +838,14 @@ input[type="number"] {
   position: relative;
 }
 
+/* Adjust the viewpwort to prevent content from being hidden by the footer */
 .content-viewport {
-  flex: 1;
-  padding: 40px;
+  flex: 1;               /* Take up remaining horizontal space */
+  position: relative;    /* Anchor for the absolute footer */
+  display: flex;
+  flex-direction: column;
+  padding: 20px; 
+  padding-bottom: 60px;  /* Room for the pinned footer */
   overflow-y: auto;
 }
 
