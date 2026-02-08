@@ -396,6 +396,27 @@ input[type="number"]:focus {
   box-shadow: 0 0 15px var(--neon-red);
 }
 
+.telemetry-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--soft-red);
+  padding: 10px 20px;
+  margin-bottom: 20px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 0.85rem;
+  background: rgba(20, 0, 0, 0.4);
+}
+
+.telemetry-item {
+  display: flex;
+  gap: 10px;
+}
+
+.dim-text {
+  color: var(--dim-red);
+  letter-spacing: 2px;
+}
+
 /* Disable default outline and apply custom red shadow when focused via keyboard (tab) */
 input:focus,
 input[type="number"]:focus,

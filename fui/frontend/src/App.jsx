@@ -10,21 +10,64 @@ import Sidebar from './Sidebar';
 import VesselManagement from './VesselManagement';
 
 function App() {
-  const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
-  const [vessel, setVessel] = useState(null);
-  const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const API_URL = config.apiBaseUrl;
-  // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const isLoggingOutRef = useRef(false);
-  const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
-  // Current view support. Options;
+  // Remember where the user was in case the browser reloads. 
   // HUD               - Default display
   // VESSEL_MANAGEMENT - Vessel Management view,
   // USER_MANAGEMENT   - User Management view.
-  const [currentView, setCurrentView] = useState('HUD');
+  const [activeView, setActiveView] = useState('HUD');
   const [allVessels, setAllVessels] = useState([]);
+  const API_URL = config.apiBaseUrl;
+  const [currentUser, setCurrentUser] = useState(null);
+  const [displayTime, setDisplayTime] = useState('Acquiring Time Source...');
+  const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
+  // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const isLoggingOutRef = useRef(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
+  const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
+  const [vessel, setVessel] = useState(null);
+  
+  // Drift in browsers can be an issue, so we'll update the react time with the DB time every 30 seconds.
+  useInterval(() => {
+    syncServerTime();
+  }, 30000);
+  
+  // Local tick to update the displayed time each second.
+  useInterval(() => {
+    if (dbData.serverTime) {
+      const now = new Date();
+      // Format the date/time to YYY-MM-DD HH:MM:SS
+      setDisplayTime(now.toLocaleString('sv-SE'));
+    }
+  }, 1000);
+  
+  // 
+  const syncServerTime = async () => {
+    try {
+      const res = await fetch('/api/system/get-time');
+      const data = await res.json();
+      setDbData(data);
+    } catch (err) {
+      setDbData(prev => ({ ...prev, status: 'Time Source Offline' }));
+    }
+  };
+  
+  // If there's a last used view for the user (if they're logged in), load it.
+  useEffect (() => {
+    if (isLoggedIn &&  currentUser?.userUuid) {
+      const userKey = `muirgen_view_${currentUser.userUuid}`;
+      const savedView = localStorage.getItem(userKey);
+      if (savedView) setActiveView(savedView);
+    }
+  }, [isLoggedIn, currentUser?.userUuid]);
+  
+  // Record the active user's current view.
+  useEffect(() => {
+    if (isLoggedIn && currentUser?.userUuid) {
+      localStorage.setItem(`muirgen_view_${currentUser.userUuid}`, activeView);
+    }
+  }, [activeView, isLoggedIn, currentUser?.userUuid]);
   
   // Watch for 401 or 403 errors indicating a bad token and triggering a logout.
   useEffect(() => {
@@ -51,10 +94,10 @@ function App() {
   }, []);
   
   useEffect(() => {
-    if (currentView === 'VESSEL_MANAGEMENT') {
+    if (activeView === 'VESSEL_MANAGEMENT') {
       fetchManagementData();
     }
-  }, [currentView]);
+  }, [activeView]);
   
   // Fetch all vessels for management
   const fetchManagementData = async () => {
@@ -87,6 +130,9 @@ function App() {
     setIsLoggingOut(true);
     isLoggingOutRef.current = true;
     
+    // Reset the HUD as the default display for the next user/session.
+    setActiveView('HUD');
+    
     // Log the logout.
     const logPromise = apiFetch('/api/users/logout', { method: 'POST' }).catch(err => {
       console.warn("Entering a log in audit_log appears to have failed:", err);
@@ -118,13 +164,20 @@ function App() {
     // Check if we've got a saved token
     try {
       const [statusRes, initRes] = await Promise.all([
-        fetch(`/api/system/test-db`),
+        fetch(`/api/system/get-time`),
         apiFetch(`/api/system/check-init`)
       ]);
       
       const statusData = await statusRes.json();
       const initData = await initRes.json();
 
+      // Map the identity from the JWT to state
+      if(initData.isLoggedIn && initData .user) {
+        setCurrentUser(initData.user); // Should have the user's UUID and handle.
+      } else {
+        setCurrentUser(null);
+      }
+      
       setDbData(statusData);
       setSetupState(initData);
       
@@ -167,7 +220,7 @@ function App() {
       <main className="main-layout">
         {/* Navigation Sidebar */}
         {isLoggedIn && !isLoggingOut && (
-          <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+          <Sidebar activeView={activeView} setActiveView={setActiveView} />
         )}
         
         {/* Dynamic Viewport */}
@@ -179,8 +232,24 @@ function App() {
             </div>
           )}
           
-          <h2 className="flicker">Core Database: {dbData.status}</h2>
+          {/* Persistent Telemetry Data */}
+          <div className="telemetry-header">
+            <div className="telemetry-item">
+              <span className="dim-text">System Time //</span> {displayTime}
+            </div>
+            <div className="telemetry-item">
+              <span className="dim-text">Database //</span>
+              <span className={dbData.status === 'Online' ? 'neon-text' : 'danger-text'}>
+                {dbData.status.toUpperCase()}
+              </span>
+            </div>
+            {/* Future placeholder for GPS lat/lon. */}
+            <div className="telemetry-item">
+              <span className="dim-text">Position //</span> ◭ NO SAT LOCK ◮
+            </div>
+          </div>
           
+          <h2 className="flicker">Core Database: {dbData.status}</h2>
           {setupState.vesselRequired ? (
             <VesselSetup onComplete={fetchData} />
           ) : setupState.userRequired ? (
@@ -189,7 +258,7 @@ function App() {
             <Login onLoginSuccess={() => { setIsLoggedIn(true); fetchData();}} />
           ) : (
             <>
-              {currentView === 'HUD' && vessel && (
+              {activeView === 'HUD' && vessel && (
                 <div className="vessel-box">
                   <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
                   <p>Vessel Name: {vessel.vesselName || 'Loading'}</p>
@@ -202,7 +271,7 @@ function App() {
                 </div>
               )}
               
-              {currentView === 'VESSEL_MANAGEMENT' && (
+              {activeView === 'VESSEL_MANAGEMENT' && (
                 <VesselManagement
                   vessels={allVessels}
                   onDeactivate={handleVesselDeactivate}

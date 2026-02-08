@@ -73,12 +73,14 @@ app.get('/api/system/check-init', async (req, res) => {
   }
 });
 
-// TODO: Delete this, we don't need it anymore.
-// Test Query Endpoint
-app.get('/api/system/test-db', async (req, res) => {
+// Get the time from the database server to prevent drift in the displayed time
+app.get('/api/system/get-time', async (req, res) => {
   try {
-    const result = await pool.query('SELECT TO_CHAR(LOCALTIMESTAMP, \'YYYY-MM-DD HH24:MI:SS\') AS current_time;');
-    res.json({ status: 'Online', serverTime: result.rows[0].current_time });
+    const result = await pool.query('SELECT NOW() as server_time;');
+    res.json({ 
+      status: 'Online', 
+      serverTime: result.rows[0].server_time
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Database connection failed' });
