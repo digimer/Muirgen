@@ -433,7 +433,7 @@ app.post('/api/vessels/register', authenticateToken, async (req, res) => {
     // Log the addition of the new vessel
     await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${name}] (HID: [${hull_id_number}]) registered.`);
     
-    res.json({ success: uuid: result.rows[0].uuid });
+    res.json({ success: true, uuid: result.rows[0].uuid });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
