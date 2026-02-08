@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Sidebar = ({ currentView, setCurrentView }) => {
+const Sidebar = ({ activeView, setActiveView }) => {
   const menuItems = [
     { id: 'HUD',               label: 'System HUD',   glyph: '◫' },
     { id: 'VESSEL_MANAGEMENT', label: 'Vessel Index', glyph: '⏃' },
@@ -18,8 +18,8 @@ const Sidebar = ({ currentView, setCurrentView }) => {
         {menuItems.map((item) => (
           <li key={item.id}>
             <button
-              className={`sidebar-button ${currentView === item.id ? 'active-view' : ''}`}
-              onClick={() => setCurrentView(item.id)}
+              className={`sidebar-button ${activeView === item.id ? 'active-view' : ''}`}
+              onClick={() => setActiveView(item.id)}
             >
               <span className="glyph" dangerouslySetInnerHTML= {{ __html: item.glyph }} />
               <span className="label-text">{item.label}</span>
@@ -29,6 +29,6 @@ const Sidebar = ({ currentView, setCurrentView }) => {
       </ul>
     </nav>
   );
-} ;
+};
 
 export default Sidebar;
