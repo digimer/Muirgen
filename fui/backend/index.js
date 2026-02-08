@@ -371,7 +371,7 @@ app.get('/api/vessels/get-vessel', authenticateToken, async (req, res) => {
   try {
     const vesselUuid = req.user.vessel_uuid;
     const result = await pool.query(
-      'SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset FROM vessels WHERE is_active = TRUE AND uuid = $1;',
+      'SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm FROM vessels WHERE is_active = TRUE AND uuid = $1;',
       [vesselUuid]
     );
     if (result.rows.length === 0) {
@@ -387,8 +387,8 @@ app.get('/api/vessels/get-vessel', authenticateToken, async (req, res) => {
       vesselBuildDetails: vessel.build_details,
       vesselOfficialNumber: vessel.official_number,
       vesselHullIdentificationNumber: vessel.hull_id_number, 
-      vesselKeelOffset: vessel.keel_offset, 
-      vesselWaterlineOffset: vessel.waterline_offset, 
+      vesselKeelOffset: vessel.keel_offset_cm, 
+      vesselWaterlineOffset: vessel.waterline_offset_cm, 
       setupRequired: false
     });
   } catch (err) {
@@ -417,6 +417,25 @@ app.patch('/api/vessels/reactivate/:uuid', authenticateToken, requireAdmin, asyn
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: `Reactivation Failed: ${err.message}` });
+  }
+});
+
+// Register a new vessel
+app.post('/api/vessels/register', authenticateToken, async (req, res) => {
+  const { name , flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING uuid;`,
+      [name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm]
+    );
+    
+    // Log the addition of the new vessel
+    await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${name}] (HID: [${hull_id_number}]) registered.`);
+    
+    res.json({ success: uuid: result.rows[0].uuid });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -461,7 +480,7 @@ app.post('/api/vessels/save', async (req,res) => {
       vesselWaterlineOffset } = req.body;
     try {
       await pool.query(
-          `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset, waterline_offset) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+          `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
           [vesselName, vesselFlagNation, vesselPortOfRegistry, vesselBuildDetails, vesselOfficialNumber, vesselHullIdentificationNumber, vesselKeelOffset, vesselWaterlineOffset]
       );
     } catch (err) {
@@ -497,7 +516,7 @@ app.put('/api/vessels/update/:uuid', authenticateToken, requireAdmin, async (req
   
   try {
     await pool.query(
-      'UPDATE vessels SET name = $1, flag_nation = $2, port_of_registry = $3, build_details = $4, official_number = $5, hull_id_number = $6, keel_offset = $7, waterline_offset = $8 WHERE uuid = $9;', 
+      'UPDATE vessels SET name = $1, flag_nation = $2, port_of_registry = $3, build_details = $4, official_number = $5, hull_id_number = $6, keel_offset_cm = $7, waterline_offset_cm = $8 WHERE uuid = $9;', 
       [vesselName, vesselFlagNation, vesselPortOfRegistry, vesselBuildDetails, vesselOfficialNumber, vesselHullIdentificationNumber, vesselKeelOffset, vesselWaterlineOffset, targetUuid]
     );
     

@@ -30,36 +30,36 @@ $$ language 'plpgsql';
 --       vessel exists, and user 1 is linked to it.
 -- Main vessel data
 CREATE TABLE vessels (
-        uuid                uuid           default uuidv7()    not null,
-        name                text                               not null,
-        flag_nation         text                               not null,
-        port_of_registry    text                               not null,
-        build_details       text                               not null, -- Year, Make, Model
-        official_number     text                               not null,
-        hull_id_number      text                               not null,
-        keel_offset         numeric(4,2)                       not null, -- Distance from the transducer to the keel (negative number)
-        waterline_offset    numeric(4,2)                       not null, -- Distance above the transducer to the waterline
-        is_active           boolean        default true        not null, -- If set to false, the vessel is no longer available.
-        modified_date       timestamptz    default now()       not null,
+        uuid                   uuid           default uuidv7()    not null,
+        name                   text                               not null,
+        flag_nation            text                               not null,
+        port_of_registry       text                               not null,
+        build_details          text                               not null, -- Year, Make, Model
+        official_number        text                               not null,
+        hull_id_number         text                               not null,
+        keel_offset_cm         integer                            not null, -- Distance from the transducer to the keel in cm
+        waterline_offset_cm    integer                            not null, -- Distance above the transducer to the waterline in cm
+        is_active              boolean        default true        not null, -- If set to false, the vessel is no longer available.
+        modified_date          timestamptz    default now()       not null,
         
         PRIMARY KEY (uuid)
 );
 ALTER TABLE vessels OWNER TO admin;
 
 CREATE TABLE history.vessels (
-        history_id          bigint GENERATED ALWAYS AS IDENTITY,
-        action_type         text,
-        uuid                uuid,
-        name                text,
-        flag_nation         text,
-        port_of_registry    text,
-        build_details       text,
-        official_number     text,
-        hull_id_number      text,
-        keel_offset         numeric(4,2), 
-        waterline_offset    numeric(4,2), 
-        is_active           boolean, 
-        modified_date       timestamptz
+        history_id             bigint GENERATED ALWAYS AS IDENTITY,
+        action_type            text,
+        uuid                   uuid,
+        name                   text,
+        flag_nation            text,
+        port_of_registry       text,
+        build_details          text,
+        official_number        text,
+        hull_id_number         text,
+        keel_offset_cm         integer, 
+        waterline_offset_cm    integer, 
+        is_active              boolean, 
+        modified_date          timestamptz
 );
 ALTER TABLE history.vessels OWNER TO admin;
 
@@ -80,8 +80,8 @@ BEGIN
         build_details,
         official_number, 
         hull_id_number,
-        keel_offset, 
-        waterline_offset, 
+        keel_offset_cm, 
+        waterline_offset_cm, 
         is_active, 
         modified_date)
     VALUES (
@@ -93,8 +93,8 @@ BEGIN
         NEW.build_details,
         NEW.official_number, 
         NEW.hull_id_number,
-        NEW.keel_offset, 
-        NEW.waterline_offset, 
+        NEW.keel_offset_cm, 
+        NEW.waterline_offset_cm, 
         NEW.is_active, 
         NEW.modified_date);
     RETURN NULL;
@@ -1637,7 +1637,7 @@ CREATE TABLE depth_data (
         uuid             uuid           default uuidv7()    not null,
         vessel_uuid      uuid                               not null,
         sensor_source    text                               not null, -- ie: 'dst810:<serial_number>'
-        measured         real                               not null, -- Use vessel_keel_offset and vessel_waterline_offset to display depth below keel and water depth
+        measured         real                               not null, -- Use keel_offset_cm and waterline_offset_cm to display depth below keel and water depth
         quality          smallint                           not null, -- 0~100 (percent confidence), filter out values below 50.
         sensor_roll      real                               not null, 
         sensor_pitch     real                               not null,
@@ -1672,9 +1672,9 @@ SELECT
     -- Geometric Vertical Correction: Measured * cos(roll) * cos(pitch)
     (d.measured * cos(radians(d.sensor_roll)) * cos(radians(d.sensor_pitch))) AS vertical_depth,
     -- Distance below the lowest point of the boat
-    (d.measured + v.keel_offset) AS below_keel,
+    (d.measured + v.keel_offset_cm) AS below_keel,
     -- Total depth of the water column
-    (d.measured + v.waterline_offset) AS below_waterline
+    (d.measured + v.waterline_offset_cm) AS below_waterline
 FROM depth_data d 
 JOIN vessels v ON d.vessel_uuid = v.uuid;
 ALTER VIEW corrected_depth OWNER TO admin;

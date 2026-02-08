@@ -263,6 +263,15 @@ function App() {
                   onRegister={() => console.log("Register New")}
                 />
               )}
+              
+              {activeView === 'VESSEL_REGISTRATION' && (
+                <VesselRegistration 
+                  onComplete={() => {
+                    fetchManagementData(); // refresh the index
+                    setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
+                  }}
+                />
+              )}
             </>
           )}
         </div>

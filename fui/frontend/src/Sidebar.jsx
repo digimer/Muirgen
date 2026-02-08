@@ -21,7 +21,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
               className={`sidebar-button ${activeView === item.id ? 'active-view' : ''}`}
               onClick={() => setActiveView(item.id)}
             >
-              <span className="glyph" dangerouslySetInnerHTML= {{ __html: item.glyph }} />
+              <span className="glyph">{item.glyph}</span>
               <span className="label-text">{item.label}</span>
             </button>
           </li>
