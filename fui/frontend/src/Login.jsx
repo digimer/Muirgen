@@ -41,17 +41,14 @@ function Login ({ onLoginSuccess }) {
   };
   
   return (
-    <div className="vessel-box login-mode">
-      <h2 className="flicker">Operator Authentication</h2>
-      <br />
-      
+    <>
       {status.message && (
         <div className={`status-display ${status.type}`}>
           {status.message}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="login-form">
+      <form onSubmit={handleSubmit} className="login-form login-mode">
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
@@ -89,7 +86,7 @@ function Login ({ onLoginSuccess }) {
           </button>
         </div>
       </form>
-    </div>
+    </>
   );
 }
 

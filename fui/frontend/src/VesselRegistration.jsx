@@ -34,8 +34,7 @@ const VesselRegistration = ({ onComplete, onCancel }) => {
   }
   
   return (
-    <div className="vessel-box setup-mode">
-      <h2 className="flicker">⏃ Register New Vessel</h2>
+    <>
       {error && <div className="status-display error">{error}</div>}
       <form className="setup-form" onSubmit={handleSubmit}>
         <div className="field-group">
@@ -81,7 +80,7 @@ const VesselRegistration = ({ onComplete, onCancel }) => {
           <button type="submit" className="button-icon">⏃ Record</button>
         </div>
       </form>
-    </div>
+    </>
   );
 }
 

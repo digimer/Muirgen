@@ -106,7 +106,7 @@ function UserManagement() {
   };
   
   return(
-    <div className="vessel-box setup-mode">
+    <>
       <div className="setup-display">
         
         {/* Section 1: Operator Directory */}
@@ -223,7 +223,7 @@ function UserManagement() {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

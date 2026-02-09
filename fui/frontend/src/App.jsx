@@ -211,12 +211,13 @@ function App() {
     <div className="App">
       <div className="crt-overlay" />
       
-      {/* sky-ground walking grid background. Blurred during log-out */}
+      {/* Background Layer; sky-ground walking grid background. Blurred during log-out */}
       <div className={`grid-container ${isLoggingOut ? 'blur-active' : ''}`}>
         <div className="wireframe-grid sky" />
         <div className="wireframe-grid ground" />
       </div>
-
+      
+      {/* The main view port */}
       <main className="main-layout">
         {/* Navigation Sidebar */}
         {isLoggedIn && !isLoggingOut && (
@@ -225,81 +226,105 @@ function App() {
         
         {/* Dynamic Viewport */}
         <div className={`content-viewport ${isLoggingOut ? 'blur-active' : ''}`}>
-          {/* Success message must stay inside the viewport to be visible during logout. */}
+          {/* Logout Overlay; Success message must stay inside the viewport to be visible during logout. */}
           {isLoggingOut && (
             <div className="status-display success logout-overlay">
               {logoutMessage}
             </div>
           )}
           
-          <h2 className="flicker">Core Database: {dbData.status}</h2>
-          {setupState.vesselRequired ? (
-            <VesselSetup onComplete={fetchData} />
-          ) : setupState.userRequired ? (
-            <UserSetup onComplete={fetchData} />
-          ) : !isLoggedIn ? (
-            <Login onLoginSuccess={() => { setIsLoggedIn(true); fetchData();}} />
-          ) : (
-            <>
-              {activeView === 'HUD' && vessel && (
-                <div className="vessel-box">
-                  <p>Date/Time: {dbData.serverTime || 'Loading...'}</p>
-                  <p>Vessel Name: {vessel.vesselName || 'Loading'}</p>
-                  <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
-                  <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
-                  <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
-                  <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
-                  <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
-                  <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
-                </div>
+          {/* View Center Container */}
+          <div className="view-center-container">
+            
+            {/* Which header are we showing? */}
+            {(setupState.vesselRequired || setupState.userRequired || !isLoggedIn) && (
+              <div className="task-header-wrapper">
+                <h2 className="flicker">Initial System Configuration</h2>
+              </div>
+            )}
+            
+            {/* The main HUD box */}
+            <div className="vessel-box">
+              {setupState.vesselRequired ? (
+                <>
+                  <h3 className="step-title">⏃ Initial Vessel Registration</h3>
+                  <VesselSetup onComplete={fetchData} />
+                </>
+              ) : setupState.userRequired ? (
+                <>
+                  <h3 className="step-title">⏿ System Operator Registration</h3>
+                  <UserSetup onComplete={fetchData} />
+                </>
+              ) : !isLoggedIn ? (
+                <>
+                  <h3 className="step-title">⧲ Operator Authentication</h3>
+                  <Login onLoginSuccess={() => { setIsLoggedIn(true); fetchData();}} />
+                </>
+              ) : (
+                <>
+                  {/* The main / initial page. For now, it's a simple data box */}
+                  {activeView === 'HUD' && vessel && (
+                    <>
+                      <h3 className="step-title">◫ System HUD // {vessel.vesselName || 'Loading...'}</h3>
+                      <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
+                      <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
+                      <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
+                      <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
+                      <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
+                      <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
+                    </>
+                  )}
+                  
+                  {/* The vessel management form (for managing existing vess */}
+                  {activeView === 'VESSEL_MANAGEMENT' && (
+                    <VesselManagement
+                      vessels={allVessels}
+                      onDeactivate={handleVesselDeactivate}
+                      onReactivate={handleVesselReactivation}
+                      onModify={(v) => console.log("Modify", v)}
+                      onRegister={() => setActiveView('VESSEL_REGISTRATION')}
+                    />
+                  )}
+                  
+                  {/* The new vessel registration form (separate from the initialisation form) */}
+                  {activeView === 'VESSEL_REGISTRATION' && (
+                    <VesselRegistration 
+                      onComplete={() => {
+                        fetchManagementData(); // refresh the index
+                        setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
+                      }}
+                    />
+                  )}
+                </>
               )}
-              
-              {activeView === 'VESSEL_MANAGEMENT' && (
-                <VesselManagement
-                  vessels={allVessels}
-                  onDeactivate={handleVesselDeactivate}
-                  onReactivate={handleVesselReactivation}
-                  onModify={(v) => console.log("Modify", v)}
-                  onRegister={() => console.log("Register New")}
-                />
-              )}
-              
-              {activeView === 'VESSEL_REGISTRATION' && (
-                <VesselRegistration 
-                  onComplete={() => {
-                    fetchManagementData(); // refresh the index
-                    setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
-                  }}
-                />
-              )}
-            </>
+            </div>
+          </div>
+            
+          {/* System Controls (floating top-right - Currently only the 'End Session' button */}
+          {isLoggedIn && !isLoggingOut && (
+            <div className="system-controls">
+              <button onClick={handleLogout} className="logout-button">
+                <span className="glyph">🞪</span>
+                <span className="label-text">End Session</span>
+              </button>
+            </div>
           )}
-        </div>
-        
-        {/* Persustent "End Session" button. (May move to the sidebar later) */}
-        {isLoggedIn && !isLoggingOut && (
-          <div className="system-controls">
-            <button onClick={handleLogout} className="logout-button">
-              <span className="glyph">🞪</span>
-              <span className="label-text">End Session</span>
-            </button>
-          </div>
-        )}
           
-        {/* Persistent Telemetry Data */}
-        <div className="telemetry-footer">
-          <div className="telemetry-item">
-            <span className="soft-text">System Time //</span> {displayTime}
-          </div>
-          <div className="telemetry-item">
-            <span className="soft-text">Database //</span>
-            <span className={dbData.status === 'Online' ? 'neon-text' : 'danger-text'}>
-              {dbData.status.toUpperCase()}
-            </span>
-          </div>
-          {/* Future placeholder for GPS lat/lon. */}
-          <div className="telemetry-item">
-            <span className="soft-text">Position //</span> ◭ NO SAT LOCK ◮
+          {/* Telemetry footer */}
+          <div className="telemetry-footer">
+            <div className="telemetry-item">
+              <span className="soft-text">System Time //</span> {displayTime}
+            </div>
+            <div className="telemetry-item">
+              <span className="soft-text">Database //</span>
+              <span className={dbData.status === 'Online' ? 'neon-text' : 'danger-text'}>
+                {dbData.status.toUpperCase()}
+              </span>
+            </div>
+            {/* Future placeholder for GPS lat/lon. */}
+            <div className="telemetry-item">
+              <span className="soft-text">Position //</span> ◭ NO SAT LOCK ◮
+            </div>
           </div>
         </div>
       </main>

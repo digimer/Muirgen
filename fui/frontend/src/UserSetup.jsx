@@ -99,10 +99,7 @@ function UserSetup({ onComplete }) {
   }, []);
 
   return (
-    <div className="vessel-box setup-mode">
-      <h2 className="flicker">Security: User Registration</h2>
-      <br />
-      
+    <>
       {status.message && (
         <div style={{
           /* On succes, use it's black text on a red background.
@@ -120,7 +117,7 @@ function UserSetup({ onComplete }) {
       )}
       
       {/* "Operator Handle (username) field */}
-      <form onSubmit={handleSubmit} className="setup-form">
+      <form onSubmit={handleSubmit} className="setup-form setup-mode">
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
@@ -249,7 +246,7 @@ function UserSetup({ onComplete }) {
           </button>
         </div>
       </form>
-    </div>
+    </>
   );
 }
 
