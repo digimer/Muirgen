@@ -40,6 +40,11 @@ function Login ({ onLoginSuccess }) {
     }
   };
   
+  // Enable the submit button when all fields have data.
+  const isFormValid = 
+    (formData.userHandle?.trim?.()   ?? '') !== '' && 
+    (formData.userPassword?.trim?.() ?? '') !== '';
+  
   return (
     <>
       {status.message && (
@@ -52,7 +57,7 @@ function Login ({ onLoginSuccess }) {
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="userPassword">
+            <label htmlFor="userHandle">
               <span className="label-text">Handle</span>
             </label>
           </div>
@@ -79,10 +84,14 @@ function Login ({ onLoginSuccess }) {
             onChange={e => setFormData({...formData, userPassword: e.target.value})}
           />
         </div>
-
-        <div className="button-group">
-          <button type="submit" className="touch-button" disabled={status.type === 'success'}>
-            Login
+        
+        {/* Wrapper to match the vertical footprint of the other groups */}
+        <div className="login-button-wrap">
+          <div className="setup-field-header">
+            <span className="label-text" style={{ visibility: 'hidden' }}>Spacer</span>
+          </div>
+          <button type="submit" className={`button-icon login-button-adjust ${isFormValid ? 'button-confirm-ready' : ''}`} disabled={!isFormValid}>
+            {status.type === 'success' ? "Validating..." : "Login"}
           </button>
         </div>
       </form>

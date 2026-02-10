@@ -97,6 +97,14 @@ function UserSetup({ onComplete }) {
         }
       })
   }, []);
+  
+  // Enable the submit button when all fields have data.
+  const isFormValid = 
+    (formData.userHandle?.trim?.()          ?? '') !== '' && 
+    (formData.userName?.trim?.()            ?? '') !== '' && 
+    (formData.userPassword?.trim?.()        ?? '') !== '' && 
+    (formData.userPasswordConfirm?.trim?.() ?? '') !== '' && 
+    (formData.userVesselUuid?.trim?.()      ?? '') !== '';
 
   return (
     <>
@@ -239,10 +247,8 @@ function UserSetup({ onComplete }) {
         </div>
         {/* The submit button */}
         <div className="button-row">
-          <button type="submit" 
-            className="touch-button" 
-            disabled={status.type === 'success'}>
-            {status.type === 'success' ? "Recording..." : "Register Primary SysOp"}
+          <button type="submit" className={`button-icon ${isFormValid ? 'button-confirm-ready' : ''}`} disabled={!isFormValid}>
+            {status.type === 'success' ? "Recording..." : "Register SysOp"}
           </button>
         </div>
       </form>

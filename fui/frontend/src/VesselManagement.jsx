@@ -97,9 +97,9 @@ const VesselManagement = ({ vessels, onDeactivate, onReactivate, onModify, onReg
       )}
       
       {/* Active Footer for adding new vessels */}
-      <div className="command-line">
+      <div className="action-bar">
         <span className="cursor-prompt">⌲</span>
-        <button className="button-primary" onClick={onRegister}>
+        <button className="touch-button" onClick={onRegister}>
           Register New Vessel
         </button>
       </div>

@@ -72,6 +72,25 @@ input:-webkit-autofill:active {
 }
 
 /* --- 3. COMPONENTS --- */
+/* Universal action bar */
+.action-bar {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-top: 1px solid var(--dim-red);
+  width: 100%;
+}
+
+.action-bar .cursor-prompt {
+  font-size: 1.2rem;
+  color: var(--neon-red);
+  animation: pulse-fade 1.5s infinite;
+  display: flex;
+  align-items: center;
+}
+
 /* Container for table actions */
 .actions-cell {
   display: flex;
@@ -79,12 +98,22 @@ input:-webkit-autofill:active {
   align-items: center;
 }
 
+/* Enabled button class */
+.button-confirm-ready {
+  opacity: 1 !important;
+  background: var(--soft-red) !important;
+  color: var(--dark-bg) !important;
+  border: 1px solid var(--neon-red) !important;
+  animation: ready-pulse 1.5s infinite ease-in-out;
+  cursor: pointer !important;
+}
+
 /* Base style for in-row icon buttons */
 .button-icon {
-  background: transparent;
-  border: 1px solid var(--soft-red);
+  background: rgba(139, 0, 0, 0.3);
   color: var(--soft-red);
-  padding: 8px 16px;
+  border: 1px solid var(--soft-red);
+  padding: 10px 20px;
   font-family: 'Oxanium', sans-serif;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -92,9 +121,17 @@ input:-webkit-autofill:active {
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s ease;
-  cursor: pointer;
+  transition: all 0.3s ease;
+  cursor: not-allowed;
   min-height: 35px; /* Ensure uniform height */
+}
+
+/* Disabled buttons */
+.button-icon:disabled {
+  background: rgba(80, 0, 0, 0.6);
+  color: var(--soft-red);
+  border-color: var(--soft-red);
+  opacity: 0.7;
 }
 
 /* Hover state: inverts to black text on a red button */
@@ -103,14 +140,6 @@ input:-webkit-autofill:active {
   color: var(--dark-bg) !important;
   border-color: var(--neon-red);
   box-shadow: 0 0 10px var(--neon-red);
-}
-
-/* Disabled buttons */
-.button-icon:disabled {
-  border-color: var(--dim-red);
-  color: var(--dim-red);
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 /* Danger variant for potentially risky actions */
@@ -137,12 +166,35 @@ input:-webkit-autofill:active {
   letter-spacing: 1px;
 }
 
+.login-button-adjust {
+  box-sizing: border-box;  /* Include padding and border in the 56px height */
+  height: 56px;            /* Match the total height of the handle and password input fields */
+  padding: 0 30px;         /* Horizontal padding */
+  margin-bottom: 0;        /* Reset margin */
+  display: flex; 
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;    /* Ensure the button stays pinned to the bottom of the grid row. */
+}
+
+/* Login class for Login.jsx */
+.login-button-wrap {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+}
+
 .login-form {
   display: grid;
-  grid-template-columns: 1fr; /* Default: Stacked (mobile/narrow) */
+  grid-template-columns: 1fr 1fr auto; /* Default: Stacked (mobile/narrow) */
   gap: 20px;
-  align-items: end; /* Aligns button with input fields */
+  align-items: end;                    /* Aligns button with input fields */
   width: 100%;
+}
+
+.login-form input {
+  box-sizing: border-box;
+  height: 56px;
 }
 
 .sidebar-button {
@@ -309,22 +361,24 @@ input:-webkit-autofill:active {
 }
 
 .task-header-wrapper h2 {
+  /* font-family: 'Oxanium', sans-serif; */
+  font-family: 'Ubuntu Sans Mono', monospace;
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 2rem;
   letter-spacing: 2px;
-  /* text-transform: uppercase; */
-  font-family: 'Oxanium', sans-serif;
+  text-transform: uppercase;
 }
 
 .step-title {
   font-family: 'Oxanium', sans-serif;
-  color: var(--soft-red);
-  /* text-transform: uppercase; */
-  font-size: 0.8rem;
+  color: var(--neon-red);
+  text-transform: uppercase;
+  font-size: 1.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--dim-red);
+  border-bottom: 1px solid var(--soft-red);
   padding-bottom: 8px;
   letter-spacing: 1px;
+  text-shadow: 0 0 10px var(--neon-red);
 }
 
 .data-table {
@@ -771,6 +825,12 @@ input[type="number"] {
     color: #770000;
     text-shadow: 0 0 0px rgba(255, 0, 0, 0);
   }
+}
+
+@keyframes ready-pulse {
+  0% { box-shadow: 0 0 5px var(--soft-red); background: var(--soft-red); }
+  50% { box-shadow: 0 0 20px var(--neon-red); background: var(--strong-red); }
+  100% { box-shadow: 0 0 5px var(--soft-red); background: var(--soft-red) }
 }
 
 /* --- 6. RESPONSIVE --- */
