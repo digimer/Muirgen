@@ -69,7 +69,7 @@ function UserSetup({ onComplete }) {
   // Check if this is the first user. If so, 'is_admin' will be forced to true.
   const [isFirstUser, setIsFirstUser] = useState(false);
   useEffect(() => {
-    fetch(`/api/system/check-init`)
+    fetch(`/api/system/sync-session`)
       .then(res => res.json())
       .then(data => {
         if (data.userRequired) {

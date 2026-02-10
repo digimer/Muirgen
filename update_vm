@@ -8,5 +8,3 @@ rsync -av ./fui/package.json admin@mr-scifi-ui:/home/admin/fui/
 rsync -av ./fui/config.js admin@mr-scifi-ui:/home/admin/fui/
 rsync -av --exclude='node_modules' ./fui/frontend/* admin@mr-scifi-ui:/home/admin/fui/frontend/
 rsync -av ./fui/backend/* admin@mr-scifi-ui:/home/admin/fui/backend/
-# recompile
-#ssh admin@mr-scifi-ui "cd /home/admin/fui && npm install && npm run build && pm2 restart fui"

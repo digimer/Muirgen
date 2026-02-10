@@ -54,20 +54,35 @@ function App() {
   };
   
   // If there's a last used view for the user (if they're logged in), load it.
-  useEffect (() => {
-    if (isLoggedIn &&  currentUser?.userUuid) {
-      const userKey = `muirgen_view_${currentUser.userUuid}`;
-      const savedView = localStorage.getItem(userKey);
-      if (savedView) setActiveView(savedView);
-    }
-  }, [isLoggedIn, currentUser?.userUuid]);
-  
-  // Record the active user's current view.
   useEffect(() => {
-    if (isLoggedIn && currentUser?.userUuid) {
-      localStorage.setItem(`muirgen_view_${currentUser.userUuid}`, activeView);
+    // Identify the operator, if they're logged in.
+    const id = currentUser?.uuid || localStorage.getItem('muirgen_user_uuid');
+    
+    if (!id) {
+      console.warn('Persistence: No user ID found.');
+      return;
     }
-  }, [activeView, isLoggedIn, currentUser?.userUuid]);
+    
+    // Build the storage key from their ID.
+    const storageKey = `muirgen_view_${id}`;
+    
+    // Initial load; If we just started and haven't moved from the HUD, try to restore the user's last page.
+    if (activeView === 'HUD') {
+      const savedView = localStorage.getItem(storageKey);
+      if (savedView && savedView !== 'HUD') {
+        console.log(`Persistence: Restoring: [${savedView}] for operator: [${id}]`);
+        setActiveView(savedView);
+        // Exit early so we don't immediately resave 'HUD'
+        return;
+      }
+    }
+    
+    // If the user is logged in and changes the view, save it.
+    if (isLoggedIn) {
+      console.log(`Persistence: Recording: [${activeView}] to: [${storageKey}]`);
+      localStorage.setItem(storageKey, activeView);
+    }
+  }, [activeView, currentUser, isLoggedIn]);
   
   // Watch for 401 or 403 errors indicating a bad token and triggering a logout.
   useEffect(() => {
@@ -141,6 +156,7 @@ function App() {
     // Show the hang-up message for 2 seconds. 
     setTimeout(() => {
       // Clear the token locally
+      localStorage.removeItem('muirgen_user_uuid');
       localStorage.removeItem('muirgen_token');
       setIsLoggedIn(false);
       setVessel(null);
@@ -163,36 +179,50 @@ function App() {
     
     // Check if we've got a saved token
     try {
-      const [statusRes, initRes] = await Promise.all([
+      const [statusRes, syncRes] = await Promise.all([
         fetch(`/api/system/get-time`),
-        apiFetch(`/api/system/check-init`)
+        apiFetch(`/api/system/sync-session`)
       ]);
       
       const statusData = await statusRes.json();
-      const initData = await initRes.json();
+      const syncData = await syncRes.json();
 
       // Map the identity from the JWT to state
-      if(initData.isLoggedIn && initData .user) {
-        setCurrentUser(initData.user); // Should have the user's UUID and handle.
+      if (syncData.isLoggedIn && syncData.user) {
+        console.log("Fetch: User object received: ", syncData.user);
+        
+        // Standardized ID lookup
+        const id = syncData.user.uuid || localStorage.getItem('muirgen_user_uuid');
+        
+        if (id) {
+          console.log(`Fetch: Standarzied ID to: [${id}]`);
+          
+          // Save this locally so the load effect can find it on browser reload.
+          localStorage.setItem('muirgen_user_uuid', id);
+          setCurrentUser(syncData.user);
+          setIsLoggedIn(true);
+        } else {
+          console.error("Fetch: User found but no UUID property detected!");
+        }
       } else {
         setCurrentUser(null);
       }
       
       setDbData(statusData);
-      setSetupState(initData);
+      setSetupState(syncData);
       
       // If, for some reason, the setup is required but a stale token remains, delete it.
-      if (initData.userRequired || initData.vesselRequired) {
+      if (syncData.userRequired || syncData.vesselRequired) {
         if (localStorage.getItem('muirgen_token')) {
           localStorage.removeItem('muirgen_token');
         }
         setIsLoggedIn(false);
       } else if (!isLoggingOutRef.current) {
-        setIsLoggedIn(initData.isLoggedIn);
+        setIsLoggedIn(syncData.isLoggedIn);
       }
       
       // Get vessel data if the user is logged in.
-      if (!initData.userRequired && !initData.vesselRequired && initData.isLoggedIn) {
+      if (!syncData.userRequired && !syncData.vesselRequired && syncData.isLoggedIn) {
         const vesselRes = await apiFetch(`/api/vessels/get-vessel`);
         // prevents crashing on vesselRed.json() if the token was nuked.
         if (!vesselRes) { return; }

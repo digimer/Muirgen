@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite frontend",
-    "build": "vite build ./frontend --outDir ../frontend/dist",
+    "build": "vite build ./frontend --outDir ./frontend/dist",
     "preview": "vite preview frontend", 
     "start": "node backend/index.js" 
   },
