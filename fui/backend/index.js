@@ -1,4 +1,3 @@
-// ~/fui/backend/index.js
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
@@ -14,18 +13,16 @@ const __dirname = path.dirname(__filename);
 // Initialise environment variables;
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-// Import files that rely on environment variables or shared configs.
 import config from '../config.js';
 import pool from './db.js';
 import { authenticateToken, requireAdmin } from './middleware/auth.js';
 import { auditLog } from './utils/logger.js';
 
 const app = express();
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
 
-// Standard middleware
-app.use(cors()); // Critical for local cross-port communication
+app.use(express.static(frontendDistPath));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend/dist'))); // points to the compiled UI
 
 /* *********************************************************************************************************/
 /* Section 1: System Endpoints                                                                             */
@@ -426,16 +423,34 @@ app.patch('/api/vessels/reactivate/:uuid', authenticateToken, requireAdmin, asyn
 
 // Register a new vessel
 app.post('/api/vessels/register', authenticateToken, async (req, res) => {
-  const { name , flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm } = req.body;
+  const { 
+    vesselName, 
+    vesselFlagNation, 
+    vesselPortOfRegistry, 
+    vesselBuildDetails, 
+    vesselOfficialNumber, 
+    vesselHullIdentificationNumber, 
+    vesselKeelOffset, 
+    vesselWaterlineOffset
+  } = req.body;
   try {
     const result = await pool.query(
       `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING uuid;`,
-      [name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm]
+      [
+        vesselName, 
+        vesselFlagNation, 
+        vesselPortOfRegistry, 
+        vesselBuildDetails, 
+        vesselOfficialNumber, 
+        vesselHullIdentificationNumber, 
+        vesselKeelOffset, 
+        vesselWaterlineOffset
+      ]
     );
     
     // Log the addition of the new vessel
-    await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${name}] (HID: [${hull_id_number}]) registered.`);
+    await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${vesselName}], HID: [${vesselHullIdentificationNumber}] registered.`);
     
     res.json({ success: true, uuid: result.rows[0].uuid });
   } catch (err) {
@@ -536,18 +551,12 @@ app.put('/api/vessels/update/:uuid', authenticateToken, requireAdmin, async (req
 /* Section 4: Non-endpoint stuff                                                                           */
 /* *********************************************************************************************************/
 
-process.on('uncaughtException', function (err) {
-  console.error('FATAL UNCAUGHT EXCEPTION:', err.message);
-  // Optional: Add more details here
-  process.exit(1); // Exit the process cleanly for PM2 to restart it
-});
-
-// Ensure that if the page is refreshhed on a sub-route, it still loads index.html
-app.get(/^(?!\/api\/).+/, (req, res, next) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
-
 const PORT = process.env.PORT || config.apiPort || 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend online on port ${PORT}`);
+});
+
+// Ensure the SPA routing also uses the absolute path
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
 });

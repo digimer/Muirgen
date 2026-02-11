@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import useInterval from './useInterval'; // Import our new hook
+import useInterval from './useInterval';
 import config from '@shared/config.js';
 import './App.css';
 import VesselSetup from './VesselSetup'; 
@@ -8,6 +8,7 @@ import Login from './Login';
 import { apiFetch } from './utils/api.js';
 import Sidebar from './Sidebar';
 import VesselManagement from './VesselManagement';
+import VesselRegistration from './VesselRegistration';
 
 function App() {
   // Remember where the user was in case the browser reloads. 
@@ -20,6 +21,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [displayTime, setDisplayTime] = useState('Acquiring Time Source...');
   const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
+  const hasRestoredSession = useRef(false);
   // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isLoggingOutRef = useRef(false);
@@ -66,19 +68,22 @@ function App() {
     // Build the storage key from their ID.
     const storageKey = `muirgen_view_${id}`;
     
-    // Initial load; If we just started and haven't moved from the HUD, try to restore the user's last page.
-    if (activeView === 'HUD') {
+    // Restore logic; Run only once.
+    // Only attempt restore if we haven't yet and the current view is HUD.
+    if (!hasRestoredSession.current && activeView == 'HUD') {
       const savedView = localStorage.getItem(storageKey);
+      
       if (savedView && savedView !== 'HUD') {
         console.log(`Persistence: Restoring: [${savedView}] for operator: [${id}]`);
         setActiveView(savedView);
+        hasRestoredSession.current = true;
         // Exit early so we don't immediately resave 'HUD'
         return;
       }
     }
     
     // If the user is logged in and changes the view, save it.
-    if (isLoggedIn) {
+    if (isLoggedIn && !isLoggingOutRef.current) {
       console.log(`Persistence: Recording: [${activeView}] to: [${storageKey}]`);
       localStorage.setItem(storageKey, activeView);
     }
@@ -145,9 +150,6 @@ function App() {
     setIsLoggingOut(true);
     isLoggingOutRef.current = true;
     
-    // Reset the HUD as the default display for the next user/session.
-    setActiveView('HUD');
-    
     // Log the logout.
     const logPromise = apiFetch('/api/users/logout', { method: 'POST' }).catch(err => {
       console.warn("Entering a log in audit_log appears to have failed:", err);
@@ -160,6 +162,10 @@ function App() {
       localStorage.removeItem('muirgen_token');
       setIsLoggedIn(false);
       setVessel(null);
+      
+      // Reset the HUD as the default display for the next user/session.
+      setActiveView('HUD');
+      
       // unblur for the next session
       setIsLoggingOut(false);
       isLoggingOutRef.current = false;
@@ -254,22 +260,29 @@ function App() {
           <Sidebar activeView={activeView} setActiveView={setActiveView} />
         )}
         
-        {/* Dynamic Viewport */}
+        {/* Dynamic background Viewport */}
         <div className={`content-viewport ${isLoggingOut ? 'blur-active' : ''}`}>
-          {/* Logout Overlay; Success message must stay inside the viewport to be visible during logout. */}
-          {isLoggingOut && (
-            <div className="status-display success logout-overlay">
-              {logoutMessage}
-            </div>
-          )}
           
           {/* View Center Container */}
           <div className="view-center-container">
             
             {/* Which header are we showing? */}
-            {(setupState.vesselRequired || setupState.userRequired || !isLoggedIn) && (
+            {(!isLoggedIn) ? (
               <div className="task-header-wrapper">
-                <h2 className="flicker">Initial System Configuration</h2>
+                {(setupState.vesselRequired || setupState.userRequired) ? (
+                  <h2 className="flicker">Initial System Configuration</h2>
+                ) : (
+                  <h2 className="flicker">⧲ Operator Authentication</h2>
+                )}
+              </div>
+            ) : (
+              <div className="task-header-wrapper">
+                {activeView === 'VESSEL_MANAGEMENT' && (
+                  <h2 className="flicker">Terminal ▷ Vessel Index</h2>
+                )}
+                {activeView === 'VESSEL_REGISTRATION' && (
+                  <h2 className="flicker">Terminal ▷ Vessel Registration</h2>
+                )}
               </div>
             )}
             
@@ -287,7 +300,7 @@ function App() {
                 </>
               ) : !isLoggedIn ? (
                 <>
-                  <h3 className="step-title">⧲ Operator Authentication</h3>
+                  <h3 className="step-title">Security: Enter Credentials</h3>
                   <Login onLoginSuccess={() => { setIsLoggedIn(true); fetchData();}} />
                 </>
               ) : (
@@ -357,6 +370,13 @@ function App() {
             </div>
           </div>
         </div>
+    
+        {/* Logout Overlay; Success message must stay inside the viewport to be visible during logout. */}
+        {isLoggingOut && (
+          <div className="status-display success logout-overlay">
+            {logoutMessage}
+          </div>
+        )}
       </main>
     </div>
   );

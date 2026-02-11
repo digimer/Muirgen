@@ -1,5 +1,6 @@
 #!/bin/bash
-cd ~/Mermaid\'s\ Rest/programs/Muirgen
+#cd ~/Mermaid\'s\ Rest/programs/Muirgen
+pwd
 # root owned stuff
 rsync -av ./muirgen.sql root@mr-scifi-ui:/root/
 rsync -av ./nginx/* root@mr-scifi-ui:/etc/nginx/conf.d/

@@ -5,6 +5,7 @@ const VesselManagement = ({ vessels, onDeactivate, onReactivate, onModify, onReg
   const [confirmingUuid, setConfirmingUuid] = useState(null);
   const [timerActive, setTimerActive] = useState(false);
   const activeCount = vessels.filter(v => v.is_active).length;
+  const sortedVessels = [...vessels].sort((a, b) => a.name.localeCompare(b.name));
   
   // Handle 15 second timeout
   useEffect(() => {
@@ -34,7 +35,7 @@ const VesselManagement = ({ vessels, onDeactivate, onReactivate, onModify, onReg
   
   return (
     <div className="management-container">
-     <h2 className="flicker-subtle">Terminal ▷ Vessel Index</h2>
+     <h3 className="flicker-subtle">Edit Existing // Register New</h3>
       
       <table className="data-table">
         <thead>
@@ -47,37 +48,37 @@ const VesselManagement = ({ vessels, onDeactivate, onReactivate, onModify, onReg
           </tr>
         </thead>
         <tbody>
-          {vessels.map(v => (
-            <tr key={v.uuid} className={v.is_active ? 'vessel-active' : 'vessel-inactive'}>
+          {sortedVessels.map((vessel) => (
+            <tr key={vessel.uuid} className={vessel.is_active ? 'vessel-active' : 'vessel-inactive'}>
               <td className="status-cell">
-                {v.is_active ? (
+                {vessel.is_active ? (
                   <span>┗ Active ┓</span>
                 ) : (
                   <span>╚ Deactivated ╗</span>
                 )}
               </td>
-              <td>{v.name}</td>
-              <td>{v.hull_id_number || '◬ HIN Missing ◬' }</td>
-              <td>{v.official_number || '◬ ON Missing ◬' }</td>
+              <td>{vessel.name}</td>
+              <td>{vessel.hull_id_number || '◬ HIN Missing ◬' }</td>
+              <td>{vessel.official_number || '◬ ON Missing ◬' }</td>
               <td className="actions-cell">
                 <button className="button-icon" onClick={() => onModify(v)}>
                   ⌬ Edit
                 </button>
-                {v.is_active ? (
+                {vessel.is_active ? (
                   <button 
-                    className={`button-icon button-danger ${confirmingUuid === v.uuid ? 'button-confirm-state' : ''}`}
-                    onClick={() => handleActionClick(v.uuid, onDeactivate)}
+                    className={`button-icon button-danger ${confirmingUuid === vessel.uuid ? 'button-confirm-state' : ''}`}
+                    onClick={() => handleActionClick(vessel.uuid, onDeactivate)}
                     disabled={activeCount < 2} // Disabled unless there's 2+ active vessels
                     title={activeCount < 2 ? "Can not disable the only active vessel" : ''}
                   >
-                    {confirmingUuid === v.uuid ? '◭ Confirm Deactivation ◮' : '⌧ Deactivate ⌧'}
+                    {confirmingUuid === vessel.uuid ? '◭ Confirm Deactivation ◮' : '⌧ Deactivate ⌧'}
                   </button>
                 ) : (
                   <button 
-                    className={`button-icon button-secure ${confirmingUuid === v.uuid ? 'button-confirm-state' : ''}`}
-                    onClick={() => handleActionClick(v.uuid, onReactivate)}
+                    className={`button-icon button-danger ${confirmingUuid === vessel.uuid ? 'button-confirm-state' : ''}`}
+                    onClick={() => handleActionClick(vessel.uuid, onReactivate)}
                   >
-                    {confirmingUuid === v.uuid ? '▷ Confirm Reactivation ◁' : '⌗ Activate ⌗'}
+                    {confirmingUuid === vessel.uuid ? '▷ Confirm Reactivation ◁' : '⌗ Activate ⌗'}
                  </button>
                 )}
               </td>

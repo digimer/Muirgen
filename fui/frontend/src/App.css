@@ -86,7 +86,7 @@ input:-webkit-autofill:active {
 .action-bar .cursor-prompt {
   font-size: 1.2rem;
   color: var(--neon-red);
-  animation: pulse-fade 1.5s infinite;
+  /*animation: pulse-fade 1.5s infinite;*/
   display: flex;
   align-items: center;
 }
@@ -158,6 +158,7 @@ input:-webkit-autofill:active {
   margin-top: 2rem;
   display: flex;
   justify-content: flex-end;
+  gap: 1.5rem;
 }
 
 /* Specific error glyphs to catch the eye without white light */
@@ -396,7 +397,7 @@ input:-webkit-autofill:active {
 }
 
 .data-table td {
-  padding: 12pc 10px;
+  padding: 12px 10px;
   border-bottom: 1px solid var(--neon-red);
 }
 
@@ -800,6 +801,12 @@ input[type="number"] {
 
 .flicker {
   text-shadow: 0 0 10px var(--neon-red);
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* Used for <h3> */
+.flicker-subtle {
+  text-shadow: 0 0 8px var(--strong-red);
   font-family: 'Orbitron', sans-serif;
 }
 
