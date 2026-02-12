@@ -36,7 +36,7 @@ CREATE TABLE vessels (
         port_of_registry       text                               not null,
         build_details          text                               not null, -- Year, Make, Model
         official_number        text                               not null,
-        hull_id_number         text                               not null,
+        hull_id_number         text           unique              not null,
         keel_offset_cm         integer                            not null, -- Distance from the transducer to the keel in cm
         waterline_offset_cm    integer                            not null, -- Distance above the transducer to the waterline in cm
         is_active              boolean        default true        not null, -- If set to false, the vessel is no longer available.

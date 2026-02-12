@@ -4,11 +4,13 @@
   src: url('./assets/fonts/orbitron.woff2') format('woff2');
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Oxanium';
   src: url('./assets/fonts/oxanium.woff2') format('woff2');
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Ubuntu Sans Mono';
   src: url('./assets/fonts/ubuntu_sans_mono.woff2') format('woff2');
@@ -55,14 +57,19 @@ body {
 
 /* Target the browser's autofill state */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 1000px black inset !important; /* This trick "freezes" the background as transparent/black */
-    -webkit-text-fill-color: var(--neon-red) !important; /* Sets the text color to your neon red */
-    caret-color: var(--neon-red); /* keep the cursor red */
-    font-family: 'Ubuntu Sans Mono', monospace !important; /* Ensure the font matches your terminal aesthetic */
-    transition: background-color 5000s ease-in-out 0s; /* Smooth out the transition so the white doesn't "flash" on load */
+  -webkit-box-shadow: 0 0 0 1000px black inset !important;
+  /* This trick "freezes" the background as transparent/black */
+  -webkit-text-fill-color: var(--neon-red) !important;
+  /* Sets the text color to your neon red */
+  caret-color: var(--neon-red);
+  /* keep the cursor red */
+  font-family: 'Ubuntu Sans Mono', monospace !important;
+  /* Ensure the font matches your terminal aesthetic */
+  transition: background-color 5000s ease-in-out 0s;
+  /* Smooth out the transition so the white doesn't "flash" on load */
 }
 
 /* Style the placeholder text to match the rest of the UI */
@@ -94,7 +101,7 @@ input:-webkit-autofill:active {
 /* Container for table actions */
 .actions-cell {
   display: flex;
-  gap: 15px; 
+  gap: 15px;
   align-items: center;
 }
 
@@ -122,8 +129,8 @@ input:-webkit-autofill:active {
   align-items: center;
   gap: 8px;
   transition: all 0.3s ease;
-  cursor: not-allowed;
-  min-height: 35px; /* Ensure uniform height */
+  min-height: 35px;
+  /* Ensure uniform height */
 }
 
 /* Disabled buttons */
@@ -161,6 +168,12 @@ input:-webkit-autofill:active {
   gap: 1.5rem;
 }
 
+.action-row {
+  margin-top: 2rem;
+  border-top: 1px solid var(--dim-red);
+  padding-top: 2rem;
+}
+
 /* Specific error glyphs to catch the eye without white light */
 .error-text {
   font-style: italic;
@@ -168,14 +181,19 @@ input:-webkit-autofill:active {
 }
 
 .login-button-adjust {
-  box-sizing: border-box;  /* Include padding and border in the 56px height */
-  height: 56px;            /* Match the total height of the handle and password input fields */
-  padding: 0 30px;         /* Horizontal padding */
-  margin-bottom: 0;        /* Reset margin */
-  display: flex; 
+  box-sizing: border-box;
+  /* Include padding and border in the 56px height */
+  height: 56px;
+  /* Match the total height of the handle and password input fields */
+  padding: 0 30px;
+  /* Horizontal padding */
+  margin-bottom: 0;
+  /* Reset margin */
+  display: flex;
   align-items: center;
   justify-content: center;
-  align-self: flex-end;    /* Ensure the button stays pinned to the bottom of the grid row. */
+  align-self: flex-end;
+  /* Ensure the button stays pinned to the bottom of the grid row. */
 }
 
 /* Login class for Login.jsx */
@@ -187,9 +205,11 @@ input:-webkit-autofill:active {
 
 .login-form {
   display: grid;
-  grid-template-columns: 1fr 1fr auto; /* Default: Stacked (mobile/narrow) */
+  grid-template-columns: 1fr 1fr auto;
+  /* Default: Stacked (mobile/narrow) */
   gap: 20px;
-  align-items: end;                    /* Aligns button with input fields */
+  align-items: end;
+  /* Aligns button with input fields */
   width: 100%;
 }
 
@@ -199,17 +219,19 @@ input:-webkit-autofill:active {
 }
 
 .sidebar-button {
-  background: transparent; 
+  background: transparent;
   border: 1px solid transparent;
   color: var(--soft-red);
   width: 100%;
   text-align: left;
-  padding: 15px 12px;           /* Extra vertical height for easier button presses */
+  padding: 15px 12px;
+  /* Extra vertical height for easier button presses */
   margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 1rem;              /* Larger font size for easier legibility */
+  font-size: 1rem;
+  /* Larger font size for easier legibility */
   font-family: 'Oxanium', sans-serif;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -223,7 +245,7 @@ input:-webkit-autofill:active {
   box-shadow: inset 0 0 10px rgba(255, 0, 0, 0.2);
 }
 
-.sidebar-button:hover, 
+.sidebar-button:hover,
 .sidebar-button.active-view:hover {
   background: var(--neon-red) !important;
   color: var(--dark-bg) !important;
@@ -238,29 +260,43 @@ input:-webkit-autofill:active {
 
 /* Pop the glyphs */
 .sidebar-button .glyph {
-  font-size: 1.6rem;       /* Scale relative to the button height. */
-  line-height: 1;          /* Prevent the glyph from pushing text. */
-  display: flex;           /*  */
-  align-items: center;     /*  */
-  justify-content: center; /*  */
-  width: 24px;             /* Fixed width to keep labels aligned */
-  color: inherit;          /* Inherit the color from the parent so it flips with the text. */
+  font-size: 1.6rem;
+  /* Scale relative to the button height. */
+  line-height: 1;
+  /* Prevent the glyph from pushing text. */
+  display: flex;
+  /*  */
+  align-items: center;
+  /*  */
+  justify-content: center;
+  /*  */
+  width: 24px;
+  /* Fixed width to keep labels aligned */
+  color: inherit;
+  /* Inherit the color from the parent so it flips with the text. */
 }
 
 .sidebar-divider {
-  height: 2px;                   /*  */
-  background: var(--strong-red); /* Match the title for unified header block */
-  width: calc(100% + 20px);      /* calc accounts for the 10px padding on the .sidebar-nav class */
-  margin-left: -10px;            /* Pull the line left to touch the vertical border */
-  margin-top: 10px;               /*  */
-  opacity: 0.4;                  /* Dim the line so it doesn't over-power the text */
+  height: 2px;
+  /*  */
+  background: var(--strong-red);
+  /* Match the title for unified header block */
+  width: calc(100% + 20px);
+  /* calc accounts for the 10px padding on the .sidebar-nav class */
+  margin-left: -10px;
+  /* Pull the line left to touch the vertical border */
+  margin-top: 10px;
+  /*  */
+  opacity: 0.4;
+  /* Dim the line so it doesn't over-power the text */
 }
 
 .sidebar-header {
   margin-bottom: 30px;
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* Align the title and divider to the left edge */
+  align-items: flex-start;
+  /* Align the title and divider to the left edge */
   width: 100%;
 }
 
@@ -272,15 +308,24 @@ input:-webkit-autofill:active {
 
 .sidebar-title {
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.9rem;                   /* Bump the font size */
-  font-weight: 900;                    /* Max boldness for the Orbitron font */
-  color: var(--neon-red);            /* Bright red, but not neon red */
-  letter-spacing: 0.35rem;             /* Spread the text to fill the sidebar */
-  text-align: center;                  /* Centers the title in the sidebar */
-  width: 100%;                         /* Push to use the full sidebar width */
-  display: block;                      /*  */
-  text-shadow: 0 0 5px var(--dim-red); /* Subtle phosphorescent glow */
-  /*margin-bottom: 10px; */                 /*  */
+  font-size: 0.9rem;
+  /* Bump the font size */
+  font-weight: 900;
+  /* Max boldness for the Orbitron font */
+  color: var(--neon-red);
+  /* Bright red, but not neon red */
+  letter-spacing: 0.35rem;
+  /* Spread the text to fill the sidebar */
+  text-align: center;
+  /* Centers the title in the sidebar */
+  width: 100%;
+  /* Push to use the full sidebar width */
+  display: block;
+  /*  */
+  text-shadow: 0 0 5px var(--dim-red);
+  /* Subtle phosphorescent glow */
+  /*margin-bottom: 10px; */
+  /*  */
 }
 
 .sidebar-nav {
@@ -315,14 +360,17 @@ input:-webkit-autofill:active {
 .vessel-box {
   border: 2px solid var(--neon-red);
   padding: 2rem;
-  margin: 0;                                 /* Centering is handled by the parent */
+  margin: 0;
+  /* Centering is handled by the parent */
   background-color: rgba(0, 0, 0, 0.9);
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
-  width: 90%;                                /* Gives room for auto to work */
+  width: 90%;
+  /* Gives room for auto to work */
   max-width: var(--box-max-width);
 }
 
-.setup-mode, .login-mode {
+.setup-mode,
+.login-mode {
   max-width: var(--box-max-width);
   width: 100%;
 }
@@ -340,7 +388,8 @@ input:-webkit-autofill:active {
 
 /* Dimmed red for de-prioritized data */
 .vessel-inactive {
-  color: var(--dim-red); /* Low luminance, stays within the safe spectrum */
+  color: var(--dim-red);
+  /* Low luminance, stays within the safe spectrum */
   opacity: 0.7;
 }
 
@@ -461,12 +510,13 @@ input:-webkit-autofill:active {
   white-space: nowrap;
 }
 
-input, 
+input,
 input[type="number"],
 .field-group input {
   background: black;
   color: var(--neon-red);
-  border: 1px solid var(--inactive-border); /* 0.5 opacity red */
+  border: 1px solid var(--inactive-border);
+  /* 0.5 opacity red */
   padding: 15px;
   font-family: 'Ubuntu Sans Mono', monospace;
   font-size: 1.2rem;
@@ -484,18 +534,22 @@ input[type="number"]:focus {
 
 /* (mostly) static footer telemetry data */
 .telemetry-footer {
-  position: absolute;                         /* Pin it to the bottom of the view port */
+  position: absolute;
+  /* Pin it to the bottom of the view port */
   bottom: 0;
-  left: 0;                                   /* Align with the sidebar width */
+  left: 0;
+  /* Align with the sidebar width */
   right: 0;
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid var(--soft-red);      /* Retain the horizontal separator */
+  border-top: 1px solid var(--soft-red);
+  /* Retain the horizontal separator */
   padding: 10px 20px;
   font-family: 'Ubuntu Sans Mono', monospace;
   font-size: 0.85rem;
   background: rgba(20, 0, 0, 0.9);
-  z-index: 100;                               /* Make sure it stays above the grid container */
+  z-index: 100;
+  /* Make sure it stays above the grid container */
 }
 
 /* Items displayed in the telemetry footer */
@@ -524,10 +578,12 @@ input:focus,
 input[type="number"]:focus,
 .touch-button:focus,
 button:focus {
-  outline: none; /* Removes the browser's default white outline */
+  outline: none;
+  /* Removes the browser's default white outline */
 }
 
-.touch-button, button {
+.touch-button,
+button {
   background: var(--soft-red);
   color: black;
   border: 1px solid var(--soft-red);
@@ -544,10 +600,12 @@ button:focus {
 .touch-button:focus-visible,
 button:hover,
 button:focus-visible {
-  background: var(--neon-red) !important;   /* Use !important to guarantee this color wins */
-  color: var(--dark-bg);                           
+  background: var(--neon-red) !important;
+  /* Use !important to guarantee this color wins */
+  color: var(--dark-bg);
   box-shadow: 0 0 20px var(--neon-red);
-  outline: none;                            /* Prevents default outline */
+  outline: none;
+  /* Prevents default outline */
 }
 
 .touch-button:active,
@@ -562,14 +620,18 @@ button:active {
 /* For Chrome, Safari, Edge, Opera (WebKit/Blink) */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none; /* Removes the default controls */
-  margin: 0;                /* Corrects a minor margin issue that might remain */
+  -webkit-appearance: none;
+  /* Removes the default controls */
+  margin: 0;
+  /* Corrects a minor margin issue that might remain */
 }
 
 /* For Firefox */
 input[type="number"] {
-  -moz-appearance: textfield; /* Reverts to a standard text field appearance in Firefox */
-  appearance: textfield;      /* Standard property for modern browsers */
+  -moz-appearance: textfield;
+  /* Reverts to a standard text field appearance in Firefox */
+  appearance: textfield;
+  /* Standard property for modern browsers */
 }
 
 /* Checkbox handling */
@@ -588,7 +650,8 @@ input[type="number"] {
   text-transform: uppercase;
   letter-spacing: 2px;
   position: relative;
-  padding-left: 45px; /* Space for the box */
+  padding-left: 45px;
+  /* Space for the box */
 }
 
 /* Hide the default checkbox */
@@ -613,12 +676,12 @@ input[type="number"] {
 }
 
 /* On hover */
-.checkbox-container:hover input ~ .retro-checkmark {
+.checkbox-container:hover input~.retro-checkmark {
   border-color: var(--neon-red);
 }
 
 /* When checked (The "on" state) */
-.checkbox-container input:checked ~ .retro-checkmark {
+.checkbox-container input:checked~.retro-checkmark {
   background-color: var(--neon-red);
   box-shadow: 0 0 15px var(--neon-red);
 }
@@ -642,31 +705,38 @@ input[type="number"] {
   transform: translate(-50%, -50%);
 }
 
-.checkbox-container input:checked ~ .retro-checkmark:after {
+.checkbox-container input:checked~.retro-checkmark:after {
   display: block;
 }
 
 /* Glyph handling */
 .setup-field-header {
   display: flex;
-  align-items: top; /* vertically aligns glyphs with the top of the text */
-  gap: 8px;         /* Controls width of glyphs */
+  align-items: top;
+  /* vertically aligns glyphs with the top of the text */
+  gap: 8px;
+  /* Controls width of glyphs */
   margin-bottom: 4px;
 }
 
 .glyph {
   display: inline-block;
-  width: 20px; /* Set this to the width of the glyph (currently using '◺' */
-  text-align: left; /* Left-justifies the glyph within the 20px box */
+  width: 20px;
+  /* Set this to the width of the glyph (currently using '◺' */
+  text-align: left;
+  /* Left-justifies the glyph within the 20px box */
 }
 
 .label-text {
-  font-weight: bold; /* ?? */
+  font-weight: bold;
+  /* ?? */
 }
 
 .operator-subtitles {
-  margin-left: 28px; /* This is the .glyph -> width + .setup-field-header -> gap */
-  margin-top: 4px; /* Margin to separate it from text labels */
+  margin-left: 28px;
+  /* This is the .glyph -> width + .setup-field-header -> gap */
+  margin-top: 4px;
+  /* Margin to separate it from text labels */
 }
 
 .cursor-prompt {
@@ -674,6 +744,17 @@ input[type="number"] {
   color: var(--neon-red);
   margin-right: 8px;
   transition: color 0.3s ease;
+}
+
+.large-icon {
+  font-size: 2rem;
+  color: var(--soft-red);
+}
+.touch-button:hover + .large-icon,
+.touch-button:focus-visible + .large-icon {
+  color: var(--neon-red);
+  text-shadow: 0 0 10px var(--neon-red);
+  transition: all 0.3s ease;
 }
 
 /* Select box, inherents from the base input with a styled arrow */
@@ -686,13 +767,15 @@ input[type="number"] {
   font-size: 1.2rem;
   width: 100%;
   box-sizing: border-box;
-  appearance: none; /* removes the browser's defaullt arrow */
+  appearance: none;
+  /* removes the browser's defaullt arrow */
   -webkit-appearance: none;
-  cursor: pointer; 
+  cursor: pointer;
   /* Geometric path version of the '▽' glyph */
   background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj48cGF0aCBkPSJNNiA4bDYgOCA2LThINnoiIHN0cm9rZT0iI2ZmMDAwMCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+");
   background-repeat: no-repeat;
-  background-position: right 15px center; /* Positions glyph on the right */
+  background-position: right 15px center;
+  /* Positions glyph on the right */
   background-size: 18px;
   /* Make sure the text in the select doesn't underrun the glyph */
   padding-right: 35px;
@@ -710,7 +793,8 @@ input[type="number"] {
 
 /* The read-only, static display */
 .setup-field-value-static {
-  background: rgb(255, 0, 0, 0.05); /* faint red */
+  background: rgb(255, 0, 0, 0.05);
+  /* faint red */
   color: var(--neon-red);
   border: 1px solid var(--dim-red);
   padding: 15px;
@@ -725,8 +809,10 @@ input[type="number"] {
 .setup-input-select:focus {
   border-color: var(--neon-red) !important;
   box-shadow: 0 0 15px var(--neon-red);
-  outline: none; /* Kills the browser's default blue/white ring */
-  background-color: black; /* Forces it to stay dark */
+  outline: none;
+  /* Kills the browser's default blue/white ring */
+  background-color: black;
+  /* Forces it to stay dark */
 }
 
 /* Specific fix for some browsers that try to highlight the text background */
@@ -734,23 +820,23 @@ input[type="number"] {
   border: 0;
 }
 
-.status-text.success { 
-  color: var(--neon-red); 
+.status-text.success {
+  color: var(--neon-red);
   border-left: 3px solid var(--neon-red);
   padding-left: 8px;
   margin-top: 10px;
 }
 
 .status-text.error {
-  color: var(--neon-red); 
+  color: var(--neon-red);
   font-weight: bold;
   animation: error-pulse-glow 2s infinite;
   margin-top: 10px;
 }
 
 .touch-button.danger {
-  border-color: var(--neon-red); 
-  color: var(--dark-bg); 
+  border-color: var(--neon-red);
+  color: var(--dark-bg);
   font-weight: bold;
 }
 
@@ -779,7 +865,7 @@ input[type="number"] {
   width: 200%;
   position: relative;
   left: -50%;
-  background-image: 
+  background-image:
     linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--grid-line) 2px, transparent 2px);
   background-size: 60px 60px;
@@ -816,47 +902,110 @@ input[type="number"] {
   border: 2px solid var(--neon-red) !important;
 }
 
-@keyframes error-pulse-glow {
-  0% { border-color: var(--inactive-border); box-shadow: none; }
-  50% { border-color: var(--neon-red); box-shadow: 0 0 20px var(--neon-red); }
-  100% { border-color: var(--inactive-border); box-shadow: none; }
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
 }
-@keyframes road-move { from { background-position: 0 0; } to { background-position: 0 60px; } }
-@keyframes road-move-reverse { from { background-position: 0 60px; } to { background-position: 0 0; } }
-@keyframes blink { 50% { opacity: 0; } }
-@keyframes pulse-fade { 
+
+@keyframes error-pulse-glow {
+  0% {
+    border-color: var(--inactive-border);
+    box-shadow: none;
+  }
+
+  50% {
+    border-color: var(--neon-red);
+    box-shadow: 0 0 20px var(--neon-red);
+  }
+
+  100% {
+    border-color: var(--inactive-border);
+    box-shadow: none;
+  }
+}
+
+@keyframes pulse-fade {
   from {
     color: #FF0000;
-    text-shadow: 0 0 0px rgba(255, 0, 0, 0.8); /* Adds a CRT type glow */
-  } to {
+    text-shadow: 0 0 0px rgba(255, 0, 0, 0.8);
+    /* Adds a CRT type glow */
+  }
+
+  to {
     color: #770000;
     text-shadow: 0 0 0px rgba(255, 0, 0, 0);
   }
 }
 
 @keyframes ready-pulse {
-  0% { box-shadow: 0 0 5px var(--soft-red); background: var(--soft-red); }
-  50% { box-shadow: 0 0 20px var(--neon-red); background: var(--strong-red); }
-  100% { box-shadow: 0 0 5px var(--soft-red); background: var(--soft-red) }
+  0% {
+    box-shadow: 0 0 5px var(--soft-red);
+    background: var(--soft-red);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--neon-red);
+    background: var(--strong-red);
+  }
+
+  100% {
+    box-shadow: 0 0 5px var(--soft-red);
+    background: var(--soft-red)
+  }
+}
+
+@keyframes road-move {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 0 60px;
+  }
+}
+
+@keyframes road-move-reverse {
+  from {
+    background-position: 0 60px;
+  }
+
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes shrink-bar {
+  from { width: 100%; }
+  to { width: 0% }
 }
 
 /* --- 6. RESPONSIVE --- */
 @media (min-width: 800px) {
-  .setup-form { 
+  .setup-form {
     grid-template-columns: 1fr 1fr;
     column-gap: 40px;
   }
-  .button-row { grid-column: span 2; }
-  .login-form { grid-template-columns: 1fr 1fr auto; }
+
+  .button-row {
+    grid-column: span 2;
+  }
+
+  .login-form {
+    grid-template-columns: 1fr 1fr auto;
+  }
 }
 
-::selection { background: var(--neon-red); color: black; }
+::selection {
+  background: var(--neon-red);
+  color: black;
+}
 
 /* --- 7. Main System Components --- */
 /* Confirmation/Lock timer */
 .interlock-timer-container {
   display: flex;
-  align-items: center; 
+  align-items: center;
   justify-content: flex-end;
   margin-top: 10px;
   gap: 10px;
@@ -877,25 +1026,27 @@ input[type="number"] {
 .timer-bar-fill {
   height: 100%;
   background-color: var(--neon-red);
-  width: 100%; /* default full, timer drains */
+  width: 100%;
+  /* default full, timer drains */
 }
 
 /* The transition over 15s. Must match the timeout used in the JSX files! */
 .animate-shrink {
-  width: 0% !important;
-  transition: width 15s linear;
+  width: 100%;
+  /* Set the initial state to full width */
+  animation: shrink-bar 15s linear forwards;
 }
 
 /* Styles used after logging in, the main app */
 .system-controls {
   position: fixed;
   top: 20px;
-  right: 20px; 
+  right: 20px;
   z-index: 1000;
 }
 
 .logout-button {
-  background: transparent; 
+  background: transparent;
   color: var(--soft-red);
   border: 1px solid var(--inactive-border);
   padding: 8px 12px;
@@ -924,9 +1075,11 @@ input[type="number"] {
 .blur-active {
   /* Heavy blur, remove color, and adjust brightness for clarity through a physical red filter */
   filter: blur(10px) grayscale(1) brightness(0.3);
-  opacity: 0.3;         /* Dims the data on screen */
-  pointer-events: none; /* Disables buttons */
-  transition: filter 0.5s ease, opacity 0.5s ease;  
+  opacity: 0.3;
+  /* Dims the data on screen */
+  pointer-events: none;
+  /* Disables buttons */
+  transition: filter 0.5s ease, opacity 0.5s ease;
 }
 
 /* Make sure the unblurred success message is above the blur layer */
@@ -940,14 +1093,19 @@ input[type="number"] {
 
 /* Adjust the viewpwort to prevent content from being hidden by the footer */
 .content-viewport {
-  flex: 1;                  /* Take up remaining horizontal space */
-  position: relative;       /* Anchor for the absolute footer */
+  flex: 1;
+  /* Take up remaining horizontal space */
+  position: relative;
+  /* Anchor for the absolute footer */
   display: flex;
   flex-direction: column;
-  justify-content: center;  /* Centers children veritcally along the main axis */
-  align-items: center;      /* Centers children horizontally */
-  padding: 20px; 
-  padding-bottom: 60px;     /* Room for the pinned footer */
+  justify-content: center;
+  /* Centers children veritcally along the main axis */
+  align-items: center;
+  /* Centers children horizontally */
+  padding: 20px;
+  padding-bottom: 60px;
+  /* Room for the pinned footer */
   overflow-y: auto;
 }
 

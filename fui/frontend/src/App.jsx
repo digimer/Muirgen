@@ -1,23 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import useInterval from './useInterval';
-import config from '@shared/config.js';
 import './App.css';
 import VesselSetup from './VesselSetup'; 
 import UserSetup from './UserSetup';
 import Login from './Login';
 import { apiFetch } from './utils/api.js';
 import Sidebar from './Sidebar';
+import VesselEdit from './VesselEdit';
 import VesselManagement from './VesselManagement';
 import VesselRegistration from './VesselRegistration';
 
 function App() {
   // Remember where the user was in case the browser reloads. 
-  // HUD               - Default display
-  // VESSEL_MANAGEMENT - Vessel Management view,
-  // USER_MANAGEMENT   - User Management view.
   const [activeView, setActiveView] = useState('HUD');
   const [allVessels, setAllVessels] = useState([]);
-  const API_URL = config.apiBaseUrl;
   const [currentUser, setCurrentUser] = useState(null);
   const [displayTime, setDisplayTime] = useState('Acquiring Time Source...');
   const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
@@ -29,11 +25,7 @@ function App() {
   const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
   const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
   const [vessel, setVessel] = useState(null);
-  
-  // Drift in browsers can be an issue, so we'll update the react time with the DB time every 30 seconds.
-  useInterval(() => {
-    syncServerTime();
-  }, 30000);
+  const [editingVessel, setEditingVessel] = useState(null);
   
   // Local tick to update the displayed time each second.
   useInterval(() => {
@@ -51,9 +43,14 @@ function App() {
       const data = await res.json();
       setDbData(data);
     } catch (err) {
-      setDbData(prev => ({ ...prev, status: 'Time Source Offline' }));
+      setDbData(prev => ({ ...prev, status: 'Time Source Offline. Error: ', err }));
     }
   };
+  
+  // Drift in browsers can be an issue, so we'll update the react time with the DB time every 30 seconds.
+  useInterval(() => {
+    syncServerTime();
+  }, 30000);
   
   // If there's a last used view for the user (if they're logged in), load it.
   useEffect(() => {
@@ -113,14 +110,8 @@ function App() {
     return () => window.removeEventListener('muirgen-auth-failure', handleAuthFailure);
   }, []);
   
-  useEffect(() => {
-    if (activeView === 'VESSEL_MANAGEMENT') {
-      fetchManagementData();
-    }
-  }, [activeView]);
-  
   // Fetch all vessels for management
-  const fetchManagementData = async () => {
+  const fetchManagementData = useCallback(async () => {
     try {
       const res = await apiFetch('/api/vessels/list-all');
       if (res.ok) {
@@ -130,19 +121,13 @@ function App() {
     } catch (err) {
       console.error('Management fetch error:', err);
     }
-  };
+  }, []);
   
-  // Deactivate a vessel
-  const handleVesselDeactivate = async (uuid) => {
-    const res = await apiFetch(`/api/vessels/deactivate/${uuid}`, { method: 'DELETE' });
-    if (res.ok) fetchManagementData();
-  };
-  
-  //Reactivate a vessel
-  const handleVesselReactivation = async (uuid) => {
-    const res = await apiFetch(`/api/vessels/reactivate/${uuid}`, { method: 'PATCH' });
-    if (res.ok) fetchManagementData();
-  };
+  useEffect(() => {
+    if (activeView === 'VESSEL_MANAGEMENT') {
+      fetchManagementData();
+    }
+  }, [activeView, fetchManagementData]);
   
   // Handle Logging the user out
   const handleLogout = async () => {
@@ -174,7 +159,7 @@ function App() {
     await logPromise;
   }
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     // If we're logging out, return, don't do anything else.
     if (isLoggingOutRef.current) return;
     
@@ -238,10 +223,10 @@ function App() {
     } catch (err) {
       console.error('Fetch error:', err);
     }
-  };
+  }, [isLoggingOut]);
 
   // Initial load
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   return (
     <div className="App">
@@ -278,10 +263,13 @@ function App() {
             ) : (
               <div className="task-header-wrapper">
                 {activeView === 'VESSEL_MANAGEMENT' && (
-                  <h2 className="flicker">Terminal ▷ Vessel Index</h2>
+                  <h2 className="flicker">Terminal // Vessel Index</h2>
+                )}
+                {activeView === 'VESSEL_EDIT' && (
+                  <h2 className="flicker">Terminal // Vessel Edit</h2>
                 )}
                 {activeView === 'VESSEL_REGISTRATION' && (
-                  <h2 className="flicker">Terminal ▷ Vessel Registration</h2>
+                  <h2 className="flicker">Terminal // Vessel Registration</h2>
                 )}
               </div>
             )}
@@ -318,18 +306,36 @@ function App() {
                     </>
                   )}
                   
-                  {/* The vessel management form (for managing existing vess */}
+                  {/* The vessel management */}
                   {activeView === 'VESSEL_MANAGEMENT' && (
                     <VesselManagement
                       vessels={allVessels}
-                      onDeactivate={handleVesselDeactivate}
-                      onReactivate={handleVesselReactivation}
-                      onModify={(v) => console.log("Modify", v)}
-                      onRegister={() => setActiveView('VESSEL_REGISTRATION')}
+                      onModify={(v) => {
+                        setEditingVessel(v);
+                        setActiveView('VESSEL_EDIT');
+                      }}
+                      onRegister={() => setActiveView('VESSEL_MANAGEMENT')}
                     />
                   )}
                   
-                  {/* The new vessel registration form (separate from the initialisation form) */}
+                  {/* The vessel edit form (for managing existing vessels) */}
+                  {activeView === 'VESSEL_EDIT' && editingVessel && (
+                    <VesselEdit 
+                      vessel={editingVessel}
+                      activeCount={allVessels.filter(v => v.is_active).length}
+                      onComplete={() => {
+                        fetchManagementData();              // refresh the index
+                        setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
+                        setEditingVessel(null);             // Clear the selected vessel
+                      }}
+                      onCancel={() => {
+                        setActiveView('VESSEL_MANAGEMENT'); // Return to the list
+                        setEditingVessel(null);             // Clear the selected vessel
+                      }}
+                    />
+                  )}
+                  
+                  {/* The new vessel registration form (adding addition vessels) */}
                   {activeView === 'VESSEL_REGISTRATION' && (
                     <VesselRegistration 
                       onComplete={() => {
