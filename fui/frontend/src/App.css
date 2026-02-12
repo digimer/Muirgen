@@ -1045,7 +1045,7 @@ input[type="number"] {
   z-index: 1000;
 }
 
-.logout-button {
+.action-bar-button {
   background: transparent;
   color: var(--soft-red);
   border: 1px solid var(--inactive-border);
@@ -1060,18 +1060,18 @@ input[type="number"] {
   transition: all 0.2s ease;
 }
 
-.logout-button:hover {
+.action-bar-button:hover {
   background: var(--dim-red);
   color: var(--dark-bg);
   border-color: var(--neon-red);
   box-shadow: 0 0 10px var(--dim-red);
 }
 
-.logout-button .glyph {
+.action-bar-button .glyph {
   font-size: 1rem;
 }
 
-/* Logout and redaction effect */
+/* Redaction effect */
 .blur-active {
   /* Heavy blur, remove color, and adjust brightness for clarity through a physical red filter */
   filter: blur(10px) grayscale(1) brightness(0.3);
@@ -1109,7 +1109,7 @@ input[type="number"] {
   overflow-y: auto;
 }
 
-.logout-overlay {
+.action-bar-overlay {
   position: absolute;
   top: 50%;
   left: 50%;

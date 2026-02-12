@@ -25,7 +25,7 @@ function App() {
   const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
   const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
   const [vessel, setVessel] = useState(null);
-  const [editingVessel, setEditingVessel] = useState(null);
+  const [viewContext, setViewContext] = useState(null);
   
   // Local tick to update the displayed time each second.
   useInterval(() => {
@@ -64,27 +64,48 @@ function App() {
     
     // Build the storage key from their ID.
     const storageKey = `muirgen_view_${id}`;
+    const contextKey = `muirgen_view_context_${id}`;
     
     // Restore logic; Run only once.
     // Only attempt restore if we haven't yet and the current view is HUD.
-    if (!hasRestoredSession.current && activeView == 'HUD') {
+    if (!hasRestoredSession.current) {
       const savedView = localStorage.getItem(storageKey);
       
       if (savedView && savedView !== 'HUD') {
         console.log(`Persistence: Restoring: [${savedView}] for operator: [${id}]`);
         setActiveView(savedView);
+
+        // Load any context for this view;
+        const savedContext = localStorage.getItem(contextKey);
+        if (savedContext) {
+          try {
+            setViewContext(JSON.parse(savedContext));
+          } catch (err) {
+            console.warn("Persistence: Failed to parse the saved context! The error was: ", err);
+          }
+        }
         hasRestoredSession.current = true;
         // Exit early so we don't immediately resave 'HUD'
         return;
       }
+      hasRestoredSession.current = true;
     }
     
     // If the user is logged in and changes the view, save it.
     if (isLoggedIn && !isLoggingOutRef.current) {
       console.log(`Persistence: Recording: [${activeView}] to: [${storageKey}]`);
+
+      // Save the view
       localStorage.setItem(storageKey, activeView);
+
+      // Save the context, if there is any.
+      if (viewContext) {
+        localStorage.setItem(contextKey, JSON.stringify(viewContext));
+      } else {
+        localStorage.removeItem(contextKey);
+      }
     }
-  }, [activeView, currentUser, isLoggedIn]);
+  }, [activeView, currentUser, isLoggedIn, viewContext]);
   
   // Watch for 401 or 403 errors indicating a bad token and triggering a logout.
   useEffect(() => {
@@ -311,7 +332,7 @@ function App() {
                     <VesselManagement
                       vessels={allVessels}
                       onModify={(v) => {
-                        setEditingVessel(v);
+                        setViewContext(v);
                         setActiveView('VESSEL_EDIT');
                       }}
                       onRegister={() => setActiveView('VESSEL_MANAGEMENT')}
@@ -319,18 +340,18 @@ function App() {
                   )}
                   
                   {/* The vessel edit form (for managing existing vessels) */}
-                  {activeView === 'VESSEL_EDIT' && editingVessel && (
+                  {activeView === 'VESSEL_EDIT' && viewContext && (
                     <VesselEdit 
-                      vessel={editingVessel}
+                      vessel={viewContext}
                       activeCount={allVessels.filter(v => v.is_active).length}
                       onComplete={() => {
                         fetchManagementData();              // refresh the index
                         setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
-                        setEditingVessel(null);             // Clear the selected vessel
+                        setViewContext(null);               // Clear the selected vessel
                       }}
                       onCancel={() => {
                         setActiveView('VESSEL_MANAGEMENT'); // Return to the list
-                        setEditingVessel(null);             // Clear the selected vessel
+                        setViewContext(null);               // Clear the selected vessel
                       }}
                     />
                   )}
@@ -349,10 +370,16 @@ function App() {
             </div>
           </div>
             
-          {/* System Controls (floating top-right - Currently only the 'End Session' button */}
+          {/* System Controls (floating top-right - HUD when navigating, End Session always */}
           {isLoggedIn && !isLoggingOut && (
             <div className="system-controls">
-              <button onClick={handleLogout} className="logout-button">
+              {activeView !== 'HUD' && (
+                <button onClick={() => setActiveView('HUD')} className="action-bar-button" style={{marginRight: '1rem'}}>
+                  <span className="glyph">◫</span>
+                  <span className="label-text">HUD</span>
+                </button>
+              )}
+              <button onClick={handleLogout} className="action-bar-button">
                 <span className="glyph">🞪</span>
                 <span className="label-text">End Session</span>
               </button>
