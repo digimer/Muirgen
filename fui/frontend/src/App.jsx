@@ -12,7 +12,7 @@ import VesselRegistration from './VesselRegistration';
 
 function App() {
   // Remember where the user was in case the browser reloads. 
-  const [activeView, setActiveView] = useState('HUD');
+  const [activeView, setActiveView] = useState('VSM');  // VSM = Vessel Status Monitor
   const [allVessels, setAllVessels] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [displayTime, setDisplayTime] = useState('Acquiring Time Source...');
@@ -67,11 +67,11 @@ function App() {
     const contextKey = `muirgen_view_context_${id}`;
     
     // Restore logic; Run only once.
-    // Only attempt restore if we haven't yet and the current view is HUD.
+    // Only attempt restore if we haven't yet and the current view is VSM.
     if (!hasRestoredSession.current) {
       const savedView = localStorage.getItem(storageKey);
       
-      if (savedView && savedView !== 'HUD') {
+      if (savedView && savedView !== 'VSM') {
         console.log(`Persistence: Restoring: [${savedView}] for operator: [${id}]`);
         setActiveView(savedView);
 
@@ -85,7 +85,7 @@ function App() {
           }
         }
         hasRestoredSession.current = true;
-        // Exit early so we don't immediately resave 'HUD'
+        // Exit early so we don't immediately resave 'VSM'
         return;
       }
       hasRestoredSession.current = true;
@@ -169,8 +169,8 @@ function App() {
       setIsLoggedIn(false);
       setVessel(null);
       
-      // Reset the HUD as the default display for the next user/session.
-      setActiveView('HUD');
+      // Reset the VSM as the default display for the next user/session.
+      setActiveView('VSM');
       
       // unblur for the next session
       setIsLoggingOut(false);
@@ -295,7 +295,7 @@ function App() {
               </div>
             )}
             
-            {/* The main HUD box */}
+            {/* The main VSM box */}
             <div className="vessel-box">
               {setupState.vesselRequired ? (
                 <>
@@ -315,9 +315,9 @@ function App() {
               ) : (
                 <>
                   {/* The main / initial page. For now, it's a simple data box */}
-                  {activeView === 'HUD' && vessel && (
+                  {activeView === 'VSM' && vessel && (
                     <>
-                      <h3 className="step-title">◫ System HUD // {vessel.vesselName || 'Loading...'}</h3>
+                      <h3 className="step-title">◫ Vessel Status Monitor // {vessel.vesselName || 'Loading...'}</h3>
                       <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
                       <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
                       <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
@@ -370,13 +370,13 @@ function App() {
             </div>
           </div>
             
-          {/* System Controls (floating top-right - HUD when navigating, End Session always */}
+          {/* System Controls (floating top-right - VSM when navigating, End Session always */}
           {isLoggedIn && !isLoggingOut && (
             <div className="system-controls">
-              {activeView !== 'HUD' && (
-                <button onClick={() => setActiveView('HUD')} className="action-bar-button" style={{marginRight: '1rem'}}>
+              {activeView !== 'VSM' && (
+                <button onClick={() => setActiveView('VSM')} className="action-bar-button" style={{marginRight: '1rem'}}>
                   <span className="glyph">◫</span>
-                  <span className="label-text">HUD</span>
+                  <span className="label-text">VSM</span>
                 </button>
               )}
               <button onClick={handleLogout} className="action-bar-button">
