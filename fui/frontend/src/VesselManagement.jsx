@@ -35,10 +35,12 @@ const VesselManagement = ({ vessels, onModify, onRegister }) => {
               <td>{vessel.hull_id_number || '◬ HIN Missing ◬' }</td>
               <td>{vessel.official_number || '◬ ON Missing ◬' }</td>
               <td className="actions-cell">
-                <button className="touch-button" onClick={() => onModify(vessel)}>
-                  Edit
-                </button>
-                <span className="large-icon">⌬</span>
+                <div className="actions-wrapper">
+                  <button className="touch-button" onClick={() => onModify(vessel)}>
+                    Edit
+                  </button>
+                  <span className="large-icon">⌬</span>
+                </div>
               </td>
             </tr>
           ))}

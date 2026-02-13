@@ -145,7 +145,7 @@ function App() {
   }, []);
   
   useEffect(() => {
-    if (activeView === 'VESSEL_MANAGEMENT') {
+    if (activeView === 'VESSEL_MANAGEMENT' || activeView === 'VESSEL_EDIT') {
       fetchManagementData();
     }
   }, [activeView, fetchManagementData]);
@@ -284,13 +284,13 @@ function App() {
             ) : (
               <div className="task-header-wrapper">
                 {activeView === 'VESSEL_MANAGEMENT' && (
-                  <h2 className="flicker">Terminal // Vessel Index</h2>
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // Vessel Index</h2>
                 )}
                 {activeView === 'VESSEL_EDIT' && (
-                  <h2 className="flicker">Terminal // Vessel Edit</h2>
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Vessel Edit</h2>
                 )}
                 {activeView === 'VESSEL_REGISTRATION' && (
-                  <h2 className="flicker">Terminal // Vessel Registration</h2>
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Vessel Registration</h2>
                 )}
               </div>
             )}
@@ -374,12 +374,13 @@ function App() {
           {isLoggedIn && !isLoggingOut && (
             <div className="system-controls">
               {activeView !== 'VSM' && (
-                <button onClick={() => setActiveView('VSM')} className="action-bar-button" style={{marginRight: '1rem'}}>
+                <button onClick={() => setActiveView('VSM')} className="action-bar-button">
                   <span className="glyph">◫</span>
                   <span className="label-text">VSM</span>
                 </button>
               )}
-              <button onClick={handleLogout} className="action-bar-button">
+
+              <button onClick={handleLogout} className="action-bar-button" style={{ marginLeft: 'auto' }}>
                 <span className="glyph">🞪</span>
                 <span className="label-text">End Session</span>
               </button>

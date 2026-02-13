@@ -92,6 +92,9 @@ const VesselEdit = ({ vessel, onComplete, onCancel, activeCount }) => {
     formData.vesselKeelOffset                                 !== 0  &&
     formData.vesselWaterlineOffset                            !== 0;
 
+  // Debug logging.
+  //console.warn(`Active count: [${activeCount}], is_active: [${vessel.is_active}]`);
+
   return (
     <>
       {error && <div className="status-display error">{error}</div>}
@@ -237,7 +240,7 @@ const VesselEdit = ({ vessel, onComplete, onCancel, activeCount }) => {
           <button type="button"
             className={`button-icon ${isConfirmingAction ? 'button-confirm-state' : ''}`}
             onClick={handleStatusToggle}
-            disabled={!vessel.is_active && activeCount < 2}
+            disabled={vessel.is_active && activeCount < 2}
           >
             {vessel.is_active
               ? (isConfirmingAction ? '◭ Confirm Deactivation ◮' : '⌧ Deactivate Vessel ⌧')

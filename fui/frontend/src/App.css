@@ -100,6 +100,11 @@ input:-webkit-autofill:active {
 
 /* Container for table actions */
 .actions-cell {
+  gap: 15px;
+  align-items: center;
+}
+
+.actions-wrapper {
   display: flex;
   gap: 15px;
   align-items: center;
@@ -388,7 +393,7 @@ input:-webkit-autofill:active {
 
 /* Dimmed red for de-prioritized data */
 .vessel-inactive {
-  color: var(--dim-red);
+  color: var(--strong-red);
   /* Low luminance, stays within the safe spectrum */
   opacity: 0.7;
 }
@@ -417,6 +422,10 @@ input:-webkit-autofill:active {
   font-size: 2rem;
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+.task-header-button {
+  cursor: pointer;
 }
 
 .step-title {
@@ -582,8 +591,7 @@ button:focus {
   /* Removes the browser's default white outline */
 }
 
-.touch-button,
-button {
+.touch-button, button {
   background: var(--soft-red);
   color: black;
   border: 1px solid var(--soft-red);
@@ -593,7 +601,8 @@ button {
   cursor: pointer;
   text-transform: uppercase;
   transition: all 0.1s ease-in-out, background-color 0.3s;
-  box-shadow: 0 0 5px rgba(136, 0, 0, 0.5)
+  box-shadow: 0 0 5px rgba(136, 0, 0, 0.5);
+  margin-bottom: 2px;
 }
 
 .touch-button:hover,
@@ -1041,8 +1050,16 @@ input[type="number"] {
 .system-controls {
   position: fixed;
   top: 20px;
+  left: 240px;
   right: 20px;
   z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.system-controls button {
+  pointer-events: auto;
 }
 
 .action-bar-button {
