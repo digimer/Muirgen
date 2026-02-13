@@ -595,9 +595,10 @@ button:focus {
   background: var(--soft-red);
   color: black;
   border: 1px solid var(--soft-red);
-  padding: 20px 40px;
+  padding: 15px 30px;
   font-family: 'Ubuntu Sans Mono', monospace;
   font-weight: 900;
+  font-size: 1.2rem;
   cursor: pointer;
   text-transform: uppercase;
   transition: all 0.1s ease-in-out, background-color 0.3s;
@@ -1086,6 +1087,24 @@ input[type="number"] {
 
 .action-bar-button .glyph {
   font-size: 1rem;
+}
+
+.action-bar-container {
+  display: flex;
+  align-items: flex-start;
+  grid-column: 1 / -1;
+  margin-top: 40px;
+}
+
+.action-group-vertical {
+  display: flex;
+  flex-direction: column;
+}
+
+.action-group-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 /* Redaction effect */

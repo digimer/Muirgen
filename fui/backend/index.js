@@ -401,7 +401,7 @@ app.get('/api/vessels/get-vessel', authenticateToken, async (req, res) => {
 // Get a list of all vessels
 app.get('/api/vessels/list-all', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM vessels ORDER BY name ASC;');
+    const result = await pool.query('SELECT v.*, (SELECT COUNT(*)::int FROM users u WHERE u.vessel_uuid = v.uuid AND u.is_active = TRUE) AS active_user_count FROM vessels v ORDER BY v.name ASC;');
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: `Vessel Data Load Failed. Error: ${err.message}` });

@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
 
-const VesselEdit = ({ vessel, onComplete, onCancel, activeCount }) => {
+const VesselEdit = ({ vessel, onComplete, activeCount }) => {
   // Initialize state with the existing data passed from App.jsx. The '|| {''/0} insured the variables are 
   // never "null" to prevent upsetting react.
   const [formData, setFormData] = useState({
@@ -92,6 +92,27 @@ const VesselEdit = ({ vessel, onComplete, onCancel, activeCount }) => {
     formData.vesselKeelOffset                                 !== 0  &&
     formData.vesselWaterlineOffset                            !== 0;
 
+  // Deactivation logic
+  const minActiveVessels = 1;
+  const isLastActive = activeCount <= minActiveVessels;
+  const hasActiveUsers = (vessel.active_user_count || 0) > 0;
+
+  // The button is locked if the is active and either it's the last active vessel, or there are active uses
+  // who are assigned to this vessel.
+  const isLockoutActive = vessel.is_active && (isLastActive || hasActiveUsers);
+
+  // If the Deactivate button is locked out, choose the message to show.
+  let lockoutMessage = null;
+  if (vessel.is_active) {
+    if (hasActiveUsers && isLastActive) {
+      lockoutMessage = "Locked; Last Vessel and Assigned Operator(s)";
+    } else if (hasActiveUsers) {
+      lockoutMessage = "Locked; Users Assigned to Vessel";
+    } else if (isLastActive) {
+      lockoutMessage = "Locked; Only Active Vessel";
+    }
+  }
+  
   // Debug logging.
   //console.warn(`Active count: [${activeCount}], is_active: [${vessel.is_active}]`);
 
@@ -235,28 +256,32 @@ const VesselEdit = ({ vessel, onComplete, onCancel, activeCount }) => {
         </div>
 
         {/* The action row */}
-        <div className="button-row action-row">
-          {/* Active status toggle */}
-          <button type="button"
-            className={`button-icon ${isConfirmingAction ? 'button-confirm-state' : ''}`}
-            onClick={handleStatusToggle}
-            disabled={vessel.is_active && activeCount < 2}
-          >
-            {vessel.is_active
-              ? (isConfirmingAction ? '◭ Confirm Deactivation ◮' : '⌧ Deactivate Vessel ⌧')
-              : (isConfirmingAction ? '▷ Confirm Reactivation ◁' : '⌗ Activate Vessel ⌗')
-            }
-          </button>
-
+        <div className="action-bar-container">
+          <div className="action-group-vertical">
+            <div className="action-group-horizontal">
+              <button type="button" 
+                className={`touch-button ${isConfirmingAction ? 'button-confirm-state' : ''}`}
+                onClick={handleStatusToggle} 
+                disabled={isLockoutActive}
+              >
+                {vessel.is_active 
+                  ? (isConfirmingAction ? 'Confirm Deactivation' : 'Deactivate Vessel')
+                  : (isConfirmingAction ? 'Confirm Reactivation' : 'Reactivate Vessel')
+                }
+              </button>
+              <span className="large-icon">{vessel.is_active ? '⌧' : '⌗'}</span>
+            </div>
+            {isLockoutActive && (
+              <span className='soft-text operator-subtitles' style={{ marginLeft: 0, marginTop: '8px' }}>
+                {lockoutMessage}
+              </span>
+            )}
+          </div>
+          
           {/* Spacer */}
           <div style={{ flex: 1 }}></div>
-
-          <button type="button" className="button-icon" onClick={onCancel}>Abort</button>
-
-          <button type="submit"
-            className={`button-icon ${isFormValid ? 'button-confirm-ready' : ''}`}
-            disabled={!isFormValid}
-          >
+          
+          <button type="submit" className="touch-button" disabled={!isFormValid}>
             Update Vessel
           </button>
         </div>

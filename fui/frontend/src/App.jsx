@@ -150,6 +150,19 @@ function App() {
     }
   }, [activeView, fetchManagementData]);
   
+  // Refresh ViewContext with live data if we are editing.
+  useEffect(() => {
+    if (activeView === 'VESSEL_EDIT' && viewContext && allVessels.length > 0) {
+      // Find the updated version of the vessel we're editing.
+      const freshVessel = allVessels.find(v => v.uuid === viewContext.uuid);
+
+      // If found, and it's different (e.g. user count changed), update out context.
+      if (freshVessel && JSON.stringify(freshVessel) !== JSON.stringify(viewContext)) {
+        setViewContext(freshVessel);
+      }
+    }
+  }, [allVessels, activeView, viewContext]);
+
   // Handle Logging the user out
   const handleLogout = async () => {
     // blurs the screen during the logout confirmation
@@ -287,10 +300,10 @@ function App() {
                   <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // Vessel Index</h2>
                 )}
                 {activeView === 'VESSEL_EDIT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Vessel Edit</h2>
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Edit</h2>
                 )}
                 {activeView === 'VESSEL_REGISTRATION' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Vessel Registration</h2>
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Registration</h2>
                 )}
               </div>
             )}
