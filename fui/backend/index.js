@@ -5,6 +5,9 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import multer from 'multer';
+import fs from 'fs-extra';
+import path from 'path';
 
 // Setup __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +26,35 @@ const frontendDistPath = path.join(__dirname, '../frontend/dist');
 
 app.use(express.static(frontendDistPath));
 app.use(express.json());
+
+/* Setup generic Multer storage */
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    // Create a robust path to files 
+    const entityType = req.body.referenceUuid || '';
+    const entityUuid = req.params.uuid;
+
+    if (!entityType) {
+      return res.status(401).json({ error: "No reference UUID passed!" });
+    }
+
+    // Construct the path: <root>/uploads/<entityType>/<entityUuid>
+    const uploadPath = path.join(process.cwd(), 'uploads', entityType, entityUuid);
+
+    // Ensure the directory exists
+    try {
+      await fs.ensureDir(uploadPath);
+      cb(null, uploadPath);
+    } catch (err) {
+      cb(err);
+    }
+  },
+  // Multer requires this, ignore the unused variable warnings for 'req'.
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  }
+});
+const upload = multer({ storage });
 
 /* *********************************************************************************************************/
 /* Section 1: System Endpoints                                                                             */
@@ -548,7 +580,65 @@ app.put('/api/vessels/update/:uuid', authenticateToken, requireAdmin, async (req
 });
 
 /* *********************************************************************************************************/
-/* Section 4: Non-endpoint stuff                                                                           */
+/* Section 4: File and Image routes                                                                        */
+/* *********************************************************************************************************/
+
+// Upload a file or image. Frontend must append 'referenceTable' to the formData.
+app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    const parentUuid  = req.params.uuid; // Entity UUID
+    const userUuid    = req.user.uuid;   // From the auth middleware
+    const file        = req.file;
+
+    // Ensure we've got a file and reference table.
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Make sure we've got a reference table.
+    const referenceTable = req.body.referenceTable || '';
+    if (!referenceTable) {
+      return res.status(400).json({ error: 'No reference table provided' });
+    }
+
+    // Determine type based on mimetype
+    const fileType = file.mimetype.startsWith('image/') ? 'image' : 'file';
+    
+    // Save to the database
+    const fileDirectory = `/uploads/${referenceTable}/${referenceUuid}`;
+
+    const newFile = await pool.query(`INSERT INTO files 
+      (user_uuid, reference_table, reference_id, file_directory, file_name, file_type, metadata) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`, 
+      [userUuid, referenceTable, parentUuid, fileDirectory, file.filename, fileType, JSON.stringify({ size: file.size, mimetype: file.mimetype })]
+    );
+
+    res.status(201).json(newFile.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// List files for a given entity.
+app.get('/api/system/:uuid/files', authenticateToken, async (req, res) => {
+  try {
+    // Note: reference_table is not needed here, as  we'll pulling records for a specific target, and the 
+    //       UUID is sufficiently unique on it's own.
+    const parentUuid  = req.params.uuid;
+    const result = await pool.query(`
+      SELECT * FROM files WHERE reference_id = $1 AND is_active = TRUE ORDER BY modified_date ASC;`, 
+      [parentUuid]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('File data load failure, error:', err)
+    res.status(500).json({ error: `File data load failure, error: ${err}` });
+  }
+});
+
+/* *********************************************************************************************************/
+/* Section 5: Non-endpoint stuff                                                                           */
 /* *********************************************************************************************************/
 
 const PORT = process.env.PORT || config.apiPort || 5000;
