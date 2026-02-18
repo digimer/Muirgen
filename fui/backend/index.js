@@ -29,7 +29,7 @@ app.use(express.json());
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
     // Create a robust path to files 
-    const entityType = req.body.referenceUuid || '';
+    const entityType = req.body.referenceTable || '';
     const entityUuid = req.params.uuid;
 
     if (!entityType) {
@@ -52,7 +52,13 @@ const storage = multer.diskStorage({
     cb(null, `${Date.now()}-${file.originalname}`);
   }
 });
-const upload = multer({ storage });
+
+// This sets a 50 MiB limit, which needs to also be changed in 
+// '/etc/nginx/conf.d/muirgen.conf -> client_max_body_size' and in ./utils/media.js's 'uploadMedia' function.
+const upload = multer({ 
+  storage, 
+  limits: {fileSize: 50 * 1024 * 1024 } // 50 MiB limit
+});
 
 /* *********************************************************************************************************/
 /* Section 1: System Endpoints                                                                             */

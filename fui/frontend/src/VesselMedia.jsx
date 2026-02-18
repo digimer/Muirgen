@@ -3,6 +3,7 @@
  */ 
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './utils/api.js';
+import { uploadMedia } from './utils/media.js';
 
 const VesselMedia = ({ vessel, mode = 'file' }) => {
   const [mediaItems, setMediaItems]   = useState([]);
@@ -22,7 +23,7 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
     } catch (err) {
       console.error(`Failed to load the files. Error: ${err}`);
     }
-  }, [vessel, mode]);
+  }, [vessel, mode])
 
   // Fetch files when the vessel changes
   useEffect(() => {
@@ -32,33 +33,19 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) {
-      console.warn('The handleUpload() was called without a file being passed in.');
+      console.warn('VesselMedia -> handleUpload() was called without a file being passed in.');
       return;
     }
 
     setIsUploading(true);
     setError(null);
 
-    const formData = new FormData();
-    formData.append('referenceTable', 'vessels'); 
-    formData.append('file', file);
-
     try {
-      const token = localStorage.getItem('muirgen_token');
-      const res   = await fetch(`/api/system/${vessel.uuid}/upload`, {
-        method: 'POST',
-        headers: { 'Authorization' : `Bearer ${token}` },
-        body: formData
-      });
-
-      if (res.ok) {
-        fetchMedia();
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Upload Failed; Unknown reason');
-      }
-    } catch(err) {
-      setError(`Comms lost during upload. Error: ${err}`);
+      // Pass the file, vessel UUID and the reference table 'vessels'.
+      await uploadMedia(file, vessel.uuid, 'vessels');
+      fetchMedia();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setIsUploading(false);
       e.target.value = null;

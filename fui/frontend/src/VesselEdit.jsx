@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
 import VesselMedia from './VesselMedia.jsx';
+import { useLocalStorageState } from './utils/hooks.js';
 
 const VesselEdit = ({ vessel, onComplete, activeCount }) => {
   // Initialize state with the existing data passed from App.jsx. The '|| {''/0} insured the variables are 
@@ -21,7 +22,8 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
     vesselWaterlineOffset: vessel?.waterline_offset_cm || 0
   });
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('specs'); // 'specs', 'optics', 'data
+  // Storage the active tab for browser reload/restart persistence
+  const [activeTab, setActiveTab] = useLocalStorageState('vessel_edit_active_tab', 'specs');
 
   // 15-second action confirmation interlock. The user needs to confirm before the activation state is 
   // changed.
