@@ -1,13 +1,11 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
-import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import fs from 'fs-extra';
-import path from 'path';
 
 // Setup __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -35,7 +33,7 @@ const storage = multer.diskStorage({
     const entityUuid = req.params.uuid;
 
     if (!entityType) {
-      return res.status(401).json({ error: "No reference UUID passed!" });
+      return cb(new Error('Missing referenceTable'));
     }
 
     // Construct the path: <root>/uploads/<entityType>/<entityUuid>
@@ -605,7 +603,7 @@ app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), a
     const fileType = file.mimetype.startsWith('image/') ? 'image' : 'file';
     
     // Save to the database
-    const fileDirectory = `/uploads/${referenceTable}/${referenceUuid}`;
+    const fileDirectory = `/uploads/${referenceTable}/${parentUuid}`;
 
     const newFile = await pool.query(`INSERT INTO files 
       (user_uuid, reference_table, reference_id, file_directory, file_name, file_type, metadata) 
