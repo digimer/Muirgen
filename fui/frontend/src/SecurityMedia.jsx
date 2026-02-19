@@ -3,7 +3,8 @@
  * It attempts to diagnose the errors by fetching the resource manually if the tag fails.
  */
 
-import React, { useState, useEffect } from 'react';
+// TODO: Restore useEffect when needed, removed to silence error in the meantime.
+import React, { useState, useCallback } from 'react';
 
 const SecurityMedia = ({ src, alt, className, style, type = 'image' }) => {
   const [status, setStatus]             = useState('loading'); // Values; loading, loaded, error
@@ -12,7 +13,7 @@ const SecurityMedia = ({ src, alt, className, style, type = 'image' }) => {
   // TODO: Enable this when we're ready to add file tests
   // useEffect(() => if (type === 'file') checkFileExistence(); }, [src]);
 
-  const handleLoadError = async () => {
+  const handleLoadError = useCallback(async () => {
     setStatus('error');
     setErrorMessage('Generic Load error');
 
@@ -46,7 +47,7 @@ const SecurityMedia = ({ src, alt, className, style, type = 'image' }) => {
     } catch (err) {
       setErrorMessage(`Comms Failure: ${err}`);
     }
-  }
+  }, [src]);
 
   // This will be expanded after we confirm image process is done.
   if (type !== 'image') { 

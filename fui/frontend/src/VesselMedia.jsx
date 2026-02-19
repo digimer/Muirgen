@@ -5,11 +5,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './utils/api.js';
 import { uploadMedia } from './utils/media.js';
 import SecurityMedia from './SecurityMedia.jsx';
+import ImageViewer from './ImageViewer.jsx';
 
 const VesselMedia = ({ vessel, mode = 'file' }) => {
   const [mediaItems, setMediaItems]   = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError]             = useState(null);
+  // Stores the index number of the image being viewed. 'null' means none are shown
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
 
   const fetchMedia = useCallback(async () => {
     try {
@@ -82,15 +85,23 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
     </tr>
   );
 
-  const renderImageCard = (file) => (
-    <div key={file.uuid} className="media-card">
-        <div className="media-thumbnail">
-          <SecurityMedia src={file.file_directory + '/' + file.file_name} alt={file.file_name} />
-        </div>
-        <div className="media-info">
-          <span>{file.file_name}</span>
-          <a href={file.file_directory + '/' + file.file_name} target="_blank" rel="noreferrer">Open</a>
-        </div>
+  const renderImageCard = (file, index) => (
+    <div key={file.uuid} className="media-card" onClick={() => setSelectedImageIndex(index)} style={{ cursor: 'pointer' }}>
+      <div className="media-thumbnail">
+        <SecurityMedia src={file.file_directory + '/' + file.file_name} alt={file.file_name} />
+      </div>
+      <div className="media-info">
+        <span>{file.file_name}</span>
+        <span 
+          className="touch-button" 
+          style={{
+            fontSize: '0.7rem', 
+            padding: '2px 8px', 
+            background: 'var(--dim-red)', 
+            color: 'var(--neon-red)',
+            textTransform: 'uppercase'
+          }}>Enhance</span>
+      </div>
     </div>
   );
 
@@ -113,8 +124,8 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
         <div className="soft-text">No records exist for this object.</div>
       ) : (
         mode === 'image' ? (
-          <div className="soft-text">
-            {mediaItems.map(renderImageCard)}
+          <div className="media-grid">
+            {mediaItems.map((file, index) => renderImageCard(file, index))}
           </div>
         ) : (
           <table className="data-table">
@@ -131,6 +142,15 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
             </tbody>
           </table>
         )
+      )}
+
+      {/* Render the ImageViewer if an image is selected */}
+      {selectedImageIndex !== null && (
+        <ImageViewer 
+          images={mediaItems} 
+          initialIndex={selectedImageIndex} 
+          onClose={() => setSelectedImageIndex(null)}
+        />
       )}
     </div>
   );
