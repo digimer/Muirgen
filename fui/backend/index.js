@@ -6,6 +6,13 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import fs from 'fs-extra';
+// NOTE: When sharp supports heic on Alma10, switch back and remove the following two imports and the 
+//       execFilePromis constant.
+import { execFile } from 'child_process';
+import util from 'util';
+
+// For handling shell calls (to heif-convert, specifically).
+const execFilePromise = util.promisify(execFile);
 
 // Setup __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -606,7 +613,41 @@ app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), a
     }
 
     // Determine type based on mimetype
-    const fileType = file.mimetype.startsWith('image/') ? 'image' : 'file';
+    let fileType          = file.mimetype.startsWith('image/') ? 'image' : 'file';
+    let finalFilename     = file.filename;
+    let finalMimetype     = file.mimetype;
+    let finalSize         = file.size;
+    const isHeicExtension = /\.(heic|heif)$/i.test(file.originalname);
+    const stats           = await fs.stat(file.path); // Get the size on disk
+
+    // HEIC/HEIF handling: Convert to WebP
+    if ((file.mimetype === 'image/heic' || file.mimetype === 'image/heif') ||
+        (file.mimetype === 'application/octet-stream' && isHeicExtension)) {
+      try {
+        // NOTE: When sharp supports HEIC, switch back to .webp
+        const outputFilename = file.filename.replace(/\.(heic|heif)$/i, '') + '.jpg';
+        const outputPath     = path.join(file.destination, outputFilename);
+
+        // TODO: When sharp adds heic support, switch back to the following line (and 'finalMimetype' back to
+        //       'image/webp')
+        //await sharp(file.path).webp({ quality: 92 }).toFile(outputPath);
+        // Convert
+        await execFilePromise('heif-convert', ['-q', '90', file.path, outputPath]);
+
+        // Delete the original HEIC/HEIF
+        await fs.unlink(file.path);
+        
+        // Update the metadata for the DB
+        finalFilename = outputFilename;
+        finalMimetype = 'image/jpeg';
+        finalSize     = (await fs.stat(outputPath)).size;
+        fileType      = 'image';
+
+      } catch (conversionError) {
+        console.error(`Conversion from: [${file.mimetype}] to: [${finalMimetype}] failed. Error: [${conversionError}]`);
+        // We'll upload the file as it is, but it'll be stored as a file insted of an image.
+      }
+    }
     
     // Save to the database
     const fileDirectory = `/uploads/${referenceTable}/${parentUuid}`;
@@ -614,7 +655,7 @@ app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), a
     const newFile = await pool.query(`INSERT INTO files 
       (user_uuid, reference_table, reference_id, file_directory, file_name, file_type, metadata) 
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`, 
-      [userUuid, referenceTable, parentUuid, fileDirectory, file.filename, fileType, JSON.stringify({ size: file.size, mimetype: file.mimetype })]
+      [userUuid, referenceTable, parentUuid, fileDirectory, finalFilename, fileType, JSON.stringify({ size: finalSize, mimetype: finalMimetype })]
     );
 
     res.status(201).json(newFile.rows[0]);
