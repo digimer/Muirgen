@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './utils/api.js';
 import { uploadMedia } from './utils/media.js';
+import SecurityMedia from './SecurityMedia.jsx';
 
 const VesselMedia = ({ vessel, mode = 'file' }) => {
   const [mediaItems, setMediaItems]   = useState([]);
@@ -84,11 +85,11 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
   const renderImageCard = (file) => (
     <div key={file.uuid} className="media-card">
         <div className="media-thumbnail">
-          <img src={file.file_directory + '/' + file.file_name} alt={file.file_name} />
+          <SecurityMedia src={file.file_directory + '/' + file.file_name} alt={file.file_name} />
         </div>
         <div className="media-info">
           <span>{file.file_name}</span>
-          <a href={file.file_directory + '/' + file.file_name} target="_blank" rel="noreferred">Open</a>
+          <a href={file.file_directory + '/' + file.file_name} target="_blank" rel="noreferrer">Open</a>
         </div>
     </div>
   );

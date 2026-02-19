@@ -2,10 +2,14 @@
 #cd ~/Mermaid\'s\ Rest/programs/Muirgen
 pwd
 # root owned stuff
-rsync -av ./muirgen.sql root@mr-scifi-ui:/root/
-rsync -av ./nginx/* root@mr-scifi-ui:/etc/nginx/conf.d/
+rsync -av ./muirgen.sql root@muirgen:/root/
+rsync -av ./nginx/* root@muirgen:/etc/nginx/conf.d/
 # user owned stuff
-rsync -av ./fui/package.json admin@mr-scifi-ui:/home/admin/fui/
-rsync -av ./fui/config.js admin@mr-scifi-ui:/home/admin/fui/
-rsync -av --exclude='node_modules' ./fui/frontend/* admin@mr-scifi-ui:/home/admin/fui/frontend/
-rsync -av ./fui/backend/* admin@mr-scifi-ui:/home/admin/fui/backend/
+rsync -av ./fui/package.json admin@muirgen:/home/admin/fui/
+rsync -av ./fui/config.js admin@muirgen:/home/admin/fui/
+rsync -av --exclude='node_modules' ./fui/frontend/* admin@muirgen:/home/admin/fui/frontend/
+rsync -av ./fui/backend/* admin@muirgen:/home/admin/fui/backend/
+# recompile
+ssh admin@muirgen "cd /home/admin/fui && npm install && npm run build && pm2 restart muirgen"
+# Reload Nginx in case muirgen.conf was changed.
+ssh root@muirgen "systemctl restart nginx.service"
