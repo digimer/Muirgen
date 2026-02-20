@@ -435,19 +435,29 @@ input:-webkit-autofill:active {
 /* Image Grid */
 .media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
 }
 
 /* Individual Image Card */
 .media-card {
-  border: 1px solid var(--soft-red);
+  border: 1px solid var(--mid-red);
   background: rgba(0, 0, 0, 0.5);
   transition: all 0.3s ease;
+  position: relative; 
+  clip-path: polygon(
+    0 0,
+    100% 0, 
+    100% calc(100% - 20px), 
+    calc(100% - 20px) 100%, 
+    0 100%
+  );
+  filter: drop-shadow(1px 1px 0 var(--mid-red));
 }
 
 .media-card:hover {
-  box-shadow: 0 0 10px var(--soft-red);
-  transform: translateY(-2px);
+  filter: drop-shadow(0 0 5px var(--mid-red));
+  transform: translateY(-2px) translateX(-2px);
 }
 
 .media-thumbnail {
@@ -460,11 +470,12 @@ input:-webkit-autofill:active {
 .media-thumbnail img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Ensure image fills the box without stretching */
+  object-fit: contain; /* Ensure image fills the box without stretching */
 }
 
 .media-info {
   padding: 10px;
+  padding-right: 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;

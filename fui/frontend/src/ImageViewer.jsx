@@ -39,163 +39,197 @@ const ImageViewer = ({ images, initialIndex, onClose }) => {
         position: 'fixed',
         inset: 0, 
         zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)', 
+        backgroundColor: 'rgba(0, 0, 0, 0.95)', 
         backdropFilter: 'blur(5px)', 
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center'
       }}>
+
       {/* Main container - prevent click propagation so clicking images  */}
+      {/* Outer boder layer */}
       <div className="image-viewer-frame" onClick={e => e.stopPropagation()} 
         style={{
           position: 'relative', 
-          width: '90vw', 
-          height: '85vw', 
-          border: '2px solid var(--neon-red)', 
-          backgroundColor: 'var(--dark-bg)', 
-          boxShadow: '0 0 20px var(--neon-red), inset 0 0 20px rgba(255, 0, 0, 0.2)', 
-          display: 'flex', 
-          flexDirection: 'column'
-        }}>
-        
-        {/* Header / telemetry line */}
+          width: '95vw', 
+          height: '90vh', 
+          maxWidth: '1400px', 
+          filter: 'drop-shadow(0 0 15px rgba(255, 0, 0, 0.15))' 
+        }}
+      >
+        {/* solid red background explicitely bound via absolute positioning */}
         <div 
           style={{
-            padding: '10px 20px', 
-            borderBottom: '1px solid var(--neon-red)', 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            fontFamily: "'Oxanium', sans-serif", 
-            letterSpacing: '2px', 
-            color: 'var(--soft-red)'
-          }}>
-          <span>Optical Record // {currentImage.file_name}</span>
-          <span>Index: {String(currentIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}</span>
-        </div>
+            position: 'absolute', 
+            inset: 0, 
+            backgroundColor: 'var(--mid-red)', 
+            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%)'
+          }}
+        />
 
-        {/* Image Area */}
+        {/* Inner Background layer */}
         <div 
           style={{
-            flex: 1, 
-            position: 'relative', 
-            overflow: 'hidden', 
-            display: 'flex'
+            position: 'absolute', 
+            inset: '1px', /* This gives us our 1px border that includes the champfer */
+            backgroundColor: 'var(--dark-bg)', 
+            display: 'flex', 
+            flexDirection: 'column',
+            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 39px), calc(100% - 39px) 100%, 0 100%)' 
           }}
         >
-          
-          {/* Navigation Overlay - Left */}
-          <div onClick={() => navigate(-1)} 
-            style={{
-              position: 'absolute', 
-              left: 0, 
-              top: 0, 
-              bottom: 0, 
-              width: '10%',
-              cursor: 'pointer',
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              zIndex: 10,
-              opacity: 0, 
-              transition: 'opacity 0.2s'
-            }} 
-            onMouseEnter={e => e.currentTarget.style.opacity = 0.5} 
-            onMouseLeave={e => e.currentTarget.style.opacity = 0}
-          >
-            <span 
-              style={{ 
-                fontSize: '4rem', 
-                color: 'var(--neon-red)', 
-                textShadow: '0 0 10px red'
-              }}>
-                ⍃
-              </span>
-          </div>
-
-          <SecurityMedia 
-            src={currentImage.file_directory + '/' + currentImage.file_name} 
-            alt={currentImage.file_name} 
-            style={{
-              width: '100%', 
-              height: '100%', 
-              objectFit: 'contain'
-            }}
-          />
-
-          {/* Navigation Overlay - Right */}
-          <div onClick={() => navigate(1)} 
-            style={{
-              position: 'absolute', 
-              left: 0, 
-              top: 0, 
-              bottom: 0, 
-              width: '10%',
-              cursor: 'pointer',
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              zIndex: 10,
-              opacity: 0, 
-              transition: 'opacity 0.2s'
-            }} 
-            onMouseEnter={e => e.currentTarget.style.opacity = 0.5} 
-            onMouseLeave={e => e.currentTarget.style.opacity = 0}
-          >
-            <span 
-              style={{ 
-                fontSize: '4rem', 
-                color: 'var(--neon-red)', 
-                textShadow: '0 0 10px red' 
-              }}>
-                ⍄
-              </span>
-          </div>
-          
-          {/* Footer / Exit Button */}
+          {/* Header bar */}
           <div 
             style={{
-              padding: '10px', 
+              height: '40px', 
+              borderBottom: '1px solid var(--soft-red)', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              padding: '0px 20px', 
+              backgroundColor: 'rgba(20, 0, 0, 0.8)', 
+              zIndex: '2'
+            }}>
+            <span 
+              style={{
+                fontFamily: "'Oxanium', sans-serif", 
+                letterSpacing: '2px', 
+                color: 'var(--strong-red)', 
+                fontSize: '0.9rem'
+              }}
+            >
+              Optical Record // {currentImage.file_name}
+            </span>
+            <span 
+              style={{
+                fontFamily: "'Ubuntu Sans Mono', monospace", 
+                color: 'var(--mid-red)', 
+                fontSize: '0.9rem'
+              }}
+            >
+              Index: {String(currentIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}
+            </span>
+          </div>
+
+          {/* Image Viewport */}
+          <div 
+            style={{
+              flex: 1, 
+              position: 'relative', 
+              overflow: 'hidden', 
+              backgroundColor: 'var(--dark-bg)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              padding: '20px'
+            }}
+          >
+            {/* Main Image */}
+            <SecurityMedia 
+              src={currentImage.file_directory + '/' + currentImage.file_name} 
+              alt={currentImage.file_name} 
+              style={{
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'contain', 
+                filter: 'drop-shadow(0 0 10px rgba(0, 0, 0, 0.8))'
+              }}
+            />
+          </div>
+          
+          {/* Bottom control bar */}
+          <div 
+            style={{
+              height: '60px', 
               borderTop: '1px solid var(--dim-red)', 
-              display: 'flex', 
-              justifyContent: 'flex-end'
+              display: 'flex',  
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              gap: '30px', 
+              backgroundColor: 'rgba(20, 0, 0, 0.9)', 
+              padding: '0 60px' // Buffer for the champfer cut with symetric spacing around the close button.
             }}
           >
+            {/* Previous Image Button */}
             <button 
-              className="touch-button" 
-              onClick={onClose} 
-              style={{ 
-                padding: '8px 20px', 
-                fontSize: '0.9rem' 
-              }}>
-                ⍂
-              </button>
-          </div>
+              onClick={() => navigate(-1)} 
+              style={{
+                background: 'transparent', 
+                border: '1px solid var(--soft-red)', 
+                color: 'var(--neon-red)', 
+                fontSize: '1.5rem', 
+                width: '50px', 
+                height: '40px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center'
+              }} 
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft-red)'; e.currentTarget.style.color = 'var(--dark-bg)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neon-red)'; }}
+            >
+              ⧏
+            </button>
 
-          {/* Corner decor for the cassette futurism aesthetic */}
-          <div 
-            style={{
-              position: 'absolute', 
-              top: '-2px', 
-              left: '-2px', 
-              width: '20px', 
-              height: '20px', 
-              borderTop: '4px solid var(--neon-red)', 
-              borderLeft: '4px solid var(--neon-red)'
-            }}
-          />
-          <div 
-            style={{
-              position: 'absolute', 
-              bottom: '-2px', 
-              right: '-2px', 
-              width: '20px', 
-              height: '20px', 
-              borderBottom: '4px solid var(--neon-red)', 
-              borderRight: '4px solid var(--neon-red)'
-            }}
-          />
+            {/* Close Button */}
+            <button 
+              onClick={onClose} 
+              style={{
+                background: 'transparent', 
+                border: '1px solid var(--soft-red)', 
+                color: 'var(--neon-red)', 
+                fontSize: '1.5rem', 
+                width: '50px', 
+                height: '40px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                lineHeight: '0' /* Kills the font's internal height box */
+              }} 
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft-red)'; e.currentTarget.style.color = 'var(--dark-bg)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neon-red)'; }}
+            >
+              <span style={{ display: 'block', transform: 'translateY(-1px)' }}>
+                ⎚
+              </span>
+            </button>
+
+            {/* Navigation Overlay - Right */}
+            <button 
+              onClick={() => navigate(1)} 
+              style={{
+                background: 'transparent', 
+                border: '1px solid var(--soft-red)', 
+                color: 'var(--neon-red)', 
+                fontSize: '1.5rem', 
+                width: '50px', 
+                height: '40px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center'
+              }} 
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft-red)'; e.currentTarget.style.color = 'var(--dark-bg)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neon-red)'; }}
+            >
+              ⧐
+            </button>
+          </div>
         </div>
+
+        {/* Decorative internal lines */}
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: '40px', 
+            left: 0, 
+            right: 0, 
+            height: '1px', 
+            background: 'var(--dim-red)', 
+            opacity: 0.5 
+          }} 
+        />
       </div>
     </div>
   );
