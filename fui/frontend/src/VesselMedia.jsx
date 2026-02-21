@@ -86,21 +86,45 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
   );
 
   const renderImageCard = (file, index) => (
-    <div key={file.uuid} className="media-card" onClick={() => setSelectedImageIndex(index)} style={{ cursor: 'pointer' }}>
-      <div className="media-thumbnail">
-        <SecurityMedia src={file.file_directory + '/' + file.file_name} alt={file.file_name} />
-      </div>
-      <div className="media-info">
-        <span>{file.file_name}</span>
-        <span 
-          className="touch-button" 
-          style={{
-            fontSize: '0.7rem', 
-            padding: '2px 8px', 
-            background: 'var(--dim-red)', 
-            color: 'var(--neon-red)',
-            textTransform: 'uppercase'
-          }}>Enhance</span>
+    <div 
+      key={file.uuid} 
+      className="media-card" 
+      onClick={() => setSelectedImageIndex(index)} 
+      style={{
+        cursor: 'pointer', 
+        padding: '1px', /* Creates the red border */
+        backgroundColor: 'var(--mid-red)', 
+        display: 'flex', 
+        flexDirection: 'column'
+      }}
+    >
+      {/* Inner dark layer that contains everything */}
+      <div 
+        style={{
+          flex: 1,
+          backgroundColor: 'var(--dark-bg)', 
+          clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 19px), calc(100% - 19px) 100%, 0 100%)', 
+          display: 'flex', 
+          flexDirection : 'column'
+        }}
+      >
+        {/* Thumbnail viewport with the thick black border built into the CSS padding via .media-thumbnail */}
+        <div className="media-thumbnail">
+          <SecurityMedia 
+            src={file.file_directory + '/' + file.file_name} 
+            alt={file.file_name} 
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover' /* Using 'cover' crops the image's thumbnail to always fill the 4:3 ratio thumbnail. If we decide to make it retain the full image, switch to 'contain' */
+             }}
+          />
+        </div>
+
+        {/* Info bar */}
+        <div className="media-info">
+          <span>{file.file_name}</span>
+        </div>
       </div>
     </div>
   );

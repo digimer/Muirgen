@@ -34,96 +34,28 @@ const ImageViewer = ({ images, initialIndex, onClose }) => {
   if (!currentImage) return null;
 
   return (
-    <div className="image-viewer-backdrop" onClick={onClose} 
-      style={{
-        position: 'fixed',
-        inset: 0, 
-        zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.95)', 
-        backdropFilter: 'blur(5px)', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center'
-      }}>
+    <div className="image-viewer-backdrop" onClick={onClose}>
 
       {/* Main container - prevent click propagation so clicking images  */}
       {/* Outer boder layer */}
-      <div className="image-viewer-frame" onClick={e => e.stopPropagation()} 
-        style={{
-          position: 'relative', 
-          width: '95vw', 
-          height: '90vh', 
-          maxWidth: '1400px', 
-          filter: 'drop-shadow(0 0 15px rgba(255, 0, 0, 0.15))' 
-        }}
-      >
+      <div className="image-viewer-frame" onClick={e => e.stopPropagation()}>
         {/* solid red background explicitely bound via absolute positioning */}
-        <div 
-          style={{
-            position: 'absolute', 
-            inset: 0, 
-            backgroundColor: 'var(--mid-red)', 
-            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%)'
-          }}
-        />
+        <div className="image-viewer-outer" />
 
         {/* Inner Background layer */}
-        <div 
-          style={{
-            position: 'absolute', 
-            inset: '1px', /* This gives us our 1px border that includes the champfer */
-            backgroundColor: 'var(--dark-bg)', 
-            display: 'flex', 
-            flexDirection: 'column',
-            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 39px), calc(100% - 39px) 100%, 0 100%)' 
-          }}
-        >
+        <div className="image-viewer-inner">
           {/* Header bar */}
-          <div 
-            style={{
-              height: '40px', 
-              borderBottom: '1px solid var(--soft-red)', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              padding: '0px 20px', 
-              backgroundColor: 'rgba(20, 0, 0, 0.8)', 
-              zIndex: '2'
-            }}>
-            <span 
-              style={{
-                fontFamily: "'Oxanium', sans-serif", 
-                letterSpacing: '2px', 
-                color: 'var(--strong-red)', 
-                fontSize: '0.9rem'
-              }}
-            >
+          <div className="image-viewer-header">
+            <span className="image-viewer-title">
               Optical Record // {currentImage.file_name}
             </span>
-            <span 
-              style={{
-                fontFamily: "'Ubuntu Sans Mono', monospace", 
-                color: 'var(--mid-red)', 
-                fontSize: '0.9rem'
-              }}
-            >
+            <span className="image-viewer-index">
               Index: {String(currentIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}
             </span>
           </div>
 
           {/* Image Viewport */}
-          <div 
-            style={{
-              flex: 1, 
-              position: 'relative', 
-              overflow: 'hidden', 
-              backgroundColor: 'var(--dark-bg)',
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              padding: '20px'
-            }}
-          >
+          <div className="image-viewer-viewport">
             {/* Main Image */}
             <SecurityMedia 
               src={currentImage.file_directory + '/' + currentImage.file_name} 
@@ -138,98 +70,28 @@ const ImageViewer = ({ images, initialIndex, onClose }) => {
           </div>
           
           {/* Bottom control bar */}
-          <div 
-            style={{
-              height: '60px', 
-              borderTop: '1px solid var(--dim-red)', 
-              display: 'flex',  
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              gap: '30px', 
-              backgroundColor: 'rgba(20, 0, 0, 0.9)', 
-              padding: '0 60px' // Buffer for the champfer cut with symetric spacing around the close button.
-            }}
-          >
+          <div className="image-viewer-controls">
             {/* Previous Image Button */}
-            <button 
-              onClick={() => navigate(-1)} 
-              style={{
-                background: 'transparent', 
-                border: '1px solid var(--soft-red)', 
-                color: 'var(--neon-red)', 
-                fontSize: '1.5rem', 
-                width: '50px', 
-                height: '40px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center'
-              }} 
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft-red)'; e.currentTarget.style.color = 'var(--dark-bg)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neon-red)'; }}
-            >
+            <button onClick={() => navigate(-1)} className="image-viewer-button">
               ⧏
             </button>
 
             {/* Close Button */}
-            <button 
-              onClick={onClose} 
-              style={{
-                background: 'transparent', 
-                border: '1px solid var(--soft-red)', 
-                color: 'var(--neon-red)', 
-                fontSize: '1.5rem', 
-                width: '50px', 
-                height: '40px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                lineHeight: '0' /* Kills the font's internal height box */
-              }} 
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft-red)'; e.currentTarget.style.color = 'var(--dark-bg)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neon-red)'; }}
-            >
+            <button onClick={onClose} className="image-viewer-button" style={{ lineHeight: '0' }}>
               <span style={{ display: 'block', transform: 'translateY(-1px)' }}>
                 ⎚
               </span>
             </button>
 
             {/* Navigation Overlay - Right */}
-            <button 
-              onClick={() => navigate(1)} 
-              style={{
-                background: 'transparent', 
-                border: '1px solid var(--soft-red)', 
-                color: 'var(--neon-red)', 
-                fontSize: '1.5rem', 
-                width: '50px', 
-                height: '40px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center'
-              }} 
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--soft-red)'; e.currentTarget.style.color = 'var(--dark-bg)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--neon-red)'; }}
-            >
+            <button onClick={() => navigate(1)} className="image-viewer-button">
               ⧐
             </button>
           </div>
         </div>
 
         {/* Decorative internal lines */}
-        <div 
-          style={{ 
-            position: 'absolute', 
-            top: '40px', 
-            left: 0, 
-            right: 0, 
-            height: '1px', 
-            background: 'var(--dim-red)', 
-            opacity: 0.5 
-          }} 
-        />
+        <div className="image-viewer-decoration-line" />
       </div>
     </div>
   );
