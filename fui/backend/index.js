@@ -71,6 +71,79 @@ const upload = multer({
 /* Section 1: System Endpoints                                                                             */
 /* *********************************************************************************************************/
 
+// Delete (deactivate) files by it's UUID
+app.put('/api/system/files/:uuid/delete', authenticateToken, async (req, res) => {
+  try {
+    const fileUuid      = req.params.uuid;
+    const fileRecordRes = await pool.query('SELECT file_name, reference_id FROM files WHERE uuid = $1', [fileUuid]);
+    if (fileRecordRes.rows.length === 0) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const fileRecord = fileRecordRes.rows[0];
+
+    // Deactivate the file.
+    await pool.query('UPDATE files SET is_active = FALSE, modified_date = CURRENT_TIMESTAMP WHERE uuid = $1;', [fileUuid]);
+
+    // Make an audit log entry.
+    await auditLog(pool, fileRecord.reference_id, req.user.uuid, 'File::Deactivate', `Operator: [${req.user.handle || 'unknown'}] deactivated the file: [${fileRecord.file_name}].`);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('File deactivation error: ', err);
+    res.status(500).json({ error: `File deactivation failed. Error: ${err.message}`});
+  }
+});
+
+// Rename a specific file by it's UUID
+app.put('/api/system/files/:uuid/rename', authenticateToken, async (req, res) => {
+  try {
+    const fileUuid     = req.params.uuid;
+    const { new_name } = req.body;
+    if (!new_name) {
+      return res.status(400).json({ error: 'new_name is required' });
+    }
+    
+    // Get the current file record
+    const fileRecordRes = await pool.query('SELECT file_directory, file_name, reference_id FROM files WHERE uuid = $1;', [fileUuid]);
+    if (fileRecordRes.rows.length === 0) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    const fileRecord = fileRecordRes.rows[0];
+
+    // Check that we're not about to cause a conflict
+    const collisionRes = await pool.query(
+      'SELECT uuid FROM files WHERE file_directory = $1 AND file_name = $2 AND uuid != $3 AND is_active  = TRUE;',
+      [fileRecord.file_directory, new_name, fileUuid]
+    );
+
+    if (collisionRes.rows.length > 0) {
+      return res.status(409).json({ error: 'A file with that name already exists here.' });
+    }
+
+    // Rename on physical disk
+    const oldPath = path.join(process.cwd(), fileRecord.file_directory.replace(/^\/+/, ''), fileRecord.file_name);
+    const newPath = path.join(process.cwd(), fileRecord.file_directory.replace(/^\/+/, ''), new_name);
+
+    if (await fs.pathExists(oldPath)) {
+      await fs.rename(oldPath, newPath);
+    } else {
+      console.warn(`File not found on disk: [${oldPath}], proceeding with the DB record update anyway.`);
+    }
+
+    // Update the DB
+    await pool.query(`UPDATE files SET file_name = $1, modified_date = CURRENT_TIMESTAMP WHERE uuid = $2;`, [new_name, fileUuid]);
+
+    // Make an audit log entry.
+    await auditLog(pool, fileRecord.reference_id, req.user.uuid, 'File::Rename', `Operator: [${req.user.handle || 'unknown'}] renamed file: [${fileRecord.file_name}] to: [${new_name}].`);
+
+    res.json({ success: true, new_name });
+  } catch (err) {
+    console.error('File rename error: ', err);
+    res.status(500).json({ error: `File rename failed. Error: ${err.message}`});
+  }
+});
+
 // Get the time from the database server to prevent drift in the displayed time
 app.get('/api/system/get-time', async (req, res) => {
   try {
