@@ -56,7 +56,7 @@ const storage = multer.diskStorage({
   },
   // Multer requires this, ignore the unused variable warnings for 'req'.
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    cb(null, file.originalname);
   }
 });
 

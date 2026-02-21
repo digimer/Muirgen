@@ -134,8 +134,9 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
       {/* Upload bar */}
       <div className="action-bar-container" style={{ marginTop: '0', marginBottom: '20px' }}>
         <div className="action-group-horizontal">
+          <span className="tab-icon">⍍</span>
           <label className="touch-button" style={{ cursor: 'pointer', fontSize: '1rem', padding: '10px 20px' }}>
-            {mode === 'image' ? '┻ Upload Visual Record' : '┻ Upload Data Record'}
+            {mode === 'image' ? 'Upload Visual Record' : 'Upload Data Record'}
             <input type="file" onChange={handleUpload} accept={mode === 'image' ? "image/*" : "*/*"} style={{ display: 'none' }} />
           </label>
           {isUploading && <span className="flicker-text" style={{ marginLeft: '15px' }}> Transmitting...</span>}
