@@ -624,7 +624,8 @@ app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), a
     if ((file.mimetype === 'image/heic' || file.mimetype === 'image/heif') ||
         (file.mimetype === 'application/octet-stream' && isHeicExtension)) {
       try {
-        // NOTE: When sharp supports HEIC, switch back to .webp
+        // NOTE: When sharp supports HEIC, switch back to .webp. If/when the extension changes, update where
+        //       duplicate checks run before uploading in JSX files!
         const outputFilename = file.filename.replace(/\.(heic|heif)$/i, '') + '.jpg';
         const outputPath     = path.join(file.destination, outputFilename);
 

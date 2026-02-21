@@ -344,6 +344,74 @@ input:-webkit-autofill:active {
   z-index: 20;
 }
 
+.staging-queue-container {
+  border: 1px solid var(--mid-red);
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: rgba(50, 0, 0, 0.3);
+}
+.staging-queue-title {
+  color: var(--strong-red);
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.staging-queue-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+.staging-queue-item {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--strong-red);
+  padding: 5px 0;
+  font-family: 'Ubuntu Sans Mono', monospace;
+}
+.staging-queue-filename.duplicate {
+  color: var(--soft-red);
+  text-decoration: line-through;
+}
+.staging-queue-filename.valid {
+  color: var(--strong-red);
+}
+.staging-queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Base text/glyph properties */
+.staging-queue-action-text {
+  text-transform: uppercase;
+  width: 100px;
+  text-align: right;
+}
+.staging-queue-action-glyph {
+  width: 30px;
+  text-align: center;
+}
+/* Modifiers for duplicates */
+.staging-queue-action-text.duplicate,
+.staging-queue-action-glyph.duplicate {
+  color: var(--soft-red);
+}
+.staging-queue-action-glyph.duplicate {
+  font-size: 1.4rem;
+}
+/* Modifiers for valid / active files */
+.staging-queue-action-text.valid,
+.staging-queue-action-glyph.valid {
+  color: var(--strong-red);
+  cursor: pointer;
+}
+.staging-queue-action-glyph.valid {
+  font-size: 1.2rem;
+}
+.staging-queue-controls {
+  display: flex;
+  justify-content: space-between;
+}
+
 .status-display {
   padding: 15px;
   margin-bottom: 20px;
@@ -935,6 +1003,25 @@ button:active {
   color: var(--neon-red);
   box-shadow: 0 0 30px var(--neon-red);
   transform: translateY(2px);
+}
+
+.touch-button:disabled,
+button:disabled {
+  border-color: var(--mid-red); 
+  color: var(--soft-red);
+  cursor: not-allowed;
+  box-shadow: none;
+  background: rgba(150, 0, 0, 0.4) !important;
+}
+
+.touch-button-affirmative {
+  background-color: var(--soft-red); 
+  color: var(--dark-bg);
+}
+
+.touch-button-affirmative:disabled {
+  background-color: rgba(150, 0, 0, 0.4) !important;
+  color: var(--mid-red);
 }
 
 /* Hide the spinner buttons for number inputs */

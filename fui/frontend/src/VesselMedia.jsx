@@ -13,6 +13,8 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
   const [error, setError]             = useState(null);
   // Stores the index number of the image being viewed. 'null' means none are shown
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  // Store files in queue until the user confirms the upload.
+  const [stagedFiles, setStagedFiles] = useState([]);
 
   const fetchMedia = useCallback(async () => {
     try {
@@ -34,25 +36,59 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
     if (vessel?.uuid) fetchMedia();
   }, [vessel, mode, fetchMedia]);
 
-  const handleUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) {
-      console.warn('VesselMedia -> handleUpload() was called without a file being passed in.');
-      return;
-    }
+  // Intercept files and store them until the user confirms.
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return; // No files, why here?
+
+    setStagedFiles(prev => {
+      // Filter out files that already exist in the queue (by name)
+      const newFiles = files.filter(
+        incoming => !prev.some(existing => existing.name === incoming.name)
+      );
+
+      // Combine the existing queue with the new (unique) files
+      const combined = [...prev, ...newFiles];
+
+      // Sort the queue alphabetically by file name.
+      combined.sort((a, b) => a.name.localeCompare(b.name));
+
+      return combined;
+    });
+    e.target.value = null; // Reset input so you can click "add" again.
+  };
+
+  // Allow the user to remove files from the queue before uploading.
+  const removeStagedFile = (indexToRemove) => {
+    setStagedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  // Helper to check if a staged file shares a name with an already uploaded file.
+  const isDuplicate = (fileName) => {
+    const expectedServerName = fileName.replace(/\.(heic|heif)$/i, '.jpg');
+    return mediaItems.some(item => item.file_name === expectedServerName);
+  };
+
+  // The actual upload execution loop
+  const executeUpload = async () => {
+    if (stagedFiles.length === 0) return; // No files left
 
     setIsUploading(true);
     setError(null);
 
     try {
-      // Pass the file, vessel UUID and the reference table 'vessels'.
-      await uploadMedia(file, vessel.uuid, 'vessels');
-      fetchMedia();
+      // Execute uploads sequentially so we don't flood the server with a lot of parallel requests.
+      for (const file of stagedFiles) {
+        if (!isDuplicate(file.name)) {
+          await uploadMedia(file, vessel.uuid, 'vessels');
+        }
+      }
+      setStagedFiles([]); // Clear staging array on success
+      fetchMedia();       // Refresh the grid
     } catch (err) {
-      setError(err.message);
+      setError(`Upload incomplete. Error: [${err.message}]`);
     } finally {
       setIsUploading(false);
-      e.target.value = null;
     }
   };
 
@@ -137,12 +173,57 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
           <span className="tab-icon">⍍</span>
           <label className="touch-button" style={{ cursor: 'pointer', fontSize: '1rem', padding: '10px 20px' }}>
             {mode === 'image' ? 'Upload Visual Record' : 'Upload Data Record'}
-            <input type="file" onChange={handleUpload} accept={mode === 'image' ? "image/*" : "*/*"} style={{ display: 'none' }} />
+            <input type="file" multiple onChange={handleFileSelect} accept={mode === 'image' ? "image/*" : "*/*"} style={{ display: 'none' }} />
           </label>
           {isUploading && <span className="flicker-text" style={{ marginLeft: '15px' }}> Transmitting...</span>}
         </div>
         {error && <span className="status-display-error" style={{ marginLeft: '20px' }}>{error}</span>}
       </div>
+
+      {/* Staging UI blocks */}
+      {stagedFiles.length > 0 && (
+        <div className="staging-queue-container">
+          <h4 className="staging-queue-title">Queued:</h4>
+          <ul className="staging-queue-list">
+            {stagedFiles.map((file, index) => {
+              const isDupe = isDuplicate(file.name);
+              return (
+                <li key={index} className="staging-queue-item">
+                    {isDupe ? (
+                      <>
+                        <span className="staging-queue-filename duplicate">{file.name} ({formatSize(file.size)})</span>
+                        <div className="staging-queue-actions">
+                          <span className="staging-queue-action-text duplicate">Duplicate</span>
+                          <span className="staging-queue-action-glyph duplicate">⌀</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="staging-queue-filename valid">{file.name} ({formatSize(file.size)})</span>
+                        <div className="staging-queue-actions">
+                          <span className="staging-queue-action-text valid" onClick={() => removeStagedFile(index)}>Reject</span>
+                          <span className="staging-queue-action-glyph valid" onClick={() => removeStagedFile(index)}>⬎</span>
+                        </div>
+                      </>
+                    )}
+                  </li>
+              )
+            })}
+          </ul>
+          <div className="staging-queue-controls">
+            <button 
+              className="touch-button touch-button-affirmative" 
+              onClick={executeUpload} 
+              disabled={isUploading || stagedFiles.every(file => isDuplicate(file.name))} 
+            >
+              Begin Transmission
+            </button>
+            <button className="touch-button" onClick={() => setStagedFiles([])} disabled={isUploading}>
+              Abort
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Content Area */}
       {mediaItems.length === 0 ? (
