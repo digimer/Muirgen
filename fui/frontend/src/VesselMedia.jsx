@@ -15,6 +15,8 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(null);
   // Store files in queue until the user confirms the upload.
   const [stagedFiles, setStagedFiles] = useState([]);
+  // Controls visibility of the empty statging drop-zone. 
+  const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
 
   const fetchMedia = useCallback(async () => {
     try {
@@ -55,6 +57,8 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
 
       return combined;
     });
+    // Force the modal open if we successfully paste something
+    setIsStagingModalOpen(true);
     e.target.value = null; // Reset input so you can click "add" again.
   };
 
@@ -92,6 +96,54 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
     }
   };
 
+  // Catch paste events and extract files (used for catching screenshots or copied images)
+  const handlePaste = useCallback((e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const pastedFiles = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].kind === 'file') {
+        const file = items[i].getAsFile();
+        if (file) {
+          // Pasted items often get generic names, so we'll create one that's a bit more useful.
+          const extension   = file.type.split('/')[1] || 'png';
+          const finalName   = file.name === 'image.png' ? `pasted-record_${Date.now()}.${extension}` : file.name;
+          const renamedFile = new File([file], finalName, { type: file.type });
+
+          pastedFiles.push(renamedFile);
+        }
+      }
+    }
+
+    if (pastedFiles.length > 0) {
+      setStagedFiles(prev => {
+        // Apply the same duplicate filtering (by name or size+mimetype) and alphabetic sort used in normal
+        // upload queueing.
+        const newFiles = pastedFiles.filter(
+          incoming => !prev.some(existing => existing.name === incoming.name || existing.size === incoming.size)
+        );
+        const combined = [...prev, ...newFiles];
+        combined.sort((a, b) => a.name.localeCompare(b.name));
+        return combined;
+      });
+      // Force the modal open if we successfully paste something
+      setIsStagingModalOpen(true);
+    }
+  }, [setStagedFiles]);
+
+  // When the staging queue is open, enable pasting anywhere on the screen
+  useEffect(() => {
+    if (isStagingModalOpen) {
+      document.addEventListener('paste', handlePaste);
+    }
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    }; 
+  }, [isStagingModalOpen, handlePaste]);
+
   // Helper to format file size
   const formatSize = (bytes) => {
     if (bytes === 0) return '0 B';
@@ -104,7 +156,7 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
   // Renderers
   const renderFileRow = (file) => (
     <tr key={file.uuid}>
-      <td style={{ color: 'var(--neon-red'}}>{file.file_name}</td>
+      <td style={{ color: 'var(--neon-red' }}>{file.file_name}</td>
       <td>{formatSize(file.metadata?.size || 0)}</td>
       <td>{new Date(file.created_at || Date.now()).toLocaleDateString()}</td>
       <td style={{ textAlign: 'right' }}>
@@ -171,18 +223,21 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
       <div className="action-bar-container" style={{ marginTop: '0', marginBottom: '20px' }}>
         <div className="action-group-horizontal">
           <span className="tab-icon">⍍</span>
-          <label className="touch-button" style={{ cursor: 'pointer', fontSize: '1rem', padding: '10px 20px' }}>
+          <button className="touch-button" onClick={() => setIsStagingModalOpen(true)}>
             {mode === 'image' ? 'Upload Visual Record' : 'Upload Data Record'}
-            <input type="file" multiple onChange={handleFileSelect} accept={mode === 'image' ? "image/*" : "*/*"} style={{ display: 'none' }} />
-          </label>
+          </button>
           {isUploading && <span className="flicker-text" style={{ marginLeft: '15px' }}> Transmitting...</span>}
         </div>
         {error && <span className="status-display-error" style={{ marginLeft: '20px' }}>{error}</span>}
       </div>
 
       {/* Staging UI blocks */}
-      {stagedFiles.length > 0 && (
-        <div className="staging-queue-container">
+      {isStagingModalOpen && (
+        <div 
+          className="staging-queue-container" 
+          onPaste={handlePaste} 
+          tabIndex={0}
+        >
           <h4 className="staging-queue-title">Queued:</h4>
           <ul className="staging-queue-list">
             {stagedFiles.map((file, index) => {
@@ -210,16 +265,25 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
               )
             })}
           </ul>
+          
+          {stagedFiles.length === 0 && (
+            <div className="soft-text" style={{ marginBottom: '15px '}}>Copy from Memory Enabled</div>
+          )}
+
           <div className="staging-queue-controls">
+            <label className="touch-button" style={{ cursor: 'pointer' }}>
+              Load
+              <input type="file" multiple onChange={handleFileSelect} accept={mode === 'image' ? "image/*" : "*/*"} style={{ display: 'none' }} />
+            </label>
             <button 
               className="touch-button touch-button-affirmative" 
               onClick={executeUpload} 
               disabled={isUploading || stagedFiles.every(file => isDuplicate(file.name))} 
             >
-              Begin Transmission
+              Transmit
             </button>
-            <button className="touch-button" onClick={() => setStagedFiles([])} disabled={isUploading}>
-              Abort
+            <button className="touch-button" onClick={() => {setStagedFiles([]); setIsStagingModalOpen(false);}} disabled={isUploading}>
+              End
             </button>
           </div>
         </div>

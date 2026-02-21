@@ -350,6 +350,14 @@ input:-webkit-autofill:active {
   margin-bottom: 20px;
   background-color: rgba(50, 0, 0, 0.3);
 }
+
+/* Visual queue that the user can now paste an image from their clipboard */
+.staging-queue-container:focus {
+  outline: none;
+  border-color: var(--neon-red);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+}
+
 .staging-queue-title {
   color: var(--strong-red);
   margin-top: 0;
