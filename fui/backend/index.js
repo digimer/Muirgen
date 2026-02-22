@@ -95,6 +95,50 @@ app.put('/api/system/files/:uuid/delete', authenticateToken, async (req, res) =>
   }
 });
 
+// Enable (secure) downloads of file.
+app.get('/api/system/files/:uuid/download', authenticateToken, async (req, res) => {
+  try {
+    const fileUuid = req.params.uuid;
+
+    // Get the file details from the DB
+    const fileRecordRes = await pool.query('SELECT file_directory, file_name, reference_id FROM files WHERE uuid = $1 AND is_active = TRUE;', [fileUuid]);
+
+    if (fileRecordRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Data file not located on storage or has been deactivated.' });
+    }
+
+    const fileRecord = fileRecordRes.rows[0];
+
+    // strip leading slash from file_directory before joining with process.cwd()
+    const safeDirectory = fileRecord.file_directory.replace(/^\/+/, '');
+    const physicalPath  = path.join(process.cwd(), safeDirectory, fileRecord.file_name);
+
+    // Ensure the file actually exists on physical storage before trying to serve it.
+    if (!(await fs.pathExists(physicalPath))) {
+      return res.status(404).json({ error: 'Physical file missing from storage.' });
+    }
+
+    // Log the download.
+    await auditLog(pool, fileRecord.reference_id, req.user.uuid, 'File::Download', `Operator: [${req.user.handle || 'unknown'}] downloaded: [${fileRecord.file_name}]`);
+
+    // We use res.download, which automatically handles setting the correct headers for forcing a file 
+    // download and streaming the binary data to the client.
+    res.download(physicalPath, fileRecord.file_name, (err) => {
+      if (err) {
+        // Handle cases where the client aborts the download prematurely, avoiding a server crash.
+        if (!res.headersSent) {
+          console.error(`Error downloading the file: [${fileRecord.file_name}]: ${err.message}`);
+          res.status(500).json({ error: `There was an error serving the file.`});
+        }
+      } 
+    });
+
+  } catch (err) {
+    console.error('Data download failure. Error: ', err);
+    res.status(500).json({ error: `Data download failure. Error: [${err.message}]`});
+  }
+});
+
 // Rename a specific file by it's UUID
 app.put('/api/system/files/:uuid/rename', authenticateToken, async (req, res) => {
   try {
