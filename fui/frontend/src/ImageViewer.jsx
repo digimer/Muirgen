@@ -7,17 +7,19 @@ import SecurityMedia from './SecurityMedia.jsx';
 import { apiFetch } from './utils/api.js'; 
 
 const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-
-  // Rename state
-  const [isEditingName, setIsEditingName] = useState(false); 
-  const [editedName, setEditedName]       = useState('');
-  const [isRenaming, setIsRenaming]       = useState(false);
-  const [renameError, setRenameError]     = useState(null);
+  const [currentIndex, setCurrentIndex]             = useState(initialIndex);
+  const [isEditingName, setIsEditingName]           = useState(false); 
+  const [editedName, setEditedName]                 = useState('');
+  const [isRenaming, setIsRenaming]                 = useState(false);
+  const [renameError, setRenameError]               = useState(null);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError]               = useState(null);
 
   const navigate = useCallback((direction) => {
     setIsEditingName(false);
     setRenameError(null);
+    setIsConfirmingDelete(false);
+    setDeleteError(null);
     setCurrentIndex(prevIndex => {
       let newIndex = prevIndex + direction;
       if (newIndex < 0) newIndex = images.length - 1;
@@ -91,6 +93,40 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
     }
   };
 
+  const handleDelete = async () => {
+    // Confirm intent to delete
+    if (!isConfirmingDelete) {
+      setIsConfirmingDelete(true);
+      return;
+    }
+
+    try {
+      // Wait for the backend PUT request.
+      const res  = await apiFetch(`/api/system/files/${currentImage.uuid}/delete`, { method: 'PUT' });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      // Tell the VesselMedia to silently refresh
+      if (onUpdate) await onUpdate();
+
+      // Adjust the viewer index so it doesn't crash on an out-of-bounds array when the background refresh
+      // completes and the image count drops by 1.
+      if (images.length <= 1) {
+        // The user removed the last/only image.
+        onClose();
+      } else if (currentIndex >= images.length - 1) {
+        // The user removed the last image in the array, step back one image.
+        navigate(-1);
+      }
+
+    } catch (err) {
+      console.error('Deactivation failed. Error: ', err);
+      setDeleteError(`Deactivation failed. Error: [${err.message}]`);
+    } finally {
+      setIsConfirmingDelete(false);
+    }
+  };
+
   if (!currentImage) return null;
 
   return (
@@ -127,7 +163,7 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
                     autoFocus 
                     disabled={isRenaming}
                   />
-                  {renameError && <span className="image-viewer-rename-error">{renameError}</span>}
+                  {renameError && <span className="image-viewer-action-error">{renameError}</span>}
                 </>
               ) : (
                 <span 
@@ -143,7 +179,18 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
               )}
             </span>
             <span className="image-viewer-index">
-              Index: {String(currentIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}
+              {deleteError && <span className="image-viewer-action-error">{deleteError}</span>}
+              <span className="glyph-remove">⍀</span>
+              <button 
+                className={`image-viewer-delete-button ${isConfirmingDelete ? 'button-confirm-state' : ''}`} 
+                onClick={handleDelete} 
+                title="Remove Record"
+              >
+                {isConfirmingDelete ? 'Confirm Removal' : 'Remove'}
+              </button>
+              <span>
+                Index: {String(currentIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}
+              </span>
             </span>
           </div>
 

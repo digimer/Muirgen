@@ -325,7 +325,7 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
         <div className="interlock-timer-container">
           <span className="timer-label">⧖ Safety Interlock:</span>
           <div className="timer-bar-frame">
-            <div className="timer-bar-fill animate-shrink"></div>
+            <div className="timer-bar-fill animate-shrink-long"></div>
           </div>
         </div>
       )}

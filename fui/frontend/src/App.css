@@ -660,7 +660,7 @@ input:-webkit-autofill:active {
   max-width: 60vw; /* Make sure a long file name doesn't shove elements off to the right */
 }
 
-.image-viewer-rename-error {
+.image-viewer-action-error {
   font-size: 0.8rem;
   text-transform: none;
   margin-left: 10px;
@@ -670,6 +670,34 @@ input:-webkit-autofill:active {
   font-family: 'Ubuntu Sans Mono', monospace;
   color: var(--mid-red);
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.image-viewer-delete-button {
+  background: none;
+  border: 1px solid var(--neon-red);
+  color: var(--neon-red);
+  cursor: pointer;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  transition: all 0.2s ease;
+  padding-top: 5px;
+  margin-top: 2px;
+}
+
+.glyph-remove {
+  display: inline-block;
+  text-align: center;
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+.image-viewer-delete-button:hover {
+  background: var(--strong-red);
+  color: var(--dark-bg);
 }
 
 .image-viewer-viewport {
@@ -1478,7 +1506,7 @@ input[type="number"] {
 }
 
 /* The transition over 15s. Must match the timeout used in the JSX files! */
-.animate-shrink {
+.animate-shrink-long {
   width: 100%;
   /* Set the initial state to full width */
   animation: shrink-bar 15s linear forwards;
