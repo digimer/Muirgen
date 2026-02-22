@@ -519,6 +519,7 @@ input:-webkit-autofill:active {
 .media-card {
   transition: all 0.3s ease;
   position: relative; 
+  z-index: 101;         /* Raise the card above the scanline effect to leave thumbnails unmolested. */
   clip-path: polygon(
     0 0,
     100% 0, 
@@ -546,7 +547,7 @@ input:-webkit-autofill:active {
   width: 100%;  /* Image fills the media card minus the border */
   height: 100%;
   object-fit: contain; /* Ensure image fills the box without stretching */
-}
+ }
 
 .media-info {
   padding: 10px;
@@ -990,21 +991,17 @@ input[type="number"]:focus {
 /* (mostly) static footer telemetry data */
 .telemetry-footer {
   position: absolute;
-  /* Pin it to the bottom of the view port */
-  bottom: 0;
-  left: 0;
-  /* Align with the sidebar width */
+  bottom: 0;  /* Pin it to the bottom of the view port */
+  left: 0;    /* Align with the sidebar width */
   right: 0;
   display: flex;
   justify-content: space-between;
   border-top: 1px solid var(--soft-red);
-  /* Retain the horizontal separator */
-  padding: 10px 20px;
+  padding: 10px 20px; /* Retain the horizontal separator */
   font-family: 'Ubuntu Sans Mono', monospace;
   font-size: 0.85rem;
   background: rgba(20, 0, 0, 0.9);
-  z-index: 100;
-  /* Make sure it stays above the grid container */
+  z-index: 102; /* Raise the footer above the raised thumbnails */
 }
 
 /* Items displayed in the telemetry footer */
