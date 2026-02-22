@@ -4,11 +4,20 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import SecurityMedia from './SecurityMedia.jsx';
+import { apiFetch } from './utils/api.js'; 
 
-const ImageViewer = ({ images, initialIndex, onClose }) => {
+const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
+  // Rename state
+  const [isEditingName, setIsEditingName] = useState(false); 
+  const [editedName, setEditedName]       = useState('');
+  const [isRenaming, setIsRenaming]       = useState(false);
+  const [renameError, setRenameError]     = useState(null);
+
   const navigate = useCallback((direction) => {
+    setIsEditingName(false);
+    setRenameError(null);
     setCurrentIndex(prevIndex => {
       let newIndex = prevIndex + direction;
       if (newIndex < 0) newIndex = images.length - 1;
@@ -19,10 +28,12 @@ const ImageViewer = ({ images, initialIndex, onClose }) => {
 
   // Keyboard navigation
   const handleKeyDown = useCallback((e) => {
+    if (isEditingName) return; // Disable navigation while editing the name
+
     if (e.key === 'Escape')     onClose();
     if (e.key === 'ArrowLeft')  navigate(-1);
     if (e.key === 'ArrowRight') navigate(1);
-  }, [onClose, navigate]); // Dependencies will be updated by the navigator
+  }, [onClose, navigate, isEditingName]); // Dependencies will be updated by the navigator
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -30,6 +41,55 @@ const ImageViewer = ({ images, initialIndex, onClose }) => {
   }, [handleKeyDown]);
 
   const currentImage = images[currentIndex];
+
+  // Handle the actual rename submission
+  const handleRenameSubmit = async (e) => {
+    if (e.key === 'Escape') {
+      setIsEditingName(false);
+      return;
+    }
+    if (e.key !== 'Enter') return;
+
+    // The user hit enter, validate the new name
+    const newName = editedName.trim();
+    if (!newName || newName === currentImage.file_name) {
+      // Empty or unchanged, either way, return.
+      setIsEditingName(false);
+      return;
+    }
+
+    // Check for a name collidion against the other file names already in memory.
+    if (images.some(img => img.file_name === newName && img.uuid !== currentImage.uuid)) {
+      setRenameError("New name duplicates existing record.");
+      return;
+    }
+
+    setIsRenaming(true);
+    setRenameError(null);
+    try {
+      // Wait for the backend PUT request.
+      const res = await apiFetch(`/api/system/files/${currentImage.uuid}/rename`, {
+        method: 'PUT', 
+        body: JSON.stringify({ new_name: newName })
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setIsEditingName(false);
+      if (onUpdate) {
+        // Tell VesselMedia to siltently refresh
+        await onUpdate();
+      }
+    } catch (err) {
+      console.error('Failed to change the name. Error: ', err);
+      setRenameError(`Rename failed. Error: ${err.message}`);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
 
   if (!currentImage) return null;
 
@@ -47,7 +107,40 @@ const ImageViewer = ({ images, initialIndex, onClose }) => {
           {/* Header bar */}
           <div className="image-viewer-header">
             <span className="image-viewer-title">
-              Optical Record // {currentImage.file_name}
+              Optical Record // 
+              {isEditingName ? (
+                <>
+                  <input 
+                    type="text" 
+                    className="image-viewer-rename-input" 
+                    value={editedName}
+                    onChange={e => {
+                      setEditedName(e.target.value);
+                      if (renameError) setRenameError(null);
+                    }} 
+                    size={Math.max(15, editedName.length)}
+                    onKeyDown={handleRenameSubmit} 
+                    onBlurCapture={() => {
+                      setIsEditingName(false);
+                      setRenameError(null); 
+                    }}  // Close if they click outside the input
+                    autoFocus 
+                    disabled={isRenaming}
+                  />
+                  {renameError && <span className="image-viewer-rename-error">{renameError}</span>}
+                </>
+              ) : (
+                <span 
+                  className="image-viewer-rename-label" 
+                  title="Engage to rename" 
+                  onClick={() => {
+                    setEditedName(currentImage.file_name); 
+                    setIsEditingName(true); 
+                  }}
+                >
+                  ⌬ {currentImage.file_name}
+                </span>
+              )}
             </span>
             <span className="image-viewer-index">
               Index: {String(currentIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}

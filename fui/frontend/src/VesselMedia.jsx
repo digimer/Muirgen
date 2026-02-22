@@ -320,6 +320,7 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
           images={mediaItems} 
           initialIndex={selectedImageIndex} 
           onClose={() => setSelectedImageIndex(null)}
+          onUpdate={fetchMedia}
         />
       )}
     </div>

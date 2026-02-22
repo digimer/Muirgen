@@ -629,10 +629,41 @@ input:-webkit-autofill:active {
 }
 
 .image-viewer-title {
-  font-family: 'Oxanium', sans-serif;
+  font-family: 'Ubuntu Sans Mono', monospace;
   letter-spacing: 2px;
   color: var(--strong-red);
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.image-viewer-rename-label {
+  cursor: pointer;
+  text-underline-offset: 4px;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+.image-viewer-rename-label:hover {
+  color: var(--neon-red);
+  text-decoration-color: var(--neon-red);
+}
+
+.image-viewer-rename-input {
+  background: rgba(20, 0, 0, 0.8);
+  border: 1px solid var(--neon-red);
+  color: var(--neon-red);
+  font-family: 'Ubuntu Sans Mono', monospace;
+  padding: 2px 10px;
+  outline: none;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+  max-width: 60vw; /* Make sure a long file name doesn't shove elements off to the right */
+}
+
+.image-viewer-rename-error {
+  font-size: 0.8rem;
+  text-transform: none;
+  margin-left: 10px;
 }
 
 .image-viewer-index {

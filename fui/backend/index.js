@@ -742,11 +742,12 @@ app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), a
 // List files for a given entity.
 app.get('/api/system/:uuid/files', authenticateToken, async (req, res) => {
   try {
-    // Note: reference_table is not needed here, as  we'll pulling records for a specific target, and the 
-    //       UUID is sufficiently unique on it's own.
+    // Note: reference_table is not needed here, as we're pulling records for a specific target, and the 
+    //       UUID is sufficiently unique on it's own. 
+    // Note: We use uuidv7, so sorting by uuid is equivalent to sorting by creation date.
     const parentUuid  = req.params.uuid;
     const result = await pool.query(`
-      SELECT * FROM files WHERE reference_id = $1 AND is_active = TRUE ORDER BY modified_date ASC;`, 
+      SELECT * FROM files WHERE reference_id = $1 AND is_active = TRUE ORDER BY uuid ASC;`, 
       [parentUuid]
     );
     res.json(result.rows);
