@@ -5,8 +5,10 @@
  * /api/system/files/:uuid/download endpoint to prevent drive-by downloads.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiFetch } from './utils/api.js';
+import { Plyr } from 'plyr-react';
+import 'plyr-react/plyr.css';
 
 const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -159,6 +161,27 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
     }
   };
 
+  // Stable references to prevent Plyr from infinitely unmounting and remounting
+  const videoOptions = useMemo(() => ({ controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'fullscreen'] }), []);
+  const audioOptions = useMemo(() => ({ controls: ['play', 'progress', 'current-time', 'duration', 'mute', 'volume'] }), []);
+
+  // Safely calculate the source object at the top level of the component
+  const plyrSource = useMemo(() => {
+    if (!currentFile) return null;
+    const mimetype = currentFile.metadata?.mimetype || '';
+    const fileUrl = currentFile.file_directory + '/' + currentFile.file_name;
+    const isMorphedVideo = mimetype === 'application/octet-stream' && /\.(mov|mp4|webm|mkv)$/i.test(currentFile.file_name);
+    
+    if (mimetype.startsWith('video/') || isMorphedVideo) {
+      return { type: 'video', title: currentFile.file_name, sources: [{ src: fileUrl, type: isMorphedVideo ? 'video/mp4' : mimetype }] };
+    }
+    if (mimetype.startsWith('audio/')) {
+      return { type: 'audio', title: currentFile.file_name, sources: [{ src: fileUrl, type: mimetype }] };
+    }
+    return null;
+  }, [currentFile]);
+
+  // Bail if we've got not file.
   if (!currentFile) return null;
 
   // Render logic for different file types
@@ -185,19 +208,27 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
       );
     }
 
+    // Render the Plyr video UI
     if (mimetype.startsWith('video/') || isMorphedVideo) {
       return (
-        <video controls src={fileUrl} className="viewer-video">
-          PADD too old to support the video recording.
-        </video>
+        <div className="viewer-video">
+          <Plyr 
+            source={plyrSource} 
+            options={videoOptions}
+          />
+        </div>
       );
     }
 
+    // Render the audio player
     if (mimetype.startsWith('audio/')) {
       return (
-        <audio controls src={fileUrl} className="viewer-audio">
-          PADD too old to support the audio recording.
-        </audio>
+        <div className="viewer-audio">
+          <Plyr 
+            source={plyrSource} 
+            options={audioOptions}
+          />
+        </div>
       );
     }
 

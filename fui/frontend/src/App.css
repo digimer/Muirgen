@@ -29,6 +29,24 @@
   --grid-line: rgba(255, 0, 0, 0.15);
   --inactive-border: rgba(255, 0, 0, 0.5);
   --crt-scanline: linear-gradient(rgba(18, 0, 0, 0) 50%, rgba(50, 0, 0, 0.05) 50%);
+
+  /* Plyr Player Overrides */
+  --plyr-color-main: var(--strong-red);
+  --plyr-video-background: var(--dark-bg);
+  --plyr-menu-background: var(--dark-bg);
+  --plyr-menu-color: var(--neon-red);
+  --plyr-audio-controls-background: transparent;
+  --plyr-audio-control-color: var(--neon-red);
+
+  /* Scrubber & Slider Themes */
+  --plyr-range-thumb-background: var(--neon-red);
+  --plyr-video-progress-buffered-background: var(--soft-red);
+  --plyr-audio-progress-buffered-background: var(--soft-red);
+  --plyr-video-range-track-background: var(--dim-red);
+  --plyr-audio-range-track-background: var(--dim-red);
+  --plyr-video-control-color: var(--neon-red);
+  --plyr-video-control-color-hover: var(--dark-bg);
+  --plyr-video-control-background-hover: var(--neon-red);
 }
 
 /* --- 2. BASE & LAYOUT --- */
