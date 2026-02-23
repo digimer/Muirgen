@@ -313,8 +313,8 @@ CREATE TRIGGER trigger_configs
     AFTER INSERT OR UPDATE ON configs
     FOR EACH ROW EXECUTE PROCEDURE history_configs();
 
--- Notes that can be attached to anything.
-CREATE TABLE notes (
+-- Logs (notes) can be attached to anything.
+CREATE TABLE logs (
         uuid               uuid           default uuidv7()    not null,
         reference_table    text,                                        -- If this note refers to a table, this will be the table name
         reference_id       text,                                        -- If this note references a table, this is the ID (uuid or mmsi) used to reference the specific column
@@ -327,9 +327,9 @@ CREATE TABLE notes (
         PRIMARY KEY (uuid), 
         FOREIGN KEY (user_uuid) REFERENCES users(uuid)
 );
-ALTER TABLE notes OWNER TO admin;
+ALTER TABLE logs OWNER TO admin;
 
-CREATE TABLE history.notes (
+CREATE TABLE history.logs (
         history_id         bigint GENERATED ALWAYS AS IDENTITY,
         action_type        text,
         uuid               uuid,
@@ -341,17 +341,17 @@ CREATE TABLE history.notes (
         is_active          boolean, 
         modified_date      timestamptz
 );
-ALTER TABLE history.notes OWNER TO admin;
+ALTER TABLE history.logs OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_notes_modtime
-    BEFORE UPDATE ON notes
+CREATE TRIGGER update_logs_modtime
+    BEFORE UPDATE ON logs
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
 
-CREATE OR REPLACE FUNCTION history_notes() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION history_logs() RETURNS trigger AS $$
 BEGIN
-    INSERT INTO history.notes (
+    INSERT INTO history.logs (
         action_type, 
         uuid, 
         reference_table,
@@ -373,11 +373,11 @@ BEGIN
         NEW.modified_date);
     RETURN NULL;
 END; $$ LANGUAGE plpgsql;
-ALTER FUNCTION history_notes() OWNER TO admin;
+ALTER FUNCTION history_logs() OWNER TO admin;
 
-CREATE TRIGGER trigger_notes
-    AFTER INSERT OR UPDATE ON notes
-    FOR EACH ROW EXECUTE PROCEDURE history_notes();
+CREATE TRIGGER trigger_logs
+    AFTER INSERT OR UPDATE ON logs
+    FOR EACH ROW EXECUTE PROCEDURE history_logs();
     
 -- This stores images and other files that will be linked to various things.
 CREATE TABLE files (

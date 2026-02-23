@@ -6,15 +6,16 @@ import { apiFetch } from './utils/api.js';
 import { uploadMedia } from './utils/media.js';
 import SecurityMedia from './SecurityMedia.jsx';
 import ImageViewer from './ImageViewer.jsx';
+import DataViewer from './DataViewer.jsx';
 
 const VesselMedia = ({ vessel, mode = 'file' }) => {
-  const [mediaItems, setMediaItems]   = useState([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError]             = useState(null);
-  // Stores the index number of the image being viewed. 'null' means none are shown
-  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  const [mediaItems, setMediaItems]                 = useState([]);
+  const [isUploading, setIsUploading]               = useState(false);
+  const [error, setError]                           = useState(null);
+  // Stores the index number of the image/file being viewed. 'null' means none are shown
+  const [selectedFileIndex, setSelectedFileIndex]   = useState(null);
   // Store files in queue until the user confirms the upload.
-  const [stagedFiles, setStagedFiles] = useState([]);
+  const [stagedFiles, setStagedFiles]               = useState([]);
   // Controls visibility of the empty statging drop-zone. 
   const [isStagingModalOpen, setIsStagingModalOpen] = useState(false);
 
@@ -67,9 +68,11 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
     setStagedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // Helper to check if a staged file shares a name with an already uploaded file.
+  // Helper to check if a staged file shares a name with an already uploaded file. This checks against files
+  // that will be converted using the target name as they'll become post-processing.
   const isDuplicate = (fileName) => {
-    const expectedServerName = fileName.replace(/\.(heic|heif)$/i, '.jpg');
+    let expectedServerName = fileName.replace(/\.(heic|heif)$/i, '.jpg');
+        expectedServerName = expectedServerName.replace(/\.(mov|m4v|webm)$/i, '.mp4');
     return mediaItems.some(item => item.file_name === expectedServerName);
   };
 
@@ -87,8 +90,9 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
           await uploadMedia(file, vessel.uuid, 'vessels');
         }
       }
-      setStagedFiles([]); // Clear staging array on success
-      fetchMedia();       // Refresh the grid
+      setStagedFiles([]);           // Clear staging array on success
+      setIsStagingModalOpen(false); // Close the queue, assume they're done.
+      fetchMedia();                 // Refresh the grid
     } catch (err) {
       setError(`Upload incomplete. Error: [${err.message}]`);
     } finally {
@@ -160,15 +164,9 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
       <td>{formatSize(file.metadata?.size || 0)}</td>
       <td>{new Date(file.created_at || Date.now()).toLocaleDateString()}</td>
       <td style={{ textAlign: 'right' }}>
-        <a
-          href={file.file_directory + '/' + file.file_name}
-          target="_blank"
-          rel="noreferrer"
-          className="touch-button"
-          style={{ padding: '5px 10px', fontSize: '0.8rem', textDecoration: 'none' }}
-        >
-          Access
-        </a>
+        <button className="touch-button touch-button-retrieve" onClick={() => setSelectedFileIndex(mediaItems.findIndex(f => f.uuid === file.uuid))}>
+          Retrieve
+        </button>
       </td>
     </tr>
   );
@@ -177,7 +175,7 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
     <div 
       key={file.uuid} 
       className="media-card" 
-      onClick={() => setSelectedImageIndex(index)} 
+      onClick={() => setSelectedFileIndex(index)} 
       style={{
         cursor: 'pointer', 
         padding: '1px', /* Creates the red border */
@@ -293,33 +291,45 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
       {mediaItems.length === 0 ? (
         <div className="soft-text">No records exist for this object.</div>
       ) : (
-        mode === 'image' ? (
-          <div className="media-grid">
-            {mediaItems.map((file, index) => renderImageCard(file, index))}
-          </div>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Filename</th>
-                <th>Size</th>
-                <th>Date</th>
-                <th style={{ textAlign: 'right' }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mediaItems.map(renderFileRow)}
-            </tbody>
-          </table>
-        )
+        <div className={`scrollable-media-box ${isStagingModalOpen ? 'queue-open' : ''}`}>
+          {mode === 'image' ? (
+            <div className="media-grid">
+              {mediaItems.map((file, index) => renderImageCard(file, index))}
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Filename</th>
+                  <th>Size</th>
+                  <th>Date</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mediaItems.map(renderFileRow)}
+              </tbody>
+            </table>
+          )}
+        </div>
       )}
 
       {/* Render the ImageViewer if an image is selected */}
-      {selectedImageIndex !== null && (
+      {selectedFileIndex !== null && mode === 'image' && (
         <ImageViewer 
           images={mediaItems} 
-          initialIndex={selectedImageIndex} 
-          onClose={() => setSelectedImageIndex(null)}
+          initialIndex={selectedFileIndex} 
+          onClose={() => setSelectedFileIndex(null)}
+          onUpdate={fetchMedia}
+        />
+      )}
+
+      {/* Render the DataViewer if a file is selected */}
+      {selectedFileIndex !== null && mode === 'file' && (
+        <DataViewer 
+          files={mediaItems}
+          initialIndex={selectedFileIndex}
+          onClose={() => setSelectedFileIndex(null)}
           onUpdate={fetchMedia}
         />
       )}

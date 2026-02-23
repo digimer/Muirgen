@@ -368,6 +368,9 @@ input:-webkit-autofill:active {
   list-style-type: none;
   padding: 0;
   margin: 0 0 15px 0;
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 15px;
 }
 .staging-queue-item {
   display: flex;
@@ -583,7 +586,7 @@ input:-webkit-autofill:active {
 }
 
 /* Image viewer classes */
-.image-viewer-backdrop {
+.file-viewer-backdrop {
   position: fixed; 
   inset: 0;
   z-index: 9999;
@@ -594,7 +597,7 @@ input:-webkit-autofill:active {
   justify-content: center;
 }
 
-.image-viewer-frame {
+.file-viewer-frame {
   position: relative;
   width: 95vw;
   height: 90vh;
@@ -602,14 +605,14 @@ input:-webkit-autofill:active {
   filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.15));
 }
 
-.image-viewer-outer {
+.file-viewer-outer {
   position: absolute;
   inset: 0;
   background-color: var(--mid-red);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%);
 }
 
-.image-viewer-inner {
+.file-viewer-inner {
   position: absolute;
   inset: 1px;
   background-color: var(--dark-bg);
@@ -618,7 +621,7 @@ input:-webkit-autofill:active {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 39px), calc(100% - 39px) 100%, 0 100%);
 }
 
-.image-viewer-header {
+.file-viewer-header {
   height: 40px;
   border-bottom: 1px solid var(--soft-red);
   display: flex;
@@ -629,7 +632,7 @@ input:-webkit-autofill:active {
   z-index: 2;
 }
 
-.image-viewer-title {
+.file-viewer-title {
   font-family: 'Ubuntu Sans Mono', monospace;
   letter-spacing: 2px;
   color: var(--strong-red);
@@ -639,18 +642,18 @@ input:-webkit-autofill:active {
   white-space: nowrap;
 }
 
-.image-viewer-rename-label {
+.file-viewer-rename-label {
   cursor: pointer;
   text-underline-offset: 4px;
   transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
-.image-viewer-rename-label:hover {
+.file-viewer-rename-label:hover {
   color: var(--neon-red);
   text-decoration-color: var(--neon-red);
 }
 
-.image-viewer-rename-input {
+.file-viewer-rename-input {
   background: rgba(20, 0, 0, 0.8);
   border: 1px solid var(--neon-red);
   color: var(--neon-red);
@@ -661,13 +664,13 @@ input:-webkit-autofill:active {
   max-width: 60vw; /* Make sure a long file name doesn't shove elements off to the right */
 }
 
-.image-viewer-action-error {
+.file-viewer-action-error {
   font-size: 0.8rem;
   text-transform: none;
   margin-left: 10px;
 }
 
-.image-viewer-index {
+.file-viewer-index {
   font-family: 'Ubuntu Sans Mono', monospace;
   color: var(--mid-red);
   font-size: 0.9rem;
@@ -676,7 +679,7 @@ input:-webkit-autofill:active {
   gap: 15px;
 }
 
-.image-viewer-delete-button {
+.file-viewer-delete-button {
   background: none;
   border: 1px solid var(--neon-red);
   color: var(--neon-red);
@@ -689,6 +692,11 @@ input:-webkit-autofill:active {
   margin-top: 2px;
 }
 
+.file-viewer-delete-button:hover {
+  background: var(--strong-red);
+  color: var(--dark-bg);
+}
+
 .glyph-remove {
   display: inline-block;
   text-align: center;
@@ -696,11 +704,7 @@ input:-webkit-autofill:active {
   margin-top: 2px;
 }
 
-.image-viewer-delete-button:hover {
-  background: var(--strong-red);
-  color: var(--dark-bg);
-}
-
+/* The viewer-viewport is unique between images and files */ 
 .image-viewer-viewport {
   flex: 1;
   position: relative;
@@ -712,7 +716,21 @@ input:-webkit-autofill:active {
   padding: 20px;
 }
 
-.image-viewer-controls {
+.file-viewer-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--dark-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-viewer-controls {
   height: 60px;
   border-top: 1px solid var(--dim-red);
   display: flex;
@@ -723,7 +741,7 @@ input:-webkit-autofill:active {
   padding: 0 60px;
 }
 
-.image-viewer-button {
+.file-viewer-button {
   background: transparent;
   border: 1px solid var(--soft-red);
   color: var(--neon-red);
@@ -737,12 +755,12 @@ input:-webkit-autofill:active {
   transition: all 0.2s ease;
 }
 
-.image-viewer-button:hover {
+.file-viewer-button:hover {
   background: var(--soft-red);
   color: var(--dark-bg);
 }
 
-.image-viewer-decoration-line {
+.file-viewer-decoration-line {
   position: absolute;
   top: 40px;
   left: 0;
@@ -854,6 +872,39 @@ input:-webkit-autofill:active {
   width: 100%;
 }
 
+/* Classes for DataViewer */
+.viewer-audio {
+  width: 80%;
+}
+
+.viewer-document {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: #ffffff; /* PDFs and text are often black on transparent, so white is unavoidable here */
+}
+
+.viewer-fallback-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.viewer-fallback-header {
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+}
+
+.viewer-video {
+  max-width: 100%;
+  max-height: 100%;
+  background-color: var(--dark-bg); /* Explicit dark box fallback to prevent flashes */
+  color-scheme: dark;               /* Force native media controls into dark mode */
+  accent-color: var(--strong-red);  /* Tell the browser to natively paint sliders and progress bars neon red */
+}
+
 /* Wrapper to ensure <h2> elements stay aligned with the active display box edge */
 .task-header-wrapper {
   width: 90%;
@@ -930,6 +981,41 @@ input:-webkit-autofill:active {
 .user-card.active-selection {
   background: var(--dim-red);
   border-left: 4px solid var(--neon-red);
+}
+
+/* Internal scrolling container for large lists */
+.scrollable-media-box {
+  max-height: 55vh; /* Leaves space for other vertical elements */
+  overflow-y: auto;
+  padding-right: 15px; /* Space between the content and scrollbar */
+}
+
+/* When opening the queue for uploads, shring the file view to make space */
+.scrollable-media-box.queue-open {
+  max-height: 25vh;
+}
+
+/* Customize the scrollbar to match the "Cassette Futurism" aesthetic */
+.scrollable-media-box::-webkit-scrollbar,
+.staging-queue-list::-webkit-scrollbar {
+  width: 12px;
+}
+
+.scrollable-media-box::-webkit-scrollbar-track,
+.staging-queue-list::-webkit-scrollbar-track {
+  background: var(--dark-bg);
+  border-left: 1px solid var(--dim-red);
+}
+
+.scrollable-media-box::-webkit-scrollbar-thumb,
+.staging-queue-list::-webkit-scrollbar-thumb {
+  background: var(--soft-red);
+  border: 1px solid var(--neon-red);
+}
+
+.scrollable-media-box::-webkit-scrollbar-thumb:hover,
+.staging-queue-list::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-red);
 }
 
 /* --- 4. FORMS & INTERACTIVE --- */
@@ -1047,6 +1133,17 @@ button:focus {
   transition: all 0.1s ease-in-out, background-color 0.3s;
   box-shadow: 0 0 5px rgba(136, 0, 0, 0.5);
   margin-bottom: 2px;
+}
+
+.touch-button-file-download {
+  padding: 2px 8px;
+  margin-right: 15px;
+  font-size: 0.8rem;
+}
+
+.touch-button-retrieve {
+  padding: 5px 10px;
+  font-size: 0.8rem;
 }
 
 .touch-button:hover,

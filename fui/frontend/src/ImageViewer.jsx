@@ -130,25 +130,25 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
   if (!currentImage) return null;
 
   return (
-    <div className="image-viewer-backdrop" onClick={onClose}>
+    <div className="file-viewer-backdrop" onClick={onClose}>
 
       {/* Main container - prevent click propagation so clicking images  */}
       {/* Outer boder layer */}
-      <div className="image-viewer-frame" onClick={e => e.stopPropagation()}>
+      <div className="file-viewer-frame" onClick={e => e.stopPropagation()}>
         {/* solid red background explicitely bound via absolute positioning */}
-        <div className="image-viewer-outer" />
+        <div className="file-viewer-outer" />
 
         {/* Inner Background layer */}
-        <div className="image-viewer-inner">
+        <div className="file-viewer-inner">
           {/* Header bar */}
-          <div className="image-viewer-header">
-            <span className="image-viewer-title">
+          <div className="file-viewer-header">
+            <span className="file-viewer-title">
               Optical Record // 
               {isEditingName ? (
                 <>
                   <input 
                     type="text" 
-                    className="image-viewer-rename-input" 
+                    className="file-viewer-rename-input" 
                     value={editedName}
                     onChange={e => {
                       setEditedName(e.target.value);
@@ -163,11 +163,11 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
                     autoFocus 
                     disabled={isRenaming}
                   />
-                  {renameError && <span className="image-viewer-action-error">{renameError}</span>}
+                  {renameError && <span className="file-viewer-action-error">{renameError}</span>}
                 </>
               ) : (
                 <span 
-                  className="image-viewer-rename-label" 
+                  className="file-viewer-rename-label" 
                   title="Engage to rename" 
                   onClick={() => {
                     setEditedName(currentImage.file_name); 
@@ -178,11 +178,11 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
                 </span>
               )}
             </span>
-            <span className="image-viewer-index">
-              {deleteError && <span className="image-viewer-action-error">{deleteError}</span>}
+            <span className="file-viewer-index">
+              {deleteError && <span className="file-viewer-action-error">{deleteError}</span>}
               <span className="glyph-remove">⍀</span>
               <button 
-                className={`image-viewer-delete-button ${isConfirmingDelete ? 'button-confirm-state' : ''}`} 
+                className={`file-viewer-delete-button ${isConfirmingDelete ? 'button-confirm-state' : ''}`} 
                 onClick={handleDelete} 
                 title="Remove Record"
               >
@@ -210,28 +210,29 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
           </div>
           
           {/* Bottom control bar */}
-          <div className="image-viewer-controls">
+          <div className="file-viewer-controls">
             {/* Previous Image Button */}
-            <button onClick={() => navigate(-1)} className="image-viewer-button">
+            <button onClick={() => navigate(-1)} className="file-viewer-button">
               ⧏
             </button>
 
             {/* Close Button */}
-            <button onClick={onClose} className="image-viewer-button" style={{ lineHeight: '0' }}>
+            <button onClick={onClose} className="file-viewer-button" style={{ lineHeight: '0' }}>
+              {/* The ⎚ renders in a way that requires mangling to center */}
               <span style={{ display: 'block', transform: 'translateY(-1px)' }}>
                 ⎚
               </span>
             </button>
 
             {/* Navigation Overlay - Right */}
-            <button onClick={() => navigate(1)} className="image-viewer-button">
+            <button onClick={() => navigate(1)} className="file-viewer-button">
               ⧐
             </button>
           </div>
         </div>
 
         {/* Decorative internal lines */}
-        <div className="image-viewer-decoration-line" />
+        <div className="file-viewer-decoration-line" />
       </div>
     </div>
   );

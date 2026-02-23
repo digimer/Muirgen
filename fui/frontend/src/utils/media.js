@@ -8,8 +8,8 @@
 
 export const uploadMedia = async (file, referenceId, referenceTable) => {
   // Check max size. If changing this, be sure to update Nginx's config! Specifically, 
-  // - /etc/nginx/conf.d/muirgen.conf -> client_max_body_size 50m;'
-  const MAX_SIZE = 50 * 1024 * 1024;
+  // - /etc/nginx/conf.d/muirgen.conf -> client_max_body_size 250m;' Also, index.js's version of the same.
+  const MAX_SIZE = 250 * 1024 * 1024;
   if (file.size > MAX_SIZE) {
     throw new Error(`File too large; Limit is: [${(MAX_SIZE / (1024 * 1024)).toFixed(1)} MiB]], attempted upload is: [~${(file.size / (1024 * 1024)).toFixed(1)} MiB].`);
   }
