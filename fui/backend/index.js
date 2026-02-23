@@ -248,6 +248,153 @@ app.get('/api/system/sync-session', async (req, res) => {
   }
 });
 
+// Upload a file or image. Frontend must append 'referenceTable' to the formData.
+app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    const parentUuid  = req.params.uuid; // Entity UUID
+    const userUuid    = req.user.uuid;   // From the auth middleware
+    const file        = req.file;
+
+    // Ensure we've got a file and reference table.
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Make sure we've got a reference table.
+    const referenceTable = req.body.referenceTable || '';
+    if (!referenceTable) {
+      return res.status(400).json({ error: 'No reference table provided' });
+    }
+
+    // Determine type based on mimetype
+    let fileType          = file.mimetype.startsWith('image/') ? 'image' : 'file';
+    let finalFilename     = file.filename;
+    let finalMimetype     = file.mimetype;
+    let finalSize         = file.size;
+    const isHeicExtension = /\.(heic|heif)$/i.test(file.originalname);
+    const isVideoExt      = /\.(mov|mp4|m4v|webm)$/i.test(file.originalname);
+    const stats           = await fs.stat(file.path); // Get the size on disk
+
+    // NOTE: Muirgen is not a backup tool, or a media player! It's a quick refrence tool. As such, we'll 
+    //       favour usability and mangle uploads to favour in-browser accessibility. 
+
+    // HEIC/HEIF handling: Convert to WebP
+    if ((file.mimetype === 'image/heic' || file.mimetype === 'image/heif') ||
+        (file.mimetype === 'application/octet-stream' && isHeicExtension)) {
+      try {
+        // NOTE: When sharp supports HEIC, switch back to .webp. If/when the extension changes, update where
+        //       duplicate checks run before uploading in JSX files!
+        const outputFilename = file.filename.replace(/\.(heic|heif)$/i, '') + '.jpg';
+        const outputPath     = path.join(file.destination, outputFilename);
+
+        // TODO: When sharp adds heic support, switch back to the following line (and 'finalMimetype' back to
+        //       'image/webp')
+        //await sharp(file.path).webp({ quality: 92 }).toFile(outputPath);
+        // Convert
+        await execFilePromise('heif-convert', ['-q', '90', file.path, outputPath]);
+
+        // Delete the original HEIC/HEIF
+        await fs.unlink(file.path);
+        
+        // Update the metadata for the DB
+        finalFilename = outputFilename;
+        finalMimetype = 'image/jpeg';
+        finalSize     = (await fs.stat(outputPath)).size;
+        fileType      = 'image';
+
+      } catch (conversionError) {
+        console.error(`Conversion from: [${file.mimetype}] to: [${finalMimetype}] failed. Error: [${conversionError}]`);
+        // We'll upload the file as it is, but it'll be stored as a file insted of an image.
+      }
+    }
+
+    // Video handling. Given how most modern devices use patent encombered formats, we'll bulk-convert video
+    // to web-safe mp4 format. Start by saving to the database right away to avoid Nginx timeouts.
+    const fileDirectory   = `/uploads/${referenceTable}/${parentUuid}`;
+    const isVideo         = file.mimetype.startsWith('video/') || (file.mimetype === 'application/octet-stream' && isVideoExt);
+    const initialMetadata = { size: finalSize, mimetype: finalMimetype };
+    if (isVideo) {
+      // Flag for the frontend
+      initialMetadata.transcoding = true; 
+    }
+
+    const newFile = await pool.query(`INSERT INTO files 
+      (user_uuid, reference_table, reference_id, file_directory, file_name, file_type, metadata) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`, 
+      [userUuid, referenceTable, parentUuid, fileDirectory, finalFilename, fileType, JSON.stringify(initialMetadata)]
+    );
+
+    // Return success to the front-end immediatedly, before transcoding starts
+    res.status(201).json(newFile.rows[0]);
+
+    // Now launch transcoding asynchronously in the background.
+    if (isVideo) {
+      setTimeout(async () => {
+        try {
+          const tempOutputName = finalFilename + '-transcoded.mp4';
+          const tempOutputPath = path.join(file.destination, tempOutputName);
+
+          await execFilePromise('ffmpeg', [
+            '-y', 
+            '-i', 
+            file.path, 
+            '-c:v', 
+            'libx264', 
+            '-preset', 
+            'fast', 
+            '-crf', 
+            '23', 
+            '-pix_fmt',
+            'yuv420p',
+            '-c:a', 
+            'aac', 
+            '-movflags', 
+            '+faststart', 
+            tempOutputPath
+          ]);
+
+          // Delete the original now that the transcoding is done.
+          await fs.unlink(file.path);
+          
+          const finalMp4Name = file.originalname.replace(/\.[^/.]+$/, "") + '.mp4';
+          const finalPath = path.join(file.destination, finalMp4Name);
+          await fs.rename(tempOutputPath, finalPath);
+
+          // Update the DB record to remove the transcoding flag and point to the MP4
+          const newMetadata = { size: (await fs.stat(finalPath)).size, mimetype: 'video/mp4' };
+          await pool.query(`UPDATE files SET file_name = $1, metadata = $2 WHERE uuid = $3`, [finalMp4Name, JSON.stringify(newMetadata), newFile.rows[0].uuid]);
+          
+        } catch (err) {
+          console.error(`Transcode of [${file.originalname}] failed: [${err.message}]`);
+          // Strip the transcoding flag so the user can at least download the failed file
+          await pool.query(`UPDATE files SET metadata = $1 WHERE uuid = $2`, [JSON.stringify({ size: finalSize, mimetype: finalMimetype }), newFile.rows[0].uuid]);
+        }
+      }, 0);
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
+});
+
+// List files for a given entity.
+app.get('/api/system/:uuid/files', authenticateToken, async (req, res) => {
+  try {
+    // Note: reference_table is not needed here, as we're pulling records for a specific target, and the 
+    //       UUID is sufficiently unique on it's own. 
+    // Note: We use uuidv7, so sorting by uuid is equivalent to sorting by creation date.
+    const parentUuid  = req.params.uuid;
+    const result = await pool.query(`
+      SELECT * FROM files WHERE reference_id = $1 AND is_active = TRUE ORDER BY uuid ASC;`, 
+      [parentUuid]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('File data load failure, error:', err)
+    res.status(500).json({ error: `File data load failure, error: ${err}` });
+  }
+});
+
 /* *********************************************************************************************************/
 /* Section 2: User (SysOp) Endpoints                                                                       */
 /* *********************************************************************************************************/
@@ -708,158 +855,7 @@ app.put('/api/vessels/update/:uuid', authenticateToken, requireAdmin, async (req
 });
 
 /* *********************************************************************************************************/
-/* Section 4: File and Image routes                                                                        */
-/* *********************************************************************************************************/
-
-// Upload a file or image. Frontend must append 'referenceTable' to the formData.
-app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), async (req, res) => {
-  try {
-    const parentUuid  = req.params.uuid; // Entity UUID
-    const userUuid    = req.user.uuid;   // From the auth middleware
-    const file        = req.file;
-
-    // Ensure we've got a file and reference table.
-    if (!file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    // Make sure we've got a reference table.
-    const referenceTable = req.body.referenceTable || '';
-    if (!referenceTable) {
-      return res.status(400).json({ error: 'No reference table provided' });
-    }
-
-    // Determine type based on mimetype
-    let fileType          = file.mimetype.startsWith('image/') ? 'image' : 'file';
-    let finalFilename     = file.filename;
-    let finalMimetype     = file.mimetype;
-    let finalSize         = file.size;
-    const isHeicExtension = /\.(heic|heif)$/i.test(file.originalname);
-    const isVideoExt      = /\.(mov|mp4|m4v|webm)$/i.test(file.originalname);
-    const stats           = await fs.stat(file.path); // Get the size on disk
-
-    // NOTE: Muirgen is not a backup tool, or a media player! It's a quick refrence tool. As such, we'll 
-    //       favour usability and mangle uploads to favour in-browser accessibility. 
-
-    // HEIC/HEIF handling: Convert to WebP
-    if ((file.mimetype === 'image/heic' || file.mimetype === 'image/heif') ||
-        (file.mimetype === 'application/octet-stream' && isHeicExtension)) {
-      try {
-        // NOTE: When sharp supports HEIC, switch back to .webp. If/when the extension changes, update where
-        //       duplicate checks run before uploading in JSX files!
-        const outputFilename = file.filename.replace(/\.(heic|heif)$/i, '') + '.jpg';
-        const outputPath     = path.join(file.destination, outputFilename);
-
-        // TODO: When sharp adds heic support, switch back to the following line (and 'finalMimetype' back to
-        //       'image/webp')
-        //await sharp(file.path).webp({ quality: 92 }).toFile(outputPath);
-        // Convert
-        await execFilePromise('heif-convert', ['-q', '90', file.path, outputPath]);
-
-        // Delete the original HEIC/HEIF
-        await fs.unlink(file.path);
-        
-        // Update the metadata for the DB
-        finalFilename = outputFilename;
-        finalMimetype = 'image/jpeg';
-        finalSize     = (await fs.stat(outputPath)).size;
-        fileType      = 'image';
-
-      } catch (conversionError) {
-        console.error(`Conversion from: [${file.mimetype}] to: [${finalMimetype}] failed. Error: [${conversionError}]`);
-        // We'll upload the file as it is, but it'll be stored as a file insted of an image.
-      }
-    }
-
-    // Video handling. Given how most modern devices use patent encombered formats, we'll bulk-convert video
-    // to web-safe mp4 format. Start by saving to the database right away to avoid Nginx timeouts.
-    const fileDirectory   = `/uploads/${referenceTable}/${parentUuid}`;
-    const isVideo         = file.mimetype.startsWith('video/') || (file.mimetype === 'application/octet-stream' && isVideoExt);
-    const initialMetadata = { size: finalSize, mimetype: finalMimetype };
-    if (isVideo) {
-      // Flag for the frontend
-      initialMetadata.transcoding = true; 
-    }
-
-    const newFile = await pool.query(`INSERT INTO files 
-      (user_uuid, reference_table, reference_id, file_directory, file_name, file_type, metadata) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;`, 
-      [userUuid, referenceTable, parentUuid, fileDirectory, finalFilename, fileType, JSON.stringify(initialMetadata)]
-    );
-
-    // Return success to the front-end immediatedly, before transcoding starts
-    res.status(201).json(newFile.rows[0]);
-
-    // Now launch transcoding asynchronously in the background.
-    if (isVideo) {
-      setTimeout(async () => {
-        try {
-          const tempOutputName = finalFilename + '-transcoded.mp4';
-          const tempOutputPath = path.join(file.destination, tempOutputName);
-
-          await execFilePromise('ffmpeg', [
-            '-y', 
-            '-i', 
-            file.path, 
-            '-c:v', 
-            'libx264', 
-            '-preset', 
-            'fast', 
-            '-crf', 
-            '23', 
-            '-pix_fmt',
-            'yuv420p',
-            '-c:a', 
-            'aac', 
-            '-movflags', 
-            '+faststart', 
-            tempOutputPath
-          ]);
-
-          // Delete the original now that the transcoding is done.
-          await fs.unlink(file.path);
-          
-          const finalMp4Name = file.originalname.replace(/\.[^/.]+$/, "") + '.mp4';
-          const finalPath = path.join(file.destination, finalMp4Name);
-          await fs.rename(tempOutputPath, finalPath);
-
-          // Update the DB record to remove the transcoding flag and point to the MP4
-          const newMetadata = { size: (await fs.stat(finalPath)).size, mimetype: 'video/mp4' };
-          await pool.query(`UPDATE files SET file_name = $1, metadata = $2 WHERE uuid = $3`, [finalMp4Name, JSON.stringify(newMetadata), newFile.rows[0].uuid]);
-          
-        } catch (err) {
-          console.error(`Transcode of [${file.originalname}] failed: [${err.message}]`);
-          // Strip the transcoding flag so the user can at least download the failed file
-          await pool.query(`UPDATE files SET metadata = $1 WHERE uuid = $2`, [JSON.stringify({ size: finalSize, mimetype: finalMimetype }), newFile.rows[0].uuid]);
-        }
-      }, 0);
-    }
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Upload failed' });
-  }
-});
-
-// List files for a given entity.
-app.get('/api/system/:uuid/files', authenticateToken, async (req, res) => {
-  try {
-    // Note: reference_table is not needed here, as we're pulling records for a specific target, and the 
-    //       UUID is sufficiently unique on it's own. 
-    // Note: We use uuidv7, so sorting by uuid is equivalent to sorting by creation date.
-    const parentUuid  = req.params.uuid;
-    const result = await pool.query(`
-      SELECT * FROM files WHERE reference_id = $1 AND is_active = TRUE ORDER BY uuid ASC;`, 
-      [parentUuid]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error('File data load failure, error:', err)
-    res.status(500).json({ error: `File data load failure, error: ${err}` });
-  }
-});
-
-/* *********************************************************************************************************/
-/* Section 5: Non-endpoint stuff                                                                           */
+/* Section 4: Non-endpoint stuff                                                                           */
 /* *********************************************************************************************************/
 
 const PORT = process.env.PORT || config.apiPort || 5000;
