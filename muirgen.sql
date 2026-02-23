@@ -319,8 +319,10 @@ CREATE TABLE notes (
         reference_table    text,                                        -- If this note refers to a table, this will be the table name
         reference_id       text,                                        -- If this note references a table, this is the ID (uuid or mmsi) used to reference the specific column
         user_uuid          uuid                               not null, -- This is the user who created or updated the note.
+        category           text                               not null, -- General note type; "Maintenace", "Ships Log", "Crew Log", etc.
         note_name          text                               not null, -- This is a free-form name for the note, meant to find a note in a list
         note_body          text                               not null, -- This is the main body of the note.
+        is_pinned          boolean        default false       not null, -- Allows for "pinning" a note somewhere prominent, as the use case might dictate.
         is_active          boolean        default true        not null, -- If set to false, the note will not be shown except to administrators
         modified_date      timestamptz    default now()       not null,
 
@@ -336,8 +338,10 @@ CREATE TABLE history.notes (
         reference_table    text,
         reference_id       text,
         user_uuid          uuid,
+        category           text,
         note_name          text,
         note_body          text,
+        is_pinned          boolean,
         is_active          boolean, 
         modified_date      timestamptz
 );
@@ -357,6 +361,7 @@ BEGIN
         reference_table,
         reference_id,
         user_uuid,
+        category, 
         note_name,
         note_body,
         is_active, 
@@ -367,6 +372,7 @@ BEGIN
         NEW.reference_table,
         NEW.reference_id,
         NEW.user_uuid,
+        NEW.category, 
         NEW.note_name,
         NEW.note_body,
         NEW.is_active, 
