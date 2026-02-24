@@ -23,7 +23,7 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
     try {
       // Note: If later we want to filter by images or other files, here's where we'd do it. For now, bulk
       //       load everything for the vessel.
-      const res = await apiFetch(`/api/system/${vessel.uuid}/files`)
+      const res = await apiFetch(`/api/files/${vessel.uuid}/list`)
       if (res.ok) {
         const data     = await res.json();
         const filtered = data.filter(item => mode === 'image' ? item.file_type === 'image' : item.file_type !== 'image' );

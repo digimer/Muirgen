@@ -1,8 +1,8 @@
 /* 
  * Similar to the ImageViewer (can you tell which came first?) this handles the management and display of 
  * files. Those with mimetype well supported by modern browsers (as of early 2026) like PDF, text, MP4, 
- * MP3. etc will be rendered in-situ. Others are present to the user to download via 
- * /api/system/files/:uuid/download endpoint to prevent drive-by downloads.
+ * MP3. etc will be rendered in-situ. Others are present to the user to download via the
+ * '/api/files/:uuid/download' endpoint to prevent drive-by downloads.
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -56,7 +56,7 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
     setIsDownloading(true);
     setDownloadError(null);
     try {
-      const res = await apiFetch(`/api/system/files/${currentFile.uuid}/download`, { method: 'GET' });
+      const res = await apiFetch(`/api/files/${currentFile.uuid}/download`, { method: 'GET' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Download failed. Generic error.');
@@ -111,7 +111,7 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
     setIsRenaming(true);
     setRenameError(null);
     try {
-      const res = await apiFetch(`/api/system/files/${currentFile.uuid}/rename`, {
+      const res = await apiFetch(`/api/files/${currentFile.uuid}/rename`, {
         method: 'PUT',
         body: JSON.stringify({ new_name: newName })
       });
@@ -142,7 +142,7 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
     }
 
     try {
-      const res = await apiFetch(`/api/system/files/${currentFile.uuid}/delete`, { method: 'PUT' });
+      const res = await apiFetch(`/api/files/${currentFile.uuid}/delete`, { method: 'PUT' });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       if (onUpdate) await onUpdate();

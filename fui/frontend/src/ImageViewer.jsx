@@ -70,7 +70,7 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
     setRenameError(null);
     try {
       // Wait for the backend PUT request.
-      const res = await apiFetch(`/api/system/files/${currentImage.uuid}/rename`, {
+      const res = await apiFetch(`/api/files/${currentImage.uuid}/rename`, {
         method: 'PUT', 
         body: JSON.stringify({ new_name: newName })
       });
@@ -102,7 +102,7 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
 
     try {
       // Wait for the backend PUT request.
-      const res  = await apiFetch(`/api/system/files/${currentImage.uuid}/delete`, { method: 'PUT' });
+      const res  = await apiFetch(`/api/files/${currentImage.uuid}/delete`, { method: 'PUT' });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 

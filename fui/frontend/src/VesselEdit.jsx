@@ -45,7 +45,7 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
     e.preventDefault();
     setError(null);
     try {
-      const res = await apiFetch(`/api/vessels/update/${vessel.uuid}`, {
+      const res = await apiFetch(`/api/vessels/${vessel.uuid}/update`, {
         method: 'PUT',
         body: JSON.stringify(formData)
       });
@@ -74,7 +74,7 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
       // Are we activating or deactivating? The answer will determine the end point to be called.
       const useMethod = vessel.is_active ? 'DELETE' : 'PATCH';
       const endpoint = vessel.is_active ? 'deactivate' : 'reactivate';
-      const res = await apiFetch(`/api/vessels/${endpoint}/${vessel.uuid}`, { method: useMethod });
+      const res = await apiFetch(`/api/vessels/${vessel.uuid}/${endpoint}`, { method: useMethod });
       if (res.ok) {
         // refresh and return
         setIsConfirmingAction(false);

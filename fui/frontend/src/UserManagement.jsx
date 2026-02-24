@@ -48,7 +48,7 @@ function UserManagement() {
     
     // Determine if we're updating (put) or inserting (post)
     const isUpdate = !!editingUser.uuid;
-    const url = isUpdate ? `/api/users/update/${editingUser.uuid}` : '/api/users/save';
+    const url = isUpdate ? `/api/users/${editingUser.uuid}/update` : '/api/users/create';
     const method = isUpdate ? 'PUT' : 'POST';
     const vesselUuid = users[0]?.vessel_uuid;
     
@@ -88,7 +88,7 @@ function UserManagement() {
     if (!window.confirm(`Revoke access for ${editingUser.handle}?`)) return;
         
     try {
-      const res = await apiFetch(`/api/users/delete/${editingUser.uuid}`, {
+      const res = await apiFetch(`/api/users/${editingUser.uuid}/delete`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('muirgen_token')}` }
       });
@@ -127,7 +127,7 @@ function UserManagement() {
                 <span className="label-text">{user.handle}</span>
                 <span className="operator-subtitles">{user.name}</span>
               </div>
-            )}
+            ))}
           </div>
           <button 
             className="touch-button" 

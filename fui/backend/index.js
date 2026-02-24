@@ -1,3 +1,9 @@
+/* 
+ * Muirgen Endpoints/ 
+ * - Naming conventions is 'Subject-Verb'. 
+ *   - Sort '/api/<subject>/:uuid/<verb>' *after* '/api/<subject>/<verb>'!
+ */
+
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
@@ -68,11 +74,123 @@ const upload = multer({
 });
 
 /* *********************************************************************************************************/
-/* Section 1: System Endpoints                                                                             */
+/* Authentication / Security Endpoints                                                                     */
+/* *********************************************************************************************************/
+
+// Check if the user is logged in.
+app.post('/api/auth/login', async (req, res) => {
+  const { userHandle, userPassword } = req.body;
+  
+  try {
+    // Get details about the logging in user for the audit log
+    const result = await pool.query(
+      'SELECT uuid, vessel_uuid, name, password_hash, is_admin FROM users WHERE is_active = TRUE AND handle = $1;', 
+      [userHandle]
+    );
+    
+    // Is the handle valid?
+    if (result.rows.length === 0) {
+      // Nope.
+      await auditLog(pool, null, null, 'Login::Failure', `An attempt to login as: [${userHandle}] was made, which is not a valid operator.`);
+      return res.status(401).json({ error: "Security: Invalid Operator" });
+    }
+    
+    const user = result.rows[0];
+    const match = await bcrypt.compare(userPassword, user.password_hash);
+    
+    if (match) {
+      // Create the password / token.
+      const token = jwt.sign(
+        { 
+          uuid: user.uuid, 
+          handle: userHandle, 
+          is_admin: user.is_admin, 
+          vessel_uuid: user.vessel_uuid
+        }, 
+        process.env.JWT_SECRET || 'this_is_bad_fallback_key', 
+        { expiresIn: '30d' } // This is more to keep sessions active than for security
+      );
+      await auditLog(pool, user.vessel_uuid, user.uuid, 'Login::Success', `The operator: [${userHandle}] has successfully logged in.`);
+      res.json({ success: true, token });
+    } else {
+      // Bad password.
+      await auditLog(pool, null, null, 'Login::Failure', `Security: Invalid access code used for the operator: [${userHandle}]!`);
+      res.status(401).json({ error: "Access Denied" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "System Error. Database Offline?" });
+  }
+});
+
+// Record in the audit log when a user logs out.
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+  try {
+    // TODO: Replace this with a central auditing function later.
+    // The user_uuid of the user being edited
+    const { uuid, vessel_uuid, handle } = req.user;
+    
+    // Log the delete
+    await auditLog(pool, vessel_uuid, uuid, 'User::Logout', `Operator: [${handle}] has logged off.`);
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error in /api/auth/logout:', err); 
+    res.status(500).json({ error: 'Database Offline' });
+  }
+});
+
+// Check system requirements and sync active session data.
+app.get('/api/auth/session-sync', async (req, res) => {
+  try {
+    const userRes = await pool.query('SELECT uuid FROM users WHERE is_active = TRUE LIMIT 1;');
+    const vesselRes = await pool.query('SELECT uuid FROM vessels WHERE is_active = TRUE LIMIT 1;');
+    
+    // Check for a passport in the headers.
+    const authHeader = req.headers.authorization;
+    let loggedIn = false;
+    let userRecord = null;
+    
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      
+      // Verify that the UUID in the token exists and is (still) active.
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key');
+        const userCheck = await pool.query(
+          'SELECT uuid, handle, is_admin, vessel_uuid FROM users WHERE is_active = TRUE AND uuid = $1;', 
+          [decoded.uuid]
+        );
+        
+        if (userCheck.rows.length > 0) {
+          loggedIn = true;
+          userRecord = userCheck.rows[0];
+        } else {
+          // The user has either been deactivated or deleted entirely.
+          loggedIn = false;
+        }
+      } catch (err) {
+        // The token has expired or is invalid.
+        loggedIn = false;
+      }
+    }
+      
+    res.json({
+      userRequired: userRes.rows.length === 0,
+      vesselRequired: vesselRes.rows.length === 0, 
+      isLoggedIn: loggedIn, 
+      user: userRecord
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Database Offline' });
+  }
+});
+
+/* *********************************************************************************************************/
+/* File Management Endpoints                                                                               */
 /* *********************************************************************************************************/
 
 // Delete (deactivate) files by it's UUID
-app.put('/api/system/files/:uuid/delete', authenticateToken, async (req, res) => {
+app.post('/api/files/:uuid/delete', authenticateToken, async (req, res) => {
   try {
     const fileUuid      = req.params.uuid;
     const fileRecordRes = await pool.query('SELECT file_name, reference_id FROM files WHERE uuid = $1', [fileUuid]);
@@ -96,7 +214,7 @@ app.put('/api/system/files/:uuid/delete', authenticateToken, async (req, res) =>
 });
 
 // Enable (secure) downloads of file.
-app.get('/api/system/files/:uuid/download', authenticateToken, async (req, res) => {
+app.get('/api/files/:uuid/download', authenticateToken, async (req, res) => {
   try {
     const fileUuid = req.params.uuid;
 
@@ -139,8 +257,26 @@ app.get('/api/system/files/:uuid/download', authenticateToken, async (req, res) 
   }
 });
 
+// List files for a given entity.
+app.get('/api/files/:uuid/list', authenticateToken, async (req, res) => {
+  try {
+    // Note: reference_table is not needed here, as we're pulling records for a specific target, and the 
+    //       UUID is sufficiently unique on it's own. 
+    // Note: We use uuidv7, so sorting by uuid is equivalent to sorting by creation date.
+    const parentUuid  = req.params.uuid;
+    const result = await pool.query(`
+      SELECT * FROM files WHERE reference_id = $1 AND is_active = TRUE ORDER BY uuid ASC;`, 
+      [parentUuid]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('File data load failure, error:', err)
+    res.status(500).json({ error: `File data load failure, error: ${err}` });
+  }
+});
+
 // Rename a specific file by it's UUID
-app.put('/api/system/files/:uuid/rename', authenticateToken, async (req, res) => {
+app.post('/api/files/:uuid/rename', authenticateToken, async (req, res) => {
   try {
     const fileUuid     = req.params.uuid;
     const { new_name } = req.body;
@@ -188,68 +324,8 @@ app.put('/api/system/files/:uuid/rename', authenticateToken, async (req, res) =>
   }
 });
 
-// Get the time from the database server to prevent drift in the displayed time
-app.get('/api/system/get-time', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW() as server_time;');
-    res.json({ 
-      status: 'Online', 
-      serverTime: result.rows[0].server_time
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database connection failed' });
-  }
-});
-
-// Check system requirements and sync active session data.
-app.get('/api/system/sync-session', async (req, res) => {
-  try {
-    const userRes = await pool.query('SELECT uuid FROM users WHERE is_active = TRUE LIMIT 1;');
-    const vesselRes = await pool.query('SELECT uuid FROM vessels WHERE is_active = TRUE LIMIT 1;');
-    
-    // Check for a passport in the headers.
-    const authHeader = req.headers.authorization;
-    let loggedIn = false;
-    let userRecord = null;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
-      
-      // Verify that the UUID in the token exists and is (still) active.
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'this_is_bad_fallback_key');
-        const userCheck = await pool.query(
-          'SELECT uuid, handle, is_admin, vessel_uuid FROM users WHERE is_active = TRUE AND uuid = $1;', 
-          [decoded.uuid]
-        );
-        
-        if (userCheck.rows.length > 0) {
-          loggedIn = true;
-          userRecord = userCheck.rows[0];
-        } else {
-          // The user has either been deactivated or deleted entirely.
-          loggedIn = false;
-        }
-      } catch (err) {
-        // The token has expired or is invalid.
-        loggedIn = false;
-      }
-    }
-      
-    res.json({
-      userRequired: userRes.rows.length === 0,
-      vesselRequired: vesselRes.rows.length === 0, 
-      isLoggedIn: loggedIn, 
-      user: userRecord
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Database Offline' });
-  }
-});
-
 // Upload a file or image. Frontend must append 'referenceTable' to the formData.
-app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), async (req, res) => {
+app.post('/api/files/:uuid/upload', authenticateToken, upload.single('file'), async (req, res) => {
   try {
     const parentUuid  = req.params.uuid; // Entity UUID
     const userUuid    = req.user.uuid;   // From the auth middleware
@@ -377,58 +453,192 @@ app.post('/api/system/:uuid/upload', authenticateToken, upload.single('file'), a
   }
 });
 
-// List files for a given entity.
-app.get('/api/system/:uuid/files', authenticateToken, async (req, res) => {
+/* *********************************************************************************************************/
+/* Notes (& Logs) Endpoints                                                                                */
+/* *********************************************************************************************************/
+
+// Create a new note
+app.post('/api/notes/:uuid/create', authenticateToken, async (req, res) => {
   try {
-    // Note: reference_table is not needed here, as we're pulling records for a specific target, and the 
-    //       UUID is sufficiently unique on it's own. 
-    // Note: We use uuidv7, so sorting by uuid is equivalent to sorting by creation date.
-    const parentUuid  = req.params.uuid;
-    const result = await pool.query(`
-      SELECT * FROM files WHERE reference_id = $1 AND is_active = TRUE ORDER BY uuid ASC;`, 
-      [parentUuid]
+    const refId = req.params.uuid;
+    const { reference_table, category, note_name, note_body, is_pinned } = req.body;
+
+    // NOTE: We don't audit log this as it's generally not note-worthy, and who created it is record is 
+    //       user_uuid anyway
+    // User ID is extracted from the JWT token
+    const result = await pool.query(
+      'INSERT INTO notes (reference_table, reference_id, user_uuid, category, note_name, note_body, is_pinned) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;', 
+      [reference_table, refId, userUuid, category, note_name, note_body, is_pinned || false]
     );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Log entry failed. Error: ', err);
+    res.status(500).json({ error: `Log entry failed. Error: [${err.message}]` });
+  }
+});
+
+// Delete (deactivate) a note
+app.post('/api/notes/:uuid/deactivate', authenticateToken, async (req, res) => {
+  try {
+    const userUuid       = req.user.uuid;
+    const noteUuid       = req.params.uuid; 
+    const userVesselUuid = req.user.vessel_uuid;
+    const userHandle     = req.user.handle;
+    
+    // Log the deactivation. Generally notes shouldn't be deactivated, but that doesn't mean it's a sign of
+    // anyhting nefarious. Though unlikely, it could be, so log it.
+    await auditLog(pool, userVesselUuid, userUuid, 'Note::Deactivation', `Operator: [${userHandle}] deactivated the note/log entry: [${noteUuid}].`);
+
+    // Mark the note as deactivated. 
+    const result = await pool.query('UPDATE notes SET is_active = FALSE WHERE uuid = $1 RETURNING *;', [noteUuid]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Deactivation failed; Note not found' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Note deactivation failure. Error: ', err);
+    res.status(500).json({ error: `Note deactivation failed. Error: [${err.message}]` });
+  }
+});
+
+// Load the existing notes for a given entity
+app.get('/api/notes/:uuid/list', authenticateToken, async (req, res) => {
+  try {
+    const parentUuid = req.params.uuid;
+    const result     = await pool.query(
+      'SELECT * FROM notes WHERE reference_id = $1 AND is_active = TRUE ORDER BY is_pinned DESC, modified_date DESC;', 
+      [parentUuid]);
     res.json(result.rows);
   } catch (err) {
-    console.error('File data load failure, error:', err)
-    res.status(500).json({ error: `File data load failure, error: ${err}` });
+    console.error('Notes failed to load for this object. Error: ', err);
+    res.statys(500).json({ error: `Notes failed to load for this object. Error: [${err.message}]` });
+  }
+});
+
+// Undelete (reeactivate) a note.
+app.post('/api/notes/:uuid/reactivate', authenticateToken, async (req, res) => {
+  try {
+    const userUuid       = req.user.uuid;
+    const noteUuid       = req.params.uuid; 
+    const userVesselUuid = req.user.vessel_uuid;
+    const userHandle     = req.user.handle;
+    
+    // Log the reactivation. This is likely a user simply undeleting an accidentally deleted note. Though 
+    // unlikely, it could be someone snooping, so log it.
+    await auditLog(pool, userVesselUuid, userUuid, 'Note::Reactivation', `Operator: [${userHandle}] reactivated the note/log entry: [${noteUuid}].`);
+
+    // Mark the note as deactivated. 
+    const result = await pool.query('UPDATE notes SET is_active = TRUE WHERE uuid = $1 RETURNING *;', [noteUuid]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Reactivation failed; Note not found' });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Note reactivation failure. Error: ', err);
+    res.status(500).json({ error: `Note reactivation failed. Error: [${err.message}]` });
+  }
+});
+
+// Update an existing note.
+app.post('/api/notes/:uuid/update', authenticateToken, async (req, res) => {
+  try {
+    const userUuid       = req.user.uuid;
+    const noteUuid       = req.params.uuid; 
+    const userVesselUuid = req.user.vessel_uuid;
+    const userHandle     = req.user.handle;
+    const { category, note_name, note_body, is_pinned } = req.body;
+    
+    // Log the update. It's generally not a concern, but in the unlikely chance a user tries to manipulate a 
+    // record (ie: to mask incrimidating evidence), we audit the change.
+    await auditLog(pool, userVesselUuid, userUuid, 'Note::Update', `Operator: [${userHandle}] updated the note/log entry: [${noteUuid}].`);
+
+    const result = await pool.query(
+      'UPDATE notes SET category = $1, note_name = $2, note_body = $3, is_pinned = $4, user_uuid = $5 WHERE uuid = $6 AND is_active = TRUE RETURNING *;', 
+      [category, note_name, note_body, is_pinned, userUuid, noteUuid]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Not updated, note not found.' });
+    }
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+    console.error('Note update failed. Error: ', err);
+    res.status(500).json({ error: `Note update failed. Error: [${err.message}]` });
   }
 });
 
 /* *********************************************************************************************************/
-/* Section 2: User (SysOp) Endpoints                                                                       */
+/* System Related Endpoints                                                                                */
 /* *********************************************************************************************************/
 
-// Delete (well, deactivate) a user
-app.delete('/api/users/delete/:uuid', authenticateToken, requireAdmin, async (req, res) => {
-  const targetUuid = req.params.uuid; // The passed in UUID
-  const requesterUuid = req.user.uuid;
-  const requesterVesselUuid = req.user.vessel_uuid;
-  const requesterHandle = req.user.handle;
-  
+// Get the time from the database server to prevent drift in the displayed time
+app.get('/api/system/time', async (req, res) => {
   try {
-    // TODO: Replace this with a central auditing function later.
-    // Get the user's handle for the audit log;
-    const userLookup = await pool.query('SELECT handle FROM users WHERE uuid = $1;', [targetUuid]);
-    const targetHandle = userLookup.rows[0]?.handle || 'Unknown';
+    const result = await pool.query('SELECT NOW() as server_time;');
+    res.json({ 
+      status: 'Online', 
+      serverTime: result.rows[0].server_time
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database connection failed' });
+  }
+});
+
+/* *********************************************************************************************************/
+/* User Management Endpoints (Not Auth!)                                                                   */
+/* *********************************************************************************************************/
+
+// Handle saving users with bcryptjs
+app.post('/api/users/create', authenticateToken, requireAdmin, async (req, res) => {
+  const { userHandle, userName, userPassword, userPasswordConfirm, userIsAdmin, userVesselUuid } = req.body;
+  try {
+    // Is the access code and verify code the same?
+    if (userPassword !== userPasswordConfirm) {
+      return res.status(400).json({ error: 'The access code verification did not match the access code entered.' });
+    }
     
-    // Log the delete
-    await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Delete', `Operator: [${requesterHandle}] revoked access for the user: [${targetHandle}] UUID: [${targetUuid}].`);
+    // Prevent duplicate handles.
+    const existing = await pool.query('SELECT uuid FROM users WHERE handle = $1;', [userHandle]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: "Conflict: User handle already in use!" });
+    }
     
-    await pool.query(
-      'UPDATE users SET is_active = FALSE WHERE uuid = $1;', 
-      [targetUuid]
+    // Hash the password.
+    const hashedPassword = await bcrypt.hash(userPassword, 12);
+    
+    // Record the new user.
+    const newUser = await pool.query(
+      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, $4, $5, TRUE);',
+      [userHandle, userName, hashedPassword, userIsAdmin, userVesselUuid]
     );
     
+    // Log who created it and then we're done.
+    await auditLog(pool, userVesselUuid, req.user.uuid, 'User::Create', `Operator: [${req.user.handle}] registered the new user: [${userHandle}].`);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: `Operator Deactivation Failed: ${err.message}` })
+    console.error(err);
+    res.status(500).json({ error: `Database error: ${err.message}` });
+  }
+});
+
+// Get a list of all users
+app.get('/api/users/list', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT uuid, handle, name, is_admin, is_active FROM users ORDER BY handle ASC;'
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: `Operator Load Failed: ${err.message}` })
   }
 });
 
 // This is called ONLY during initial setup when no users exist at all. Once even one user exists, this 
 // returns 403.
-app.post('/api/users/initial-sysop', async (req, res) => {
+app.post('/api/users/sysop-init', async (req, res) => {
   try {
     // If any users exist at all, bail out.
     const checkUsers = await pool.query('SELECT COUNT(*) FROM users;');
@@ -457,37 +667,35 @@ app.post('/api/users/initial-sysop', async (req, res) => {
   }
 });
 
-// Get a list of all users
-app.get('/api/users/list', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT uuid, handle, name, is_admin, is_active FROM users ORDER BY handle ASC;'
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: `Operator Load Failed: ${err.message}` })
-  }
-});
-
-// Record in the audit log when a user logs out.
-app.post('/api/users/logout', authenticateToken, async (req, res) => {
+// Delete (well, deactivate) a user
+app.post('/api/users/:uuid/delete', authenticateToken, requireAdmin, async (req, res) => {
+  const targetUuid = req.params.uuid; // The passed in UUID
+  const requesterUuid = req.user.uuid;
+  const requesterVesselUuid = req.user.vessel_uuid;
+  const requesterHandle = req.user.handle;
+  
   try {
     // TODO: Replace this with a central auditing function later.
-    // The user_uuid of the user being edited
-    const { uuid, vessel_uuid, handle } = req.user;
+    // Get the user's handle for the audit log;
+    const userLookup = await pool.query('SELECT handle FROM users WHERE uuid = $1;', [targetUuid]);
+    const targetHandle = userLookup.rows[0]?.handle || 'Unknown';
     
     // Log the delete
-    await auditLog(pool, vessel_uuid, uuid, 'User::Logout', `Operator: [${handle}] has logged off.`);
+    await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Delete', `Operator: [${requesterHandle}] revoked access for the user: [${targetHandle}] UUID: [${targetUuid}].`);
+    
+    await pool.query(
+      'UPDATE users SET is_active = FALSE WHERE uuid = $1;', 
+      [targetUuid]
+    );
     
     res.json({ success: true });
   } catch (err) {
-    console.error('Error in /api/users/logout:', err); 
-    res.status(500).json({ error: 'Database Offline' });
+    res.status(500).json({ error: `Operator Deactivation Failed: ${err.message}` })
   }
 });
 
 // Update existing users
-app.put('/api/users/update/:uuid', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/users/:uuid/update', authenticateToken, requireAdmin, async (req, res) => {
   // The user_uuid of the user being edited
   const targetUuid = req.params.uuid;
   // This comes the JWT middleware (muirgen token) and is the user_uuid of the user doing the update.
@@ -543,126 +751,12 @@ app.put('/api/users/update/:uuid', authenticateToken, requireAdmin, async (req, 
   }
 })
 
-// Check if the user is logged in.
-app.post('/api/users/login', async (req, res) => {
-  const { userHandle, userPassword } = req.body;
-  
-  try {
-    // Get details about the logging in user for the audit log
-    const result = await pool.query(
-      'SELECT uuid, vessel_uuid, name, password_hash, is_admin FROM users WHERE is_active = TRUE AND handle = $1;', 
-      [userHandle]
-    );
-    
-    // Is the handle valid?
-    if (result.rows.length === 0) {
-      // Nope.
-      await auditLog(pool, null, null, 'Login::Failure', `An attempt to login as: [${userHandle}] was made, which is not a valid operator.`);
-      return res.status(401).json({ error: "Security: Invalid Operator" });
-    }
-    
-    const user = result.rows[0];
-    const match = await bcrypt.compare(userPassword, user.password_hash);
-    
-    if (match) {
-      // Create the password / token.
-      const token = jwt.sign(
-        { 
-          uuid: user.uuid, 
-          handle: userHandle, 
-          is_admin: user.is_admin, 
-          vessel_uuid: user.vessel_uuid
-        }, 
-        process.env.JWT_SECRET || 'this_is_bad_fallback_key', 
-        { expiresIn: '30d' } // This is more to keep sessions active than for security
-      );
-      await auditLog(pool, user.vessel_uuid, user.uuid, 'Login::Success', `The operator: [${userHandle}] has successfully logged in.`);
-      res.json({ success: true, token });
-    } else {
-      // Bad password.
-      await auditLog(pool, null, null, 'Login::Failure', `Security: Invalid access code used for the operator: [${userHandle}]!`);
-      res.status(401).json({ error: "Access Denied" });
-    }
-  } catch (err) {
-    res.status(500).json({ error: "System Error. Database Offline?" });
-  }
-});
-
-// Handle saving users with bcryptjs
-app.post('/api/users/save', authenticateToken, requireAdmin, async (req, res) => {
-  const { userHandle, userName, userPassword, userPasswordConfirm, userIsAdmin, userVesselUuid } = req.body;
-  try {
-    // Is the access code and verify code the same?
-    if (userPassword !== userPasswordConfirm) {
-      return res.status(400).json({ error: 'The access code verification did not match the access code entered.' });
-    }
-    
-    // Prevent duplicate handles.
-    const existing = await pool.query('SELECT uuid FROM users WHERE handle = $1;', [userHandle]);
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: "Conflict: User handle already in use!" });
-    }
-    
-    // Hash the password.
-    const hashedPassword = await bcrypt.hash(userPassword, 12);
-    
-    // Record the new user.
-    const newUser = await pool.query(
-      'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, $4, $5, TRUE);',
-      [userHandle, userName, hashedPassword, userIsAdmin, userVesselUuid]
-    );
-    
-    // Log who created it and then we're done.
-    await auditLog(pool, userVesselUuid, req.user.uuid, 'User::Create', `Operator: [${req.user.handle}] registered the new user: [${userHandle}].`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: `Database error: ${err.message}` });
-  }
-});
-
 /* *********************************************************************************************************/
-/* Section 3: Vessel Endpoints                                                                             */
+/* Vessel Management Endpoints                                                                             */
 /* *********************************************************************************************************/
-
-// Ddeactive a vessel.
-app.delete('/api/vessels/deactivate/:uuid', authenticateToken, requireAdmin, async (req, res) => {
-  const targetUuid = req.params.uuid;
-  
-  try {
-    // Is there another active vessel?
-    const vessels = await pool.query('SELECT COUNT(*) FROM vessels WHERE is_active = TRUE AND uuid != $1;', [targetUuid]);
-    if (parseInt(vessels.rows[0].count) === 0) {
-      return res.status(400).json({ error: "Abort: Can not deactive a vessel while no other vessel is active!" });
-    }
-    
-    // Are all active users moved over to another vessel?
-    const users = await pool.query('SELECT COUNT(*) FROM users WHERE is_active = TRUE AND vessel_uuid = $1;', [targetUuid]);
-    if (parseInt(users.rows[0].count) !== 0) {
-      return res.status(400).json({ error: "Abort: All users (and crew) must be moved to another vessel before deactiving!" });
-    }
-    
-    // Are all active crew moved over to another vessel?
-    const crew = await pool.query('SELECT COUNT(*) FROM crew WHERE is_active = TRUE AND vessel_uuid = $1;', [targetUuid]);
-    if (parseInt(crew.rows[0].count) !== 0) {
-      return res.status(400).json({ error: "Abort: All crew (and users) must be moved to another vessel before deactiving!" });
-    }
-    
-    // Still alive? Then we're ready. Get the vessel name for the audit log
-    const vesselLookup = await pool.query('SELECT name FROM vessels WHERE uuid = $1;', [targetUuid])
-    const vesselName = vesselLookup.rows[0]?.name || 'Unknown vessel';
-    await pool.query('UPDATE vessels SET is_active = FALSE WHERE uuid = $1;', [targetUuid]);
-    
-    // Log it
-    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Deactivate', `Operator: [${req.user.handle}] deactivated the vessel: [${vesselName}].`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: `Vessel deactivation failed. Error: ${err.message}` });
-  }
-});
 
 // Get a list of active vessels
-app.get('/api/vessels/get-active', async (req, res) => {
+app.get('/api/vessels/active', async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT uuid, name FROM vessels WHERE is_active = TRUE ORDER BY name ASC;'
@@ -674,99 +768,8 @@ app.get('/api/vessels/get-active', async (req, res) => {
   }
 });
 
-// Get details for the logged-in user's vessel_uuid
-app.get('/api/vessels/get-vessel', authenticateToken, async (req, res) => {
-  try {
-    const vesselUuid = req.user.vessel_uuid;
-    const result = await pool.query(
-      'SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm FROM vessels WHERE is_active = TRUE AND uuid = $1;',
-      [vesselUuid]
-    );
-    if (result.rows.length === 0) {
-      
-      return res.status(404).json({ error: "Vessel not found or has been deactived!" });
-    }
-    const vessel = result.rows[0];
-    res.json({
-      vesselUuid: vessel.uuid, 
-      vesselName: vessel.name, 
-      vesselFlagNation: vessel.flag_nation,
-      vesselPortOfRegistry: vessel.port_of_registry,
-      vesselBuildDetails: vessel.build_details,
-      vesselOfficialNumber: vessel.official_number,
-      vesselHullIdentificationNumber: vessel.hull_id_number, 
-      vesselKeelOffset: vessel.keel_offset_cm, 
-      vesselWaterlineOffset: vessel.waterline_offset_cm, 
-      setupRequired: false
-    });
-  } catch (err) {
-    console.error('Error in /api/vessels/get-vessel:', err.message); 
-    res.status(500).json({ error: 'Database Offline' });
-  }
-});
-
-// Get a list of all vessels
-app.get('/api/vessels/list-all', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const result = await pool.query('SELECT v.*, (SELECT COUNT(*)::int FROM users u WHERE u.vessel_uuid = v.uuid AND u.is_active = TRUE) AS active_user_count FROM vessels v ORDER BY v.name ASC;');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: `Vessel Data Load Failed. Error: ${err.message}` });
-  }
-});
-
-// Reactivate a vessel
-app.patch('/api/vessels/reactivate/:uuid', authenticateToken, requireAdmin, async (req, res) => {
-  const targetUuid = req.params.uuid;
-  try {
-    await pool.query('UPDATE vessels SET is_active = TRUE WHERE uuid = $1;', [targetUuid]);
-    const vesselLookup = await pool.query('SELECT name FROM vessels WHERE uuid = $1;', [targetUuid]);
-    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Reactivate', `Operator: [${req.user.handle}] reactivated the vessel: [${vesselLookup.rows[0]?.name}].`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: `Reactivation Failed: ${err.message}` });
-  }
-});
-
-// Register a new vessel
-app.post('/api/vessels/register', authenticateToken, async (req, res) => {
-  const { 
-    vesselName, 
-    vesselFlagNation, 
-    vesselPortOfRegistry, 
-    vesselBuildDetails, 
-    vesselOfficialNumber, 
-    vesselHullIdentificationNumber, 
-    vesselKeelOffset, 
-    vesselWaterlineOffset
-  } = req.body;
-  try {
-    const result = await pool.query(
-      `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING uuid;`,
-      [
-        vesselName, 
-        vesselFlagNation, 
-        vesselPortOfRegistry, 
-        vesselBuildDetails, 
-        vesselOfficialNumber, 
-        vesselHullIdentificationNumber, 
-        vesselKeelOffset, 
-        vesselWaterlineOffset
-      ]
-    );
-    
-    // Log the addition of the new vessel
-    await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${vesselName}], HID: [${vesselHullIdentificationNumber}] registered.`);
-    
-    res.json({ success: true, uuid: result.rows[0].uuid });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Save a new vessel. This is separate from update as it needs logic for initialisation of the system.
-app.post('/api/vessels/save', async (req,res) => {
+app.post('/api/vessels/create', async (req,res) => {
   // Before proceeding; If this is a fresh setup (no vessels in the DB), allow the save without a valid 
   // token. Otherwise, require authentication.
   try {
@@ -826,8 +829,135 @@ app.post('/api/vessels/save', async (req,res) => {
   }
 });
 
+// Get details for the logged-in user's vessel_uuid
+app.get('/api/vessels/current', authenticateToken, async (req, res) => {
+  try {
+    const vesselUuid = req.user.vessel_uuid;
+    const result = await pool.query(
+      'SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm FROM vessels WHERE is_active = TRUE AND uuid = $1;',
+      [vesselUuid]
+    );
+    if (result.rows.length === 0) {
+      
+      return res.status(404).json({ error: "Vessel not found or has been deactived!" });
+    }
+    const vessel = result.rows[0];
+    res.json({
+      vesselUuid: vessel.uuid, 
+      vesselName: vessel.name, 
+      vesselFlagNation: vessel.flag_nation,
+      vesselPortOfRegistry: vessel.port_of_registry,
+      vesselBuildDetails: vessel.build_details,
+      vesselOfficialNumber: vessel.official_number,
+      vesselHullIdentificationNumber: vessel.hull_id_number, 
+      vesselKeelOffset: vessel.keel_offset_cm, 
+      vesselWaterlineOffset: vessel.waterline_offset_cm, 
+      setupRequired: false
+    });
+  } catch (err) {
+    console.error('Error in /api/vessels/current:', err.message); 
+    res.status(500).json({ error: 'Database Offline' });
+  }
+});
+
+// Get a list of all vessels
+app.get('/api/vessels/list-all', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT v.*, (SELECT COUNT(*)::int FROM users u WHERE u.vessel_uuid = v.uuid AND u.is_active = TRUE) AS active_user_count FROM vessels v ORDER BY v.name ASC;');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: `Vessel Data Load Failed. Error: ${err.message}` });
+  }
+});
+
+// Register a new vessel
+app.post('/api/vessels/register', authenticateToken, async (req, res) => {
+  const { 
+    vesselName, 
+    vesselFlagNation, 
+    vesselPortOfRegistry, 
+    vesselBuildDetails, 
+    vesselOfficialNumber, 
+    vesselHullIdentificationNumber, 
+    vesselKeelOffset, 
+    vesselWaterlineOffset
+  } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING uuid;`,
+      [
+        vesselName, 
+        vesselFlagNation, 
+        vesselPortOfRegistry, 
+        vesselBuildDetails, 
+        vesselOfficialNumber, 
+        vesselHullIdentificationNumber, 
+        vesselKeelOffset, 
+        vesselWaterlineOffset
+      ]
+    );
+    
+    // Log the addition of the new vessel
+    await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${vesselName}], HID: [${vesselHullIdentificationNumber}] registered.`);
+    
+    res.json({ success: true, uuid: result.rows[0].uuid });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ddeactive a vessel.
+app.post('/api/vessels/:uuid/deactivate', authenticateToken, requireAdmin, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  
+  try {
+    // Is there another active vessel?
+    const vessels = await pool.query('SELECT COUNT(*) FROM vessels WHERE is_active = TRUE AND uuid != $1;', [targetUuid]);
+    if (parseInt(vessels.rows[0].count) === 0) {
+      return res.status(400).json({ error: "Abort: Can not deactive a vessel while no other vessel is active!" });
+    }
+    
+    // Are all active users moved over to another vessel?
+    const users = await pool.query('SELECT COUNT(*) FROM users WHERE is_active = TRUE AND vessel_uuid = $1;', [targetUuid]);
+    if (parseInt(users.rows[0].count) !== 0) {
+      return res.status(400).json({ error: "Abort: All users (and crew) must be moved to another vessel before deactiving!" });
+    }
+    
+    // Are all active crew moved over to another vessel?
+    const crew = await pool.query('SELECT COUNT(*) FROM crew WHERE is_active = TRUE AND vessel_uuid = $1;', [targetUuid]);
+    if (parseInt(crew.rows[0].count) !== 0) {
+      return res.status(400).json({ error: "Abort: All crew (and users) must be moved to another vessel before deactiving!" });
+    }
+    
+    // Still alive? Then we're ready. Get the vessel name for the audit log
+    const vesselLookup = await pool.query('SELECT name FROM vessels WHERE uuid = $1;', [targetUuid])
+    const vesselName = vesselLookup.rows[0]?.name || 'Unknown vessel';
+    await pool.query('UPDATE vessels SET is_active = FALSE WHERE uuid = $1;', [targetUuid]);
+    
+    // Log it
+    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Deactivate', `Operator: [${req.user.handle}] deactivated the vessel: [${vesselName}].`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: `Vessel deactivation failed. Error: ${err.message}` });
+  }
+});
+
+// Reactivate a vessel
+app.post('/api/vessels/:uuid/reactivate', authenticateToken, requireAdmin, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  try {
+    await pool.query('UPDATE vessels SET is_active = TRUE WHERE uuid = $1;', [targetUuid]);
+    const vesselLookup = await pool.query('SELECT name FROM vessels WHERE uuid = $1;', [targetUuid]);
+    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Reactivate', `Operator: [${req.user.handle}] reactivated the vessel: [${vesselLookup.rows[0]?.name}].`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: `Reactivation Failed: ${err.message}` });
+  }
+});
+
 // Update an existing vessel
-app.put('/api/vessels/update/:uuid', authenticateToken, requireAdmin, async (req, res) => {
+app.post('/api/vessels/:uuid/update', authenticateToken, requireAdmin, async (req, res) => {
   const targetUuid = req.params.uuid;
   const {
     vesselName, 
@@ -855,7 +985,7 @@ app.put('/api/vessels/update/:uuid', authenticateToken, requireAdmin, async (req
 });
 
 /* *********************************************************************************************************/
-/* Section 4: Non-endpoint stuff                                                                           */
+/* Non-endpoint stuff                                                                                      */
 /* *********************************************************************************************************/
 
 const PORT = process.env.PORT || config.apiPort || 5000;

@@ -39,7 +39,7 @@ function UserSetup({ onComplete }) {
     const token = localStorage.getItem('muirgen_token');
     
     try {
-      const res = await fetch(`/api/users/initial-sysop`, {
+      const res = await fetch(`/api/users/sysop-init`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -67,9 +67,10 @@ function UserSetup({ onComplete }) {
   };
   
   // Check if this is the first user. If so, 'is_admin' will be forced to true.
+  // NOTE: 'fetch' is used intentionally, don't use 'apiFetch'.
   const [isFirstUser, setIsFirstUser] = useState(false);
   useEffect(() => {
-    fetch(`/api/system/sync-session`)
+    fetch(`/api/auth/session-sync`)
       .then(res => res.json())
       .then(data => {
         if (data.userRequired) {
@@ -85,7 +86,7 @@ function UserSetup({ onComplete }) {
   const [selectedVessel, setSelectedVessel] = useState('');
   useEffect(() => {
     // Get active vessels
-    fetch('/api/vessels/get-active')
+    fetch('/api/vessels/active')
       .then(res => res.json())
       .then(data => {
         setVessels(data);

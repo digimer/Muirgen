@@ -39,7 +39,7 @@ function App() {
   // 
   const syncServerTime = async () => {
     try {
-      const res = await fetch('/api/system/get-time');
+      const res = await fetch('/api/system/time');
       const data = await res.json();
       setDbData(data);
     } catch (err) {
@@ -170,7 +170,7 @@ function App() {
     isLoggingOutRef.current = true;
     
     // Log the logout.
-    const logPromise = apiFetch('/api/users/logout', { method: 'POST' }).catch(err => {
+    const logPromise = apiFetch('/api/auth/logout', { method: 'POST' }).catch(err => {
       console.warn("Entering a log in audit_log appears to have failed:", err);
     });
     
@@ -205,8 +205,8 @@ function App() {
     // Check if we've got a saved token
     try {
       const [statusRes, syncRes] = await Promise.all([
-        fetch(`/api/system/get-time`),
-        apiFetch(`/api/system/sync-session`)
+        fetch(`/api/system/time`),
+        apiFetch(`/api/auth/session-sync`)
       ]);
       
       const statusData = await statusRes.json();
@@ -248,7 +248,7 @@ function App() {
       
       // Get vessel data if the user is logged in.
       if (!syncData.userRequired && !syncData.vesselRequired && syncData.isLoggedIn) {
-        const vesselRes = await apiFetch(`/api/vessels/get-vessel`);
+        const vesselRes = await apiFetch(`/api/vessels/current`);
         // prevents crashing on vesselRed.json() if the token was nuked.
         if (!vesselRes) { return; }
         const vesselData = await vesselRes.json();

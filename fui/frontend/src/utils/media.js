@@ -21,7 +21,7 @@ export const uploadMedia = async (file, referenceId, referenceTable) => {
 
   // Send the request.
   const token = localStorage.getItem('muirgen_token');
-  const res = await fetch(`/api/system/${referenceId}/upload`, {
+  const res = await fetch(`/api/files/${referenceId}/upload`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${token}` },
     body: formData
