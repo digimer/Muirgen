@@ -12,7 +12,7 @@ export default defineConfig({
     }
   },
   server: {
-    allowedHosts: ['mr-scifi-ui'],
+    allowedHosts: ['muirgen'],
     host: true, 
     fs: {
       // Allow vite to serve files from one level above the frontend folders
