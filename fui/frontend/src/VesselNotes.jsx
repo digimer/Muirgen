@@ -6,6 +6,8 @@ import React, { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { apiFetch } from './utils/api.js';
+import { formatMuirgenDate } from './utils/formatters.js';
+import VesselNoteViewer from './VesselNoteViewer.jsx';
 
 // Internal component that handles the toolbar buttons from Tiptap.
 const MenuBar = ({ editor }) => {
@@ -58,14 +60,8 @@ function VesselNotes({ vessel }) {
   const [status, setStatus]                                 = useState({ type: '', message: '' });
   const [isAutoSaving, setIsAutoSaving]                     = useState(false);
   const [isConfirmingDeactivate, setIsConfirmingDeactivate] = useState(false);
-
-  // Strict formatter for YYYY/MM/DD hh:mm
-  const formatMuirgenDate = (dateString) => {
-    const d = new Date(dateString);
-    if (isNaN(d)) return '';
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
+  const [viewingNoteIndex, setViewingNoteIndex]             = useState(null);
+  const [originViewerIndex, setOriginViewerIndex]           = useState(null);
 
   // Initialize Tiptap
   const editor = useEditor({
@@ -187,14 +183,24 @@ function VesselNotes({ vessel }) {
       if (res.ok) {
         const savedNote = await res.json();
         setStatus({ type: 'success', message: 'Log entry recorded.' });
-        fetchNotes();
+
+        // Wait for the updated list to come back from the DB
+        const refreshRes = await apiFetch(`/api/notes/${vessel.uuid}/list`);
+        if (refreshRes.ok) {
+          const freshNotes = await refreshRes.json();
+          // Update the UI directory list
+          setNotes(freshNotes);
+          
+          // search the new array for the note's uuid.
+          const savedIndex = freshNotes.findIndex(n => n.uuid === savedNote.uuid);
+          if (savedIndex !== -1) {
+            setViewingNoteIndex(savedIndex);
+            setEditingNote(null);
+          }
+        }
 
         // Clear the draft from memory.
         localStorage.removeItem(`muirgen_draft_log_${vessel.uuid}`);
-
-        // Update the form state with the database record (getting us the new notes.uuid) so subsequent saves
-        // act as updates instead of creating duplicates.
-        setEditingNote(savedNote);
 
         // Show the LED blink briefly and the success for a couple seconds.
         setTimeout(() => setIsAutoSaving(false), 500);
@@ -278,11 +284,11 @@ function VesselNotes({ vessel }) {
             </>
           ) : (
             <div className="scrollable-media-box user-list">
-              {notes.map(note => (
+              {notes.map((note, index) => (
                 <div
                   key={note.uuid} 
                   className={`user-card ${note.is_pinned ? 'pinned-note-card' : ''}`}
-                  onClick={() => handleEditSelect(note)}
+                  onClick={() => setViewingNoteIndex(index)}
                 >
                   {/* Category (Fixed Width) */}
                   <div className="log-list-category">
@@ -307,6 +313,20 @@ function VesselNotes({ vessel }) {
         </div>
       )}
       
+      {/* Interstitial Note Viewer */}
+      {viewingNoteIndex !== null && !editingNote && (
+        <VesselNoteViewer 
+          notes={notes}
+          initialIndex={viewingNoteIndex}
+          onClose={() => setViewingNoteIndex(null)}
+          onEdit={(note, currentIndexFromViewer) => {
+            setOriginViewerIndex(currentIndexFromViewer); // Remember where the user was.
+            setViewingNoteIndex(null);                    // Close the viewport
+            handleEditSelect(note);                       // Open the editor
+          }}
+        />
+      )}
+
       {/* Tiptap editor column */}
       <div className="terminal-column terminal-column-constrained" style={editingNote ? { gridColumn: '1 / -1' } : {}}>
         {editingNote && (
@@ -478,6 +498,10 @@ function VesselNotes({ vessel }) {
                        type="button" 
                        className="touch-button" 
                        onClick={() => {
+                        if (originViewerIndex !== null) {
+                          setViewingNoteIndex(originViewerIndex); // Pop the viewer back open
+                          setOriginViewerIndex(null);             // Clear the memory
+                        }
                          setEditingNote(null);
                          editor?.commands.setContent('');
                          setStatus({ type: '', message: '' });

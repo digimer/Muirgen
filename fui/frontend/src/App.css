@@ -1017,12 +1017,14 @@ input:-webkit-autofill:active {
 /* Customize the scrollbar to match the "Cassette Futurism" aesthetic */
 .scrollable-media-box::-webkit-scrollbar,
 .tiptap-editor-scroll-area::-webkit-scrollbar,
+.note-console-viewport::-webkit-scrollbar,
 .staging-queue-list::-webkit-scrollbar {
   width: 12px;
 }
 
 .scrollable-media-box::-webkit-scrollbar-track,
 .tiptap-editor-scroll-area::-webkit-scrollbar-track,
+.note-console-viewport::-webkit-scrollbar-track,
 .staging-queue-list::-webkit-scrollbar-track {
   background: var(--dark-bg);
   border-left: 1px solid var(--dim-red);
@@ -1030,6 +1032,7 @@ input:-webkit-autofill:active {
 
 .scrollable-media-box::-webkit-scrollbar-thumb,
 .tiptap-editor-scroll-area::-webkit-scrollbar-thumb,
+.note-console-viewport::-webkit-scrollbar-thumb,
 .staging-queue-list::-webkit-scrollbar-thumb {
   background: var(--soft-red);
   border: 1px solid var(--neon-red);
@@ -1037,6 +1040,7 @@ input:-webkit-autofill:active {
 
 .scrollable-media-box::-webkit-scrollbar-thumb:hover,
 .tiptap-editor-scroll-area::-webkit-scrollbar-thumb:hover,
+.note-console-viewport::-webkit-scrollbar-thumb:hover,
 .staging-queue-list::-webkit-scrollbar-thumb:hover {
   background: var(--neon-red);
 }
@@ -1708,6 +1712,7 @@ input[type="number"] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 15px;
 }
 
 .log-list-date {
@@ -1765,6 +1770,67 @@ input[type="number"] {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.note-console-viewport {
+  background-color: var(--dark-bg);
+  border: 1px solid var(--mid-red);
+  padding: 20px;
+  overflow-y: auto;
+  font-family: "Ubuntu Sans Mono", monospace;
+  color: var(--neon-red);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: stretch;
+}
+
+.note-bbs-header-outer {
+  border-bottom: 1px dashed var(--mid-red);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.note-console-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.note-console-subject {
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+.note-console-access {
+  color: var(--soft-red);
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+.note-console-body {
+  overflow: visible;
+  height: auto;
+  padding: 0;
+  min-height: auto;
+}
+
+.note-viewer-button {
+  padding: 2px 10px;
+  font-size: 0.9rem;
+}
+
+.note-console-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.note-console-eof {
+  margin-top: auto;
+  padding-top: 40px;
+  color: var(--dim-red);
+  text-align: center;
 }
 
 /* --- 5. ANIMATIONS & EFFECTS --- */
