@@ -53,10 +53,11 @@ const MenuBar = ({ editor }) => {
 }
 
 function VesselNotes({ vessel }) {
-  const [notes, setNotes]               = useState([]);
-  const [editingNote, setEditingNote]   = useState(null);
-  const [status, setStatus]             = useState({ type: '', message: '' });
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [notes, setNotes]                                   = useState([]);
+  const [editingNote, setEditingNote]                       = useState(null);
+  const [status, setStatus]                                 = useState({ type: '', message: '' });
+  const [isAutoSaving, setIsAutoSaving]                     = useState(false);
+  const [isConfirmingDeactivate, setIsConfirmingDeactivate] = useState(false);
 
   // Strict formatter for YYYY/MM/DD hh:mm
   const formatMuirgenDate = (dateString) => {
@@ -105,6 +106,7 @@ function VesselNotes({ vessel }) {
       editor.commands.setContent(note.note_body);
     }
     setStatus({ type: '', message: '' });
+    setIsConfirmingDeactivate(false);
 
     // Helper to toggle strings inside our access_level array
     const toggleAccessLevel = (level) => {
@@ -213,16 +215,20 @@ function VesselNotes({ vessel }) {
   // NOTE: Recovering deleted logs will be handled by a SysOp level function later.
   // Handle the deletion (deactivation) of the note/log entry.
   const handleDelete = async () => {
-    if (!window.confirm("Confirm log entry removal")) return;
+
     try {
       const res = await apiFetch(`/api/notes/${editingNote.uuid}/deactivate`, { method: 'POST' });
-
+      if (!isConfirmingDeactivate) {
+        setIsConfirmingDeactivate(true);
+        return; 
+      }
       if (res.ok) {
         setStatus({ type: 'success', message: 'Log deactivated.' });
         fetchNotes();
         setTimeout(() => {
           setEditingNote(null);
           editor.commands.setContent('');
+          setIsConfirmingDeactivate(false);
         }, 100);
       }
     } catch(err) {
@@ -437,8 +443,12 @@ function VesselNotes({ vessel }) {
                    ) : (
                      <div className="button-with-glyph">
                        <span className="large-icon note-large-icon">⌧</span>
-                       <button type="button" className="touch-button danger" onClick={handleDelete}>
-                         Deactivate
+                       <button 
+                        type="button" 
+                        className={`touch-button danger ${isConfirmingDeactivate ? 'button-confirm-state' : ''}`} 
+                        onClick={handleDelete}
+                      >
+                        {isConfirmingDeactivate ? 'Confirm' : 'Deactivate'}
                        </button>
                      </div>
                    )}
