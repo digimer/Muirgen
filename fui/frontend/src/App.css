@@ -1639,6 +1639,34 @@ input[type="number"] {
   justify-content: flex-end;
 }
 
+/* Note Editor Status Header */
+.note-editor-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.note-editor-status-container {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.status-display.top-aligned {
+  margin: 0;
+  padding: 4px 15px;
+  text-align: right;
+  animation: fade-in-out 2s ease-in-out forwards;
+}
+
+@keyframes fade-in-out {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .tiptap-select {
   width: 100%;
   background: var(--dark-bg);

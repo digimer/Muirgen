@@ -305,7 +305,19 @@ function VesselNotes({ vessel }) {
       <div className="terminal-column terminal-column-constrained" style={editingNote ? { gridColumn: '1 / -1' } : {}}>
         {editingNote && (
           <>
-            <h3 className="flicker">{editingNote.uuid ? 'Amend Log' : 'New Log'}</h3>
+            <div className="note-editor-status-header">
+              <h3 className="flicker" style={{ margin: 0 }}>{editingNote.uuid ? 'Amend Log' : 'New Log'}</h3>
+              
+              {/* Fixed-height container for status messages so the form never jumps */}
+              <div className="note-editor-status-container">
+                {status.message && (
+                  <div className={`status-display top-aligned ${status.type}`}>
+                    {status.message}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <form className="setup-form note-form-container" onSubmit={handleSave}>
               <div className="field-group note-subject-category-row">
                 <div className="note-subject-column">
@@ -466,12 +478,6 @@ function VesselNotes({ vessel }) {
                    </div>
                  </div>
               </div>
-
-              {status.message  && (
-                <div className={`status-display ${status.type}`} style={{ marginTop: '10px' }}>
-                  {status.message}
-                </div>
-              )}
             </form>
           </>
         )}
