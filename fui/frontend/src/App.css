@@ -1006,6 +1006,7 @@ input:-webkit-autofill:active {
   max-height: 55vh; /* Leaves space for other vertical elements */
   overflow-y: auto;
   padding-right: 15px; /* Space between the content and scrollbar */
+  outline: none;
 }
 
 /* When opening the queue for uploads, shring the file view to make space */
@@ -1015,23 +1016,27 @@ input:-webkit-autofill:active {
 
 /* Customize the scrollbar to match the "Cassette Futurism" aesthetic */
 .scrollable-media-box::-webkit-scrollbar,
+.tiptap-editor-scroll-area::-webkit-scrollbar,
 .staging-queue-list::-webkit-scrollbar {
   width: 12px;
 }
 
 .scrollable-media-box::-webkit-scrollbar-track,
+.tiptap-editor-scroll-area::-webkit-scrollbar-track,
 .staging-queue-list::-webkit-scrollbar-track {
   background: var(--dark-bg);
   border-left: 1px solid var(--dim-red);
 }
 
 .scrollable-media-box::-webkit-scrollbar-thumb,
+.tiptap-editor-scroll-area::-webkit-scrollbar-thumb,
 .staging-queue-list::-webkit-scrollbar-thumb {
   background: var(--soft-red);
   border: 1px solid var(--neon-red);
 }
 
 .scrollable-media-box::-webkit-scrollbar-thumb:hover,
+.tiptap-editor-scroll-area::-webkit-scrollbar-thumb:hover,
 .staging-queue-list::-webkit-scrollbar-thumb:hover {
   background: var(--neon-red);
 }
@@ -1058,6 +1063,50 @@ input:-webkit-autofill:active {
 /* Triggers the pulse when the input inside the group is focused */
 .field-group:focus-within .cursor-prompt {
   animation: pulse-fade 1s ease-in-out infinite alternate;
+}
+/* Auto-Save LED Indicator */
+.auto-save-indicator {
+  color: var(--strong-red);
+  font-family: 'Oxanium', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.6;
+  transition: opacity 0.5s ease;
+}
+
+.auto-save-indicator.active {
+  color: var(--strong-red);
+  opacity: 1;
+  /* Rapid blink for HDD effect */
+  animation: hdd-flicker 0.1s infinite alternate;
+}
+
+@keyframes hdd-flicker {
+  0% { opacity: 0.5; color: var(--strong-red); }
+  100% { opacity: 1; color: var(--neon-red); text-shadow: 0 0 10px var(--neon-red); }
+}
+
+.field-group-access-level {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.access-level-container {
+  margin-left: auto;
+  margin-top: 10px;
+  display: flex;
+  gap: 15px;
+}
+
+.access-level-title {
+  color: var(--strong-red);
+  font-size: 1rem;
+  align-self: center;
 }
 
 .setup-form label {
@@ -1090,6 +1139,20 @@ input:focus,
 input[type="number"]:focus {
   border-color: var(--neon-red) !important;
   box-shadow: 0 0 15px var(--neon-red);
+}
+
+/* Style the placeholder text */
+input::placeholder,
+textarea::placeholder {
+  color: var(--soft-red);
+  opacity: 0.8; /* Makes it slightly dimmer than the active text */
+  transition: opacity 0.3s ease;
+}
+
+/* Hide the placeholder completely when the user clicks into the box */
+input:focus::placeholder,
+textarea:focus::placeholder {
+  opacity: 0.5;
 }
 
 /* (mostly) static footer telemetry data */
@@ -1314,9 +1377,36 @@ input[type="number"] {
   /* Left-justifies the glyph within the 20px box */
 }
 
+.glyph-specifications {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+.glyph-data {
+  font-size: 2.5rem;
+}
+
+.glyph-optics {
+  font-size: 2rem;
+}
+
+.glyph-logs {
+  font-weight: bold;
+}
+
+.glyph-new-record {
+  font-size: 2rem;
+  color: var(--mid-red);
+}
+
+.button-with-glyph {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .label-text {
   font-weight: bold;
-  /* ?? */
 }
 
 .operator-subtitles {
@@ -1337,6 +1427,7 @@ input[type="number"] {
   font-size: 2rem;
   color: var(--soft-red);
 }
+
 .touch-button:hover + .large-icon,
 .touch-button:focus-visible + .large-icon {
   color: var(--neon-red);
@@ -1425,6 +1516,227 @@ input[type="number"] {
   border-color: var(--neon-red);
   color: var(--dark-bg);
   font-weight: bold;
+}
+
+/* Tiptap editor overrides for Muirgen's design language */
+.tiptap-editor-area {
+  min-height: 200px;
+  height: 100%; 
+  color: var(--neon-red);
+  font-family: 'Ubuntu Sans Mono', monospace;
+  padding: 10px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* Base text */ 
+.tiptap-editor-area p { 
+  margin-top: 5px; 
+  margin-bottom: 5px; 
+}
+.tiptap-editor-area strong { 
+  color: var(--strong-red); 
+  font-weight: bold; 
+  text-shadow: 0 0 5px var(--neon-red); 
+}
+.tiptap-editor-area em { 
+  color: var(--soft-red); 
+  font-style: italic; 
+}
+
+/* Lists */
+.tiptap-editor-area ul { 
+  list-style-type: square; 
+  padding-left: 20px; 
+  color: var(--dim-red); 
+}
+.tiptap-editor-area ol { 
+  list-style-type: decimal-leading-zero; 
+  padding-left: 20px; 
+  color: var(--dim-red); 
+}
+.tiptap-editor-area li p { 
+  display: inline; 
+  color: var(--neon-red); 
+}
+
+/* Codeblock (monospace) */
+.tiptap-editor-area pre {
+  background: var(--dark-bg);
+  border: 1px dotted var(--soft-red);
+  padding: 10px;
+  border-radius: 2px;
+  color: var(--neon-red);
+  margin: 10px 0;
+}
+
+.tiptap-editor-area code {
+  background: rgba(255, 0, 0, 0.1);
+  padding: 2px 4px;
+  color: var(--strong-red);
+}
+
+/* Remove default focus outlines so it looks like a terminal block */
+.tiptap-editor-area {
+  outline: none;
+}
+
+/* Internal Toolbar Container */
+.tiptap-toolbar {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+/* Reduced size touch buttons for toolbars */
+.small-button {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  min-height: auto;
+}
+
+/* Vessel notes specific layout wrappers */
+.note-form-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-column-constrained {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-subject-category-row {
+  display: flex;
+  gap: 10px;
+}
+
+.note-subject-column {
+  flex: 1;
+}
+
+.note-category-column {
+  width: 200px;
+}
+
+/* Note Editor Button Columns */
+.note-editor-button-column-left {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.note-editor-button-column-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.note-editor-button-column-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tiptap-select {
+  width: 100%;
+  background: var(--dark-bg);
+  color: var(--neon-red);
+  border: 1px solid var(--dim-red);
+  padding: 8px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+}
+
+/* The box surrounding the actual text editor */
+.tiptap-editor-wrapper {
+  border: 1px solid var(--mid-red);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 0, 0, 0.5);
+}
+
+.tiptap-editor-wrapper:focus-within {
+  border-color: var(--neon-red);
+  box-shadow: 0 0 10px var(--neon-red);
+}
+
+.tiptap-editor-scroll-area {
+  overflow-y: auto;
+  max-height: 15vh;
+}
+
+/* Log List Layout Classes */
+.log-list-category {
+  flex-shrink: 0;
+  width: 160px;
+  color: var(--mid-red);
+  padding-right: 15px;
+}
+
+.log-list-subject {
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-list-date {
+  flex-shrink: 0;
+  margin-left: 0;
+  margin-top: 0;
+}
+
+/* Editor Sub-headers */
+.note-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.note-editor-mtime {
+  font-family: 'Ubuntu Sans Mono';
+  color: var(--mid-red);
+  font-size: 0.85rem;
+}
+
+.note-large-icon {
+  font-size: 1.5rem;
+}
+
+/* Row for the Save/Archive buttons at the bottom */
+.note-editor-button-row {
+  margin-top: auto;
+  padding-top: 15px;
+}
+
+.empty-list {
+  color: var(--mid-red);
+  padding: 10px;
+}
+
+/* Styling for items in the side-list of saved logs */
+.note-list-item-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.pinned-note-card {
+  border-left: 3px solid var(--neon-red);
+}
+
+.append-log-button {
+  margin-top: 20px;
+}
+
+.empty-log-state {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* --- 5. ANIMATIONS & EFFECTS --- */

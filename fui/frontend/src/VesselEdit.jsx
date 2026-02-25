@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
 import VesselMedia from './VesselMedia.jsx';
+import VesselNotes from './VesselNotes.jsx';
 import { useLocalStorageState } from './utils/hooks.js';
 
 const VesselEdit = ({ vessel, onComplete, activeCount }) => {
@@ -128,16 +129,20 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
       {/* The navigation bar */}
       <div className="tab-bar">
         <div className={`tab-pair ${activeTab === 'specs' ? 'active' : ''}`} onClick={() => setActiveTab('specs')}>
-          <span class="tab-icon">⎔</span>
+          <span class="tab-icon glyph-specifications">⎐</span>
           <button type="button" className="tab-button">Specifications</button>
         </div>
         <div className={`tab-pair ${activeTab === 'optics' ? 'active' : ''}`} onClick={() => setActiveTab('optics')}>
-          <span class="tab-icon">⏿</span>
+          <span class="tab-icon glyph-optics">⏿</span>
           <button type="button" className="tab-button">Optics</button>
         </div>
         <div className={`tab-pair ${activeTab === 'data' ? 'active' : ''}`} onClick={() => setActiveTab('data')}>
-          <span class="tab-icon">⌖</span>
+          <span class="tab-icon glyph-data">⌖</span>
           <button type="button" className="tab-button">Data</button>
+        </div>
+        <div className={`tab-pair ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}>
+          <span className="tab-icon glyph-logs">⧉</span>
+          <button type="button" className="tab-button">Logs</button>
         </div>
       </div>
 
@@ -318,6 +323,11 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
       {/* Files tab */}
       {activeTab === 'data' && (
         <VesselMedia vessel={vessel} mode="file" />
+      )}
+
+      {/* Logs Tab */}
+      {activeTab === 'logs' && (
+        <VesselNotes vessel={vessel} />
       )}
 
       {/* Safety timer bar */}

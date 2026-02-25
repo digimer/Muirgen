@@ -289,7 +289,9 @@ const VesselMedia = ({ vessel, mode = 'file' }) => {
 
       {/* Content Area */}
       {mediaItems.length === 0 ? (
-        <div className="soft-text">No records exist for this object.</div>
+        <div className="user-list" style={{ height: 'fit-content' }}>
+          <div className="empty-list">No records exist for this object.</div>
+        </div>
       ) : (
         <div className={`scrollable-media-box ${isStagingModalOpen ? 'queue-open' : ''}`}>
           {mode === 'image' ? (

@@ -315,16 +315,17 @@ CREATE TRIGGER trigger_configs
 
 -- Notes (or logs) that can be attached to anything.
 CREATE TABLE notes (
-        uuid               uuid           default uuidv7()    not null,
-        reference_table    text,                                        -- If this note refers to a table, this will be the table name
-        reference_id       text,                                        -- If this note references a table, this is the ID (uuid or mmsi) used to reference the specific column
-        user_uuid          uuid                               not null, -- This is the user who created or updated the note.
-        category           text                               not null, -- General note type; "Maintenace", "Ships Log", "Crew Log", etc.
-        note_name          text                               not null, -- This is a free-form name for the note, meant to find a note in a list
-        note_body          text                               not null, -- This is the main body of the note.
-        is_pinned          boolean        default false       not null, -- Allows for "pinning" a note somewhere prominent, as the use case might dictate.
-        is_active          boolean        default true        not null, -- If set to false, the note will not be shown except to administrators
-        modified_date      timestamptz    default now()       not null,
+        uuid               uuid           default uuidv7()         not null,
+        reference_table    text,                                             -- If this note refers to a table, this will be the table name
+        reference_id       text,                                             -- If this note references a table, this is the ID (uuid or mmsi) used to reference the specific column
+        user_uuid          uuid                                    not null, -- This is the user who created or updated the note.
+        access_level       text[]         default '{"general"}'    not null, -- If a word exists (general, private, and sysop for now), the the log can be viewed by a user in a corresponding group (everyone being in 'general')
+        category           text                                    not null, -- General note type; "Maintenance", "Ships Log", "Crew Log", etc.
+        note_name          text                                    not null, -- This is a free-form name for the note, meant to find a note in a list
+        note_body          text                                    not null, -- This is the main body of the note.
+        is_pinned          boolean        default false            not null, -- Allows for "pinning" a note somewhere prominent, as the use case might dictate.
+        is_active          boolean        default true             not null, -- If set to false, the note will not be shown except to administrators
+        modified_date      timestamptz    default now()            not null,
 
         PRIMARY KEY (uuid), 
         FOREIGN KEY (user_uuid) REFERENCES users(uuid)
@@ -338,6 +339,7 @@ CREATE TABLE history.notes (
         reference_table    text,
         reference_id       text,
         user_uuid          uuid,
+        access_level       text[], 
         category           text,
         note_name          text,
         note_body          text,
@@ -361,6 +363,7 @@ BEGIN
         reference_table,
         reference_id,
         user_uuid,
+        access_level, 
         category, 
         note_name,
         note_body,
@@ -372,6 +375,7 @@ BEGIN
         NEW.reference_table,
         NEW.reference_id,
         NEW.user_uuid,
+        NEW.access_level, 
         NEW.category, 
         NEW.note_name,
         NEW.note_body,

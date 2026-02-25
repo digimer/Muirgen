@@ -458,17 +458,17 @@ app.post('/api/files/:uuid/upload', authenticateToken, upload.single('file'), as
 /* *********************************************************************************************************/
 
 // Create a new note
-app.post('/api/notes/:uuid/create', authenticateToken, async (req, res) => {
+app.post('/api/notes/create', authenticateToken, async (req, res) => {
   try {
-    const refId = req.params.uuid;
-    const { reference_table, category, note_name, note_body, is_pinned } = req.body;
+    const userUuid = req.user.uuid;
+    const { reference_table, reference_id, category, note_name, note_body, is_pinned, access_level } = req.body;
 
     // NOTE: We don't audit log this as it's generally not note-worthy, and who created it is record is 
     //       user_uuid anyway
     // User ID is extracted from the JWT token
     const result = await pool.query(
-      'INSERT INTO notes (reference_table, reference_id, user_uuid, category, note_name, note_body, is_pinned) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;', 
-      [reference_table, refId, userUuid, category, note_name, note_body, is_pinned || false]
+      'INSERT INTO notes (reference_table, reference_id, user_uuid, category, note_name, note_body, is_pinned, access_level) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;', 
+      [reference_table, reference_id, userUuid, category, note_name, note_body, is_pinned || false, access_level || ['general']]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -504,14 +504,33 @@ app.post('/api/notes/:uuid/deactivate', authenticateToken, async (req, res) => {
 // Load the existing notes for a given entity
 app.get('/api/notes/:uuid/list', authenticateToken, async (req, res) => {
   try {
-    const parentUuid = req.params.uuid;
-    const result     = await pool.query(
-      'SELECT * FROM notes WHERE reference_id = $1 AND is_active = TRUE ORDER BY is_pinned DESC, modified_date DESC;', 
-      [parentUuid]);
+    const userUuid      = req.user.uuid;
+    const parentUuid    = req.params.uuid;
+    const isAdmin       = req.user.is_admin;
+    const viewableRoles = ['general'];
+
+    // If the user is a SysOp, give them access to 'sysop' tagged notes.
+    if (isAdmin) {
+      viewableRoles.push('sysop');
+    }
+
+    // Load notes that the user has access to, plus any notes marked as 'private' and match their users.uuid
+    // - && $2::text[]) - It is Public or SysOp (and the user is allowed to see it)
+    const result = await pool.query(
+     `SELECT * FROM notes 
+      WHERE reference_id = $1 
+        AND is_active = TRUE 
+        AND (
+          (access_level && $2::text[])
+          OR 
+          ('private' = ANY(access_level) AND user_uuid = $3)
+        )
+      ORDER BY is_pinned DESC, modified_date DESC;`, 
+      [parentUuid, viewableRoles, userUuid]);
     res.json(result.rows);
   } catch (err) {
     console.error('Notes failed to load for this object. Error: ', err);
-    res.statys(500).json({ error: `Notes failed to load for this object. Error: [${err.message}]` });
+    res.status(500).json({ error: `Notes failed to load for this object. Error: [${err.message}]` });
   }
 });
 
@@ -546,15 +565,24 @@ app.post('/api/notes/:uuid/update', authenticateToken, async (req, res) => {
     const noteUuid       = req.params.uuid; 
     const userVesselUuid = req.user.vessel_uuid;
     const userHandle     = req.user.handle;
-    const { category, note_name, note_body, is_pinned } = req.body;
+    const { category, note_name, note_body, is_pinned, access_level } = req.body;
     
     // Log the update. It's generally not a concern, but in the unlikely chance a user tries to manipulate a 
     // record (ie: to mask incrimidating evidence), we audit the change.
     await auditLog(pool, userVesselUuid, userUuid, 'Note::Update', `Operator: [${userHandle}] updated the note/log entry: [${noteUuid}].`);
 
     const result = await pool.query(
-      'UPDATE notes SET category = $1, note_name = $2, note_body = $3, is_pinned = $4, user_uuid = $5 WHERE uuid = $6 AND is_active = TRUE RETURNING *;', 
-      [category, note_name, note_body, is_pinned, userUuid, noteUuid]
+      `UPDATE notes SET 
+        category = $1, 
+        note_name = $2, 
+        note_body = $3, 
+        is_pinned = $4, 
+        user_uuid = $5, 
+        access_level = $6 
+      WHERE uuid = $7 
+      AND is_active = TRUE 
+      RETURNING *;`, 
+      [category, note_name, note_body, is_pinned, userUuid, access_level || ['general'], noteUuid]
     );
 
     if (result.rowCount === 0) {
