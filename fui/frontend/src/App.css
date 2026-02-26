@@ -1015,33 +1015,21 @@ input:-webkit-autofill:active {
 }
 
 /* Customize the scrollbar to match the "Cassette Futurism" aesthetic */
-.scrollable-media-box::-webkit-scrollbar,
-.tiptap-editor-scroll-area::-webkit-scrollbar,
-.note-console-viewport::-webkit-scrollbar,
-.staging-queue-list::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 12px;
 }
 
-.scrollable-media-box::-webkit-scrollbar-track,
-.tiptap-editor-scroll-area::-webkit-scrollbar-track,
-.note-console-viewport::-webkit-scrollbar-track,
-.staging-queue-list::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: var(--dark-bg);
   border-left: 1px solid var(--dim-red);
 }
 
-.scrollable-media-box::-webkit-scrollbar-thumb,
-.tiptap-editor-scroll-area::-webkit-scrollbar-thumb,
-.note-console-viewport::-webkit-scrollbar-thumb,
-.staging-queue-list::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: var(--soft-red);
   border: 1px solid var(--neon-red);
 }
 
-.scrollable-media-box::-webkit-scrollbar-thumb:hover,
-.tiptap-editor-scroll-area::-webkit-scrollbar-thumb:hover,
-.note-console-viewport::-webkit-scrollbar-thumb:hover,
-.staging-queue-list::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: var(--neon-red);
 }
 
@@ -1783,7 +1771,6 @@ input[type="number"] {
   background-color: var(--dark-bg);
   border: 1px solid var(--mid-red);
   padding: 20px;
-  overflow-y: auto;
   font-family: "Ubuntu Sans Mono", monospace;
   color: var(--neon-red);
   display: flex;
@@ -1816,9 +1803,9 @@ input[type="number"] {
 }
 
 .note-console-body {
-  overflow: visible;
+  overflow-y: auto;
   height: auto;
-  padding: 0;
+  padding: 20px;
   min-height: auto;
 }
 
