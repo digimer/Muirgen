@@ -61,7 +61,7 @@ function VesselNotes({ vessel }) {
   const [isAutoSaving, setIsAutoSaving]                     = useState(false);
   const [isConfirmingDeactivate, setIsConfirmingDeactivate] = useState(false);
   const [viewingNoteIndex, setViewingNoteIndex]             = useState(null);
-  const [originViewerIndex, setOriginViewerIndex]           = useState(null);
+  const [hasEdits, setHasEdits]                             = useState(false);
 
   // Initialize Tiptap
   const editor = useEditor({
@@ -70,6 +70,7 @@ function VesselNotes({ vessel }) {
     editorProps: { 
       attributes: { class: 'tiptap-editor-area' } // Pass Muirgen's UI classinto Tiptap's editor area
     }, 
+    onUpdate: () => { setHasEdits(true) }         // Disable the [Escape] button
   });
 
   // Load existing notes
@@ -78,7 +79,9 @@ function VesselNotes({ vessel }) {
       const res = await apiFetch(`/api/notes/${vessel.uuid}/list`);
       if (res.ok) {
         const data = await res.json();
-        setNotes(data);
+        // Force standard string sorting on the UUIDv7 prefix to guarantee newest-first
+        const sortedData = data.sort((a, b) => b.uuid.localeCompare(a.uuid));
+        setNotes(sortedData);
       }
 
     } catch (err) {
@@ -101,8 +104,10 @@ function VesselNotes({ vessel }) {
     if (editor && note) {
       editor.commands.setContent(note.note_body);
     }
-    setStatus({ type: '', message: '' });
-    setIsConfirmingDeactivate(false);
+    setStatus({ type: '', message: '' });  
+    setIsConfirmingDeactivate(false);  // Clear the "Confirm" on record flag
+    setHasEdits(false);                // Mark that it's safe the enable [Escape]
+    
 
     // Helper to toggle strings inside our access_level array
     const toggleAccessLevel = (level) => {
@@ -117,8 +122,39 @@ function VesselNotes({ vessel }) {
       }
 
       setEditingNote({...editingNote, access_level: newLevels});
+      setHasEdits(true);
     };
   };
+
+  // This allows [Esc] to be used to exit the editor _if_ there are no changes.
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only trigger if editor is open
+      if (e.key === 'Escape' && editingNote) {
+        
+        // Block Escape if any edits exist.
+        if (hasEdits) {
+          console.warn("Unsaved changes, [Esc] blocked.");
+          return;
+        }
+
+        // If there's a notes.uuid, send them back to the viewer.
+        if (editingNote.uuid) {
+          const targetIndex = notes.findIndex(n => n.uuid === editingNote.uuid);
+          if (targetIndex !== -1) {
+            setViewingNoteIndex(targetIndex);
+          }
+         }
+
+        // If we got here, the user hit [Esc] on a new note with no changes yet. Go back to the main list.
+        setEditingNote(null);
+        editor?.commands.setContent('');
+        setStatus({ type: '', message: '' });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingNote, notes, editor, hasEdits]);
 
   // Debounce auto-save for drafts
   useEffect(() => {
@@ -191,13 +227,12 @@ function VesselNotes({ vessel }) {
           // Update the UI directory list
           setNotes(freshNotes);
           
-          // search the new array for the note's uuid.
-          const savedIndex = freshNotes.findIndex(n => n.uuid === savedNote.uuid);
-          if (savedIndex !== -1) {
-            setViewingNoteIndex(savedIndex);
-            setEditingNote(null);
-          }
+          // If this was a new log, set it's new UUID as the log being amended and update the editor.
+          setEditingNote(savedNote); 
         }
+
+        // Mark that it's safe the enable [Escape]
+        setHasEdits(false);
 
         // Clear the draft from memory.
         localStorage.removeItem(`muirgen_draft_log_${vessel.uuid}`);
@@ -319,10 +354,9 @@ function VesselNotes({ vessel }) {
           notes={notes}
           initialIndex={viewingNoteIndex}
           onClose={() => setViewingNoteIndex(null)}
-          onEdit={(note, currentIndexFromViewer) => {
-            setOriginViewerIndex(currentIndexFromViewer); // Remember where the user was.
-            setViewingNoteIndex(null);                    // Close the viewport
-            handleEditSelect(note);                       // Open the editor
+          onEdit={(note) => {
+            setViewingNoteIndex(null);  // Close the viewport
+            handleEditSelect(note);     // Open the editor
           }}
         />
       )}
@@ -351,7 +385,10 @@ function VesselNotes({ vessel }) {
                   <input 
                     type="text" 
                     value={editingNote.note_name || ''}
-                    onChange={(e) => setEditingNote({ ...editingNote, note_name: e.target.value })}
+                    onChange={(e) => {
+                      setEditingNote({...editingNote, note_name: e.target.value});
+                      setHasEdits(true);
+                    }}
                     placeholder="<Log Subject>" 
                     required
                   />
@@ -498,9 +535,14 @@ function VesselNotes({ vessel }) {
                        type="button" 
                        className="touch-button" 
                        onClick={() => {
-                        if (originViewerIndex !== null) {
-                          setViewingNoteIndex(originViewerIndex); // Pop the viewer back open
-                          setOriginViewerIndex(null);             // Clear the memory
+                        // Only trigger the Viewer if the log actually exists in the database.
+                        // (If it's an unsaved draft, editingNote.uuid will be undefined)
+                        if (editingNote.uuid) {
+                          // Find the current array index by matching the notes.uuid
+                          const targetIndex = notes.findIndex(n => n.uuid === editingNote.uuid);
+                          if (targetIndex !== -1) {
+                            setViewingNoteIndex(targetIndex);
+                          }
                         }
                          setEditingNote(null);
                          editor?.commands.setContent('');

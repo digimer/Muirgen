@@ -22,8 +22,8 @@ const VesselNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
     if (e.key === 'ArrowLeft')  navigate(-1);
     if (e.key === 'ArrowRight') navigate(1);
     if (e.key === 'e' || e.key === 'E') {
-      // Quick edit shortcut with the index the user is viewing
-      onEdit(notes[currentIndex], currentIndex);
+      // Quick edit shortcut
+      onEdit(notes[currentIndex]);
     }
   }, [onClose, navigate, onEdit, notes, currentIndex]);
 
@@ -64,7 +64,7 @@ const VesselNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
                   <span>mtime: {formatMuirgenDate(currentNote.modified_date)}</span>
                     <button 
                     className="touch-button small-button note-viewer-button" 
-                    onClick={() => onEdit(currentNote, currentIndex)} 
+                    onClick={() => onEdit(currentNote)} 
                     title="Edit Record"
                   >
                     Amend Log

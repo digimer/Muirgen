@@ -525,7 +525,7 @@ app.get('/api/notes/:uuid/list', authenticateToken, async (req, res) => {
           OR 
           ('private' = ANY(access_level) AND user_uuid = $3)
         )
-      ORDER BY is_pinned DESC, modified_date DESC;`, 
+      ORDER BY is_pinned DESC, uuid DESC;`, 
       [parentUuid, viewableRoles, userUuid]);
     res.json(result.rows);
   } catch (err) {
