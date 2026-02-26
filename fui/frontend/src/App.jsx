@@ -9,23 +9,26 @@ import Sidebar from './Sidebar';
 import VesselEdit from './VesselEdit';
 import VesselManagement from './VesselManagement';
 import VesselRegistration from './VesselRegistration';
+import UserEdit from './UserEdit';
+import UserManagement from './UserManagement';
 
 function App() {
   // Remember where the user was in case the browser reloads. 
-  const [activeView, setActiveView] = useState('VSM');  // VSM = Vessel Status Monitor
-  const [allVessels, setAllVessels] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [displayTime, setDisplayTime] = useState('Acquiring Time Source...');
-  const [dbData, setDbData] = useState({ status: 'Connecting...', serverTime: '' });
-  const hasRestoredSession = useRef(false);
+  const [activeView, setActiveView]       = useState('VSM');  // VSM = Vessel Status Monitor
+  const [allVessels, setAllVessels]       = useState([]);
+  const [allUsers, setAllUsers]           = useState([]);
+  const [currentUser, setCurrentUser]     = useState(null);
+  const [displayTime, setDisplayTime]     = useState('Acquiring Time Source...');
+  const [dbData, setDbData]               = useState({ status: 'Connecting...', serverTime: '' });
+  const hasRestoredSession                = useRef(false);
   // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const isLoggingOutRef = useRef(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggingOut, setIsLoggingOut]   = useState(false);
+  const isLoggingOutRef                   = useRef(false);
+  const [isLoggedIn, setIsLoggedIn]       = useState(false);
   const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
-  const [setupState, setSetupState] = useState({userRequired: false, vesselRequired: false });
-  const [vessel, setVessel] = useState(null);
-  const [viewContext, setViewContext] = useState(null);
+  const [setupState, setSetupState]       = useState({userRequired: false, vesselRequired: false });
+  const [vessel, setVessel]               = useState(null);
+  const [viewContext, setViewContext]     = useState(null);
   
   // Local tick to update the displayed time each second.
   useInterval(() => {
@@ -144,11 +147,30 @@ function App() {
     }
   }, []);
   
+  // Get the list of users.
+  const fetchUserManagementData = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/users/list');
+      if (res.ok) {
+        const data = await res.json();
+        setAllUsers(data);
+      }
+    } catch (err) {
+      console.error('User management fetch error:', err);
+    }
+  }, []);
+
+  // Where are we?
   useEffect(() => {
-    if (activeView === 'VESSEL_MANAGEMENT' || activeView === 'VESSEL_EDIT') {
+    if (activeView === 'VESSEL_MANAGEMENT' || 
+        activeView === 'VESSEL_EDIT'       || 
+        activeView === 'USER_EDIT') {
       fetchManagementData();
     }
-  }, [activeView, fetchManagementData]);
+    if (activeView === 'USER_MANAGEMENT' || activeView === 'USER_EDIT') {
+      fetchUserManagementData();
+    }
+  }, [activeView, fetchManagementData, fetchUserManagementData]);
   
   // Refresh ViewContext with live data if we are editing.
   useEffect(() => {
@@ -161,7 +183,13 @@ function App() {
         setViewContext(freshVessel);
       }
     }
-  }, [allVessels, activeView, viewContext]);
+    if (activeView === 'USER_EDIT' && viewContext && allUsers.length > 0) {
+      const freshUser = allUsers.find(u => u.uuid === viewContext.uuid);
+      if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(viewContext)) {
+        setViewContext(freshUser);
+      }
+    }
+  }, [allVessels, allUsers, activeView, viewContext]);
 
   // Handle Logging the user out
   const handleLogout = async () => {
@@ -305,6 +333,12 @@ function App() {
                 {activeView === 'VESSEL_REGISTRATION' && (
                   <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Registration</h2>
                 )}
+                {activeView === 'USER_MANAGEMENT' && (
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // Operator Index</h2>
+                )}
+                {activeView === 'USER_EDIT' && (
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('USER_MANAGEMENT')}>Operators</span> // Edit</h2>
+                )}
               </div>
             )}
             
@@ -373,8 +407,41 @@ function App() {
                   {activeView === 'VESSEL_REGISTRATION' && (
                     <VesselRegistration 
                       onComplete={() => {
-                        fetchManagementData(); // refresh the index
-                        setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
+                        // refresh the index
+                        fetchManagementData(); 
+                        // Return to the list.
+                        setActiveView('VESSEL_MANAGEMENT'); 
+                      }}
+                    />
+                  )}
+
+                  {/* The Operator views */}
+                  {activeView === 'USER_MANAGEMENT' && (
+                    <UserManagement
+                      users={allUsers}
+                      onModify={(u) => {
+                        setViewContext(u);
+                        setActiveView('USER_EDIT');
+                      }}
+                      onRegister={() => {
+                        // Clear context to trigger "New Operator" mode
+                        setViewContext(null); 
+                        setActiveView('USER_EDIT');
+                      }}
+                    />
+                  )}
+                  
+                  {activeView === 'USER_EDIT' && (
+                    <UserEdit 
+                      user={viewContext}
+                      activeCount={allUsers.filter(u => u.is_active).length}
+                      activeVessel={vessel}
+                      vessels={allVessels}
+                      onComplete={() => {
+                        // Refresh list to reflect updates
+                        fetchUserManagementData(); 
+                        setActiveView('USER_MANAGEMENT');
+                        setViewContext(null);
                       }}
                     />
                   )}

@@ -2,9 +2,9 @@ import React from 'react';
 
 const Sidebar = ({ activeView, setActiveView }) => {
   const menuItems = [
-    { id: 'VSM',               label: 'VSM Root',     glyph: '◫' },
-    { id: 'VESSEL_MANAGEMENT', label: 'Vessel Index', glyph: '⏃' },
-    { id: 'USER_MANAGEMENT',   label: 'User Index',   glyph: '⏿' },
+    { id: 'VSM',               label: 'VSM Root',  glyph: '◫' },
+    { id: 'VESSEL_MANAGEMENT', label: 'Vessels',   glyph: '⏃' },
+    { id: 'USER_MANAGEMENT',   label: 'Operators', glyph: '⏿' },
   ];
   
   return (

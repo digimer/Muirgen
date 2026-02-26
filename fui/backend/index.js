@@ -529,8 +529,8 @@ app.get('/api/notes/:uuid/list', authenticateToken, async (req, res) => {
       [parentUuid, viewableRoles, userUuid]);
     res.json(result.rows);
   } catch (err) {
-    console.error('Notes failed to load for this object. Error: ', err);
-    res.status(500).json({ error: `Notes failed to load for this object. Error: [${err.message}]` });
+    console.error('Notes load failure. Error: ', err);
+    res.status(500).json({ error: `Notes load failure. Error: [${err.message}]` });
   }
 });
 
