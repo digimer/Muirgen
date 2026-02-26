@@ -1538,11 +1538,18 @@ input[type="number"] {
   margin-top: 5px; 
   margin-bottom: 5px; 
 }
+
+/* Make sure the '<p></p>' entries get converted to a blank line. */
+.tiptap-editor-area p:empty::before {
+  content: "\00a0"; /* Non-breaking space */
+}
+
 .tiptap-editor-area strong { 
   color: var(--strong-red); 
   font-weight: bold; 
   text-shadow: 0 0 5px var(--neon-red); 
 }
+
 .tiptap-editor-area em { 
   color: var(--soft-red); 
   font-style: italic; 
