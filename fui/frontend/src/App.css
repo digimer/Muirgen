@@ -1793,6 +1793,11 @@ input[type="number"] {
 
 .note-console-subject {
   font-size: 1.2rem;
+  text-align: left;
+}
+
+.note-console-subject-label {
+  font-size: 1.2rem;
   text-transform: uppercase;
 }
 
@@ -1823,7 +1828,7 @@ input[type="number"] {
 .note-console-eof {
   margin-top: auto;
   padding-top: 40px;
-  color: var(--dim-red);
+  color: var(--soft-red);
   text-align: center;
 }
 

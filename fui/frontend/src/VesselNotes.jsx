@@ -107,23 +107,23 @@ function VesselNotes({ vessel }) {
     setStatus({ type: '', message: '' });  
     setIsConfirmingDeactivate(false);  // Clear the "Confirm" on record flag
     setHasEdits(false);                // Mark that it's safe the enable [Escape]
-    
+  };
 
-    // Helper to toggle strings inside our access_level array
-    const toggleAccessLevel = (level) => {
-      if (!editingNote) return;
-      const currentLevels = editingNote.access_level || [];
-      let newLevels;
-
-      if (currentLevels.includes(level)) {
-        newLevels = currentLevels.filter(l => l !== level);
-      } else {
-        newLevels = [...currentLevels, level];
+  // Helper to safely toggle Access Levels
+  const toggleAccessLevel = (level) => {
+    if (!editingNote) return;
+    // If they click the one that's already checked, don't let them uncheck it 
+    // (a note must always have at least one access level). Or, default to 'general'!
+    if (editingNote.access_level?.includes(level)) {
+      if (level !== 'general') {
+        setEditingNote({...editingNote, access_level: ['general']});
+        setHasEdits(true);
       }
-
-      setEditingNote({...editingNote, access_level: newLevels});
-      setHasEdits(true);
-    };
+      return; 
+    }
+    // Otherwise, completely overwrite the array with ONLY the newly clicked level.
+    setEditingNote({...editingNote, access_level: [level]});
+    setHasEdits(true);
   };
 
   // This allows [Esc] to be used to exit the editor _if_ there are no changes.

@@ -59,7 +59,10 @@ const VesselNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
             {/* BBS Header Simulation */}
             <div className="note-bbs-header-outer">
               <div className="note-console-inner">
-                <strong className="note-console-subject">Subject: {currentNote.note_name}</strong>
+                <div>
+                  <strong className="note-console-subject-label">Subject:</strong>
+                  <strong className="note-console-subject">{currentNote.note_name}</strong>
+                </div>
                 <div className="note-console-header">
                   <span>mtime: {formatMuirgenDate(currentNote.modified_date)}</span>
                     <button 
@@ -81,7 +84,7 @@ const VesselNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
 
             {/* EOF marker */}
             <div className="note-console-eof">
-              --- EOF ---
+              ╙─╢ EOF ╟─╜
             </div>
           </div>
 
