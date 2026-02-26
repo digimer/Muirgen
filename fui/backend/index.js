@@ -656,7 +656,7 @@ app.post('/api/users/create', authenticateToken, requireAdmin, async (req, res) 
 app.get('/api/users/list', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT uuid, handle, name, is_admin, is_active FROM users ORDER BY handle ASC;'
+      'SELECT uuid, handle, name, vessel_uuid, is_admin, is_active FROM users ORDER BY handle ASC;'
     );
     res.json(result.rows);
   } catch (err) {

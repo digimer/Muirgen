@@ -14,7 +14,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
     userHandle: user?.handle || '',
     userName: user?.name || '',
     userIsAdmin: user?.is_admin || false,
-    userVesselUuid: activeVessel?.uuid || user?.vessel_uuid || 'Unassigned' 
+    userVesselUuid: user?.vessel_uuid || activeVessel?.uuid || 'Unassigned' 
   });
   
   // Isolated state for the password modal
@@ -106,7 +106,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
       {error && <div className="status-display error">{error}</div>}
       <div className="tab-bar">
         <div className={`tab-pair ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
-          <span className="tab-icon glyph-specifications">⍾</span>
+          <span className="tab-icon glyph-specifications">⧲</span>
           <button type="button" className="tab-button">Profile</button>
         </div>
         <div className={`tab-pair ${activeTab === 'optics' ? 'active' : ''}`} onClick={() => setActiveTab('optics')}>
@@ -149,7 +149,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
                  id="userVesselUuid" 
                  value={formData.userVesselUuid} 
                  onChange={(e) => setFormData({ ...formData, userVesselUuid: e.target.value })}
-                 className="retro-select"
+                 className="setup-input-select"
                >
                  {vessels.map(v => (
                    <option key={v.uuid} value={v.uuid}>{v.name}</option>
@@ -163,24 +163,25 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
              )}
           </div>
           
-          <div className="field-group" style={{ marginTop: '10px' }}>
+          <div className="field-group sysop-grant-group">
             <label className="checkbox-container">
-              <span className="label-text" style={{ color: 'var(--neon-green)' }}>Grant SysOp</span>
+              <span className="label-text strong-text">Grant SysOp</span>
               <input type="checkbox" checked={formData.userIsAdmin} onChange={(e) => setFormData({ ...formData, userIsAdmin: e.target.checked })} disabled={isSelf} />
               <span className="retro-checkmark"></span>
             </label>
+            {isSelf && <span className="soft-text operator-subtitles sysop-lockout-warning">Locked; No self-demote</span>}
           </div>
           
           {/* Security Credentials Block */}
-          <div className="field-group" style={{ marginTop: '20px', borderTop: '1px solid var(--mid-red)', paddingTop: '20px' }}>
+          <div className="field-group security-section-container">
             {!isPasswordModalOpen ? (
                <button type="button" className="touch-button" onClick={() => setIsPasswordModalOpen(true)}>
                  Update Access Code
                </button>
             ) : (
               <div className="security-modal-inline">
-                 <h4 className="flicker-subtle" style={{ margin: '0 0 10px 0', color: 'var(--neon-red)'}}>Security Override</h4>
-                 
+                  <h4 className="flicker-subtle security-modal-header">Security Override</h4>
+                  
                  <div className="field-group">
                    <label>New Access Code</label>
                    <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} placeholder="<secret>" />
@@ -189,7 +190,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
                  
                  {isSelf && (
                    <div className="field-group security-verify">
-                     <label style={{color: 'var(--neon-red)'}}>Current AC</label>
+                     <label>Current AC</label>
                      <input type="password" value={passwordData.currentPasswordConfirm} onChange={e => setPasswordData({...passwordData, currentPasswordConfirm: e.target.value})} placeholder="<Current AC Required>" />
                    </div>
                  )}
@@ -201,7 +202,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
           </div>
 
           {/* The action row */}
-          <div className="action-bar-container" style={{ marginTop: '30px' }}>
+          <div className="action-bar-container">
             {user?.uuid && user?.is_active && (
               <div className="action-group-vertical">
                 <div className="action-group-horizontal">
@@ -212,10 +213,10 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
                   >
                     {isConfirmingAction ? 'Confirm' : 'Deactivate'}
                   </button>
-                  
+                  <span className="large-icon">⌧</span>
                 </div>
                 {isLockoutActive && (
-                  <span className='soft-text operator-subtitles' style={{ marginLeft: 0, marginTop: '8px' }}>
+                  <span className="soft-text operator-subtitles action-lockout-text">
                     {lockoutMessage}
                   </span>
                 )}
@@ -223,8 +224,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
             )}
             
             <div style={{ flex: 1 }}></div>
-            <span className="large-icon">⌧</span>
-            <button type="submit" className="touch-button" disabled={!isFormValid}>
+            <button type="submit" className="touch-button action-submit-button" disabled={!isFormValid}>
               {user?.uuid ? 'Update' : 'Register'}
             </button>
           </div>
@@ -233,13 +233,13 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
 
       {/* Placeholder Tabs */}
       {activeTab === 'optics' && (
-        <div style={{ padding: '20px', color: 'var(--neon-red)' }}>Optics (Offline)</div>
+        <div className="offline-tab-placeholder">Optics (Offline)</div>
       )}
       {activeTab === 'data' && (
-        <div style={{ padding: '20px', color: 'var(--neon-red)' }}>Data (Offline)</div>
+        <div className="offline-tab-placeholder">Data (Offline)</div>
       )}
       {activeTab === 'logs' && (
-        <div style={{ padding: '20px', color: 'var(--neon-red)' }}>Logs (Offline)</div>
+        <div className="offline-tab-placeholder">Logs (Offline)</div>
       )}
     </div>
   );

@@ -2136,3 +2136,45 @@ input[type="number"] {
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* --- 8. COMPONENT LAYOUT HELPERS (SKIN AWARE) --- */
+/* User Management Form Structure */
+.sysop-grant-group {
+  margin-top: 10px;
+}
+
+.sysop-lockout-warning {
+  display: block;
+  margin-top: 5px;
+  margin-left: 45px;
+}
+
+.security-section-container {
+  margin-top: 20px;
+  border-top: 1px solid var(--mid-red);
+  padding-top: 20px;
+}
+
+.security-modal-header {
+  margin-bottom: 10px;
+}
+
+.setup-form.setup-form-single-column {
+  grid-template-columns: 1fr;
+}
+
+/* Base Entity Form Actions */
+.action-lockout-text {
+  margin-left: 0;
+  margin-top: 8px;
+}
+
+/* Replaces the empty flex spacer div */
+.action-submit-button {
+  margin-left: auto; 
+}
+
+/* Offline placeholders */
+.offline-tab-placeholder {
+  padding: 20px; 
+}

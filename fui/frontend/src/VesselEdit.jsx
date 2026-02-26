@@ -299,17 +299,15 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
                 <span className="large-icon">{vessel.is_active ? '⌧' : '⌗'}</span>
               </div>
               {isLockoutActive && (
-                <span className='soft-text operator-subtitles' style={{ marginLeft: 0, marginTop: '8px' }}>
+                <span className='soft-text operator-subtitles action-lockout-text'>
                   {lockoutMessage}
                 </span>
               )}
             </div>
             
             {/* Spacer */}
-            <div style={{ flex: 1 }}></div>
-            
-            <button type="submit" className="touch-button" disabled={!isFormValid}>
-              Update Vessel
+            <button type="submit" className="touch-button action-submit-button" disabled={!isFormValid}>
+              {vessel?.uuid ? 'Update' : 'Register'}
             </button>
           </div>
         </form>
