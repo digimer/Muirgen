@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
 import EntityMedia from './EntityMedia.jsx';
-import VesselNotes from './VesselNotes.jsx';
+import EntityNotes from './EntityNotes.jsx';
 import { useLocalStorageState } from './utils/hooks.js';
 
 const VesselEdit = ({ vessel, onComplete, activeCount }) => {
@@ -118,8 +118,17 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
     }
   }
   
-  // Debug logging.
-  //console.warn(`Active count: [${activeCount}], is_active: [${vessel.is_active}]`);
+  // Allowed note categories for vessels
+  const vesselCategories = [
+    'Log::Crew',
+    'Log::Incident',
+    'Log::Maintenance',
+    'Log::Private',
+    'Log::Voyage',
+    'Log::Weather',
+    'Note::General'
+  ];
+
   return (
     <div className="setup-mode">
 
@@ -325,7 +334,11 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
 
       {/* Logs Tab */}
       {activeTab === 'logs' && (
-        <VesselNotes vessel={vessel} />
+        <EntityNotes 
+          entityId={vessel?.uuid} 
+          referenceTable="vessels" 
+          allowedCategories={vesselCategories} 
+        />
       )}
 
       {/* Safety timer bar */}

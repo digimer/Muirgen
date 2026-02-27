@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
 import { useLocalStorageState } from './utils/hooks.js';
 import EntityMedia from './EntityMedia.jsx';
-// import EntityNotes from './EntityNotes.jsx';
+import EntityNotes from './EntityNotes.jsx';
 
 const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
   const [formData, setFormData] = useState({
@@ -100,7 +100,17 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
       if (isSelf) lockoutMessage = "Locked; No self-revoke";
       else lockoutMessage = "Locked; SysOp Required";
   }
-  
+
+  // Allowed note categories for user profiles
+  const userCategories = [
+    'Record::Admin',
+    'Record::Concern',
+    'Record::Background',
+    'Record::Medical',
+    'Record::Performance',
+    'Note::General'
+  ];
+
   return (
     <div className="setup-mode">
       {error && <div className="status-display error">{error}</div>}
@@ -239,8 +249,13 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
       {activeTab === 'data' && (
         <EntityMedia entityId={user?.uuid} referenceTable="users" mode="file" />
       )}
+      {/* Logs (notes) tab */}
       {activeTab === 'logs' && (
-        <div className="offline-tab-placeholder">Logs (Offline)</div>
+        <EntityNotes 
+          entityId={user?.uuid} 
+          referenceTable="users" 
+          allowedCategories={userCategories} 
+        />
       )}
     </div>
   );

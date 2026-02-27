@@ -1,13 +1,14 @@
 /* 
- * This handles Notes (and logs) tagged to a vessel. It uses Tiptap for the text management.
+ * This handles Notes (and logs) tagged to an entity. 
+ * It uses Tiptap for the text management.
  */ 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { apiFetch } from './utils/api.js';
 import { formatMuirgenDate } from './utils/formatters.js';
-import VesselNoteViewer from './VesselNoteViewer.jsx';
+import EntityNoteViewer from './EntityNoteViewer.jsx';
 
 // Internal component that handles the toolbar buttons from Tiptap.
 const MenuBar = ({ editor }) => {
@@ -54,7 +55,7 @@ const MenuBar = ({ editor }) => {
   );
 }
 
-function VesselNotes({ vessel }) {
+function EntityNotes({ entityId, referenceTable, allowedCategories = ['Note::General'] }) {
   const [notes, setNotes]                                   = useState([]);
   const [editingNote, setEditingNote]                       = useState(null);
   const [status, setStatus]                                 = useState({ type: '', message: '' });
@@ -73,10 +74,10 @@ function VesselNotes({ vessel }) {
     onUpdate: () => { setHasEdits(true) }         // Disable the [Escape] button
   });
 
-  // Load existing notes
-  const fetchNotes = async () => {
+  // Load existing notes (using Callback as it's called from multiple places)
+  const fetchNotes = useCallback(async () => {
     try {
-      const res = await apiFetch(`/api/notes/${vessel.uuid}/list`);
+      const res = await apiFetch(`/api/notes/${entityId}/list`);
       if (res.ok) {
         const data = await res.json();
         // Force standard string sorting on the UUIDv7 prefix to guarantee newest-first
@@ -87,11 +88,12 @@ function VesselNotes({ vessel }) {
     } catch (err) {
       console.error("Failed to load vessel logs. Error: ", err)
     }
-  };
+  }, [entityId]);
 
+  // Reload existing notes using the entityID changes.
   useEffect(() => {
-    if (vessel?.uuid) fetchNotes();
-  }, [vessel]);
+    fetchNotes();
+  }, [fetchNotes]);
 
   // When a user selects a log, load it into the Tiptap instance.
   const handleEditSelect = (note) => {
@@ -170,7 +172,7 @@ function VesselNotes({ vessel }) {
       
       setIsAutoSaving(true);
       const draftData = {...editingNote, note_body: htmlContent };
-      localStorage.setItem(`muirgen_draft_log_${vessel.uuid}`, JSON.stringify(draftData));
+      localStorage.setItem(`muirgen_draft_log_${referenceTable}_${entityId}`, JSON.stringify(draftData));
       console.log("Draft auto-saved."); 
 
       // Flick the hard drive LED
@@ -206,8 +208,8 @@ function VesselNotes({ vessel }) {
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({
-          reference_table: 'vessels', 
-          reference_id: vessel.uuid, 
+          reference_table: referenceTable, 
+          reference_id: entityId, 
           category: editingNote.category || 'Note::General', 
           note_name: editingNote.note_name, 
           note_body: htmlContent, 
@@ -221,7 +223,7 @@ function VesselNotes({ vessel }) {
         setStatus({ type: 'success', message: 'Log entry recorded.' });
 
         // Wait for the updated list to come back from the DB
-        const refreshRes = await apiFetch(`/api/notes/${vessel.uuid}/list`);
+        const refreshRes = await apiFetch(`/api/notes/${entityId}/list`);
         if (refreshRes.ok) {
           const freshNotes = await refreshRes.json();
           // Update the UI directory list
@@ -235,7 +237,7 @@ function VesselNotes({ vessel }) {
         setHasEdits(false);
 
         // Clear the draft from memory.
-        localStorage.removeItem(`muirgen_draft_log_${vessel.uuid}`);
+        localStorage.removeItem(`muirgen_draft_log_${referenceTable}_${entityId}`);
 
         // Show the LED blink briefly and the success for a couple seconds.
         setTimeout(() => setIsAutoSaving(false), 500);
@@ -288,7 +290,7 @@ function VesselNotes({ vessel }) {
               type="button" 
               className="touch-button" 
               onClick={() => {
-                const draft = localStorage.getItem(`muirgen_draft_log_${vessel.uuid}`);
+                const draft = localStorage.getItem(`muirgen_draft_log_${referenceTable}_${entityId}`);
                 if (draft) {
                   try {
                     const parsedDraft = JSON.parse(draft);
@@ -350,7 +352,7 @@ function VesselNotes({ vessel }) {
       
       {/* Interstitial Note Viewer */}
       {viewingNoteIndex !== null && !editingNote && (
-        <VesselNoteViewer 
+        <EntityNoteViewer 
           notes={notes}
           initialIndex={viewingNoteIndex}
           onClose={() => setViewingNoteIndex(null)}
@@ -397,17 +399,13 @@ function VesselNotes({ vessel }) {
                   <div className="field-group" style={{ flex: 1, marginBottom: 0 }}>
                     <label>Category</label>
                     <select 
-                      value={editingNote.category || 'Note::General'}
+                      value={editingNote.category || allowedCategories[0] || 'Note::General'}
                       onChange={(e) => setEditingNote({ ...editingNote, category: e.target.value})}
                       className="setup-input-select"
                     >
-                      <option value="Log::Crew">Log::Crew</option>
-                      <option value="Log::Incident">Log::Incident</option>
-                      <option value="Log::Maintenance">Log::Maintenance</option>
-                      <option value="Log::Private">Log::Private</option>
-                      <option value="Log::Voyage">Log::Voyage</option>
-                      <option value="Log::Weather">Log::Weather</option>
-                      <option value="Note::General">Note::General</option>
+                      {allowedCategories.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
                     </select>
                   </div>
                   
@@ -488,7 +486,7 @@ function VesselNotes({ vessel }) {
                          type="button" 
                          className="touch-button danger" 
                          onClick={() => {
-                           localStorage.removeItem(`muirgen_draft_log_${vessel.uuid}`);
+                           localStorage.removeItem(`muirgen_draft_log_${entityId}`);
                            setEditingNote(null);
                            editor?.commands.setContent('');
                            setStatus({ type: '', message: 'Draft discarded.' });
@@ -562,4 +560,4 @@ function VesselNotes({ vessel }) {
   );
 }
 
-export default VesselNotes;
+export default EntityNotes;

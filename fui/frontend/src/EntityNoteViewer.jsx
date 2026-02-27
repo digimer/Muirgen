@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { formatMuirgenDate } from './utils/formatters.js';
 
-const VesselNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
+const EntityNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
   const navigate = useCallback((direction) => {
@@ -104,4 +104,4 @@ const VesselNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
   );
 };
 
-export default VesselNoteViewer;
+export default EntityNoteViewer;
