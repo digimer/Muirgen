@@ -47,7 +47,7 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
     setError(null);
     try {
       const res = await apiFetch(`/api/vessels/${vessel.uuid}/update`, {
-        method: 'PUT',
+        method: 'POST',
         body: JSON.stringify(formData)
       });
       if (res.ok) {
@@ -73,9 +73,8 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
     // If we are here, the user confirmed the action.
     try {
       // Are we activating or deactivating? The answer will determine the end point to be called.
-      const useMethod = vessel.is_active ? 'DELETE' : 'PATCH';
       const endpoint = vessel.is_active ? 'deactivate' : 'reactivate';
-      const res = await apiFetch(`/api/vessels/${vessel.uuid}/${endpoint}`, { method: useMethod });
+      const res = await apiFetch(`/api/vessels/${vessel.uuid}/${endpoint}`, { method: 'POST' });
       if (res.ok) {
         // refresh and return
         setIsConfirmingAction(false);

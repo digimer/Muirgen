@@ -112,7 +112,7 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
     setRenameError(null);
     try {
       const res = await apiFetch(`/api/files/${currentFile.uuid}/rename`, {
-        method: 'PUT',
+        method: 'POST',
         body: JSON.stringify({ new_name: newName })
       });
 
@@ -142,7 +142,7 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
     }
 
     try {
-      const res = await apiFetch(`/api/files/${currentFile.uuid}/delete`, { method: 'PUT' });
+      const res = await apiFetch(`/api/files/${currentFile.uuid}/delete`, { method: 'POST' });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       if (onUpdate) await onUpdate();
