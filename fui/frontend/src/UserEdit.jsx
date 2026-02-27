@@ -231,12 +231,13 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
         </form>
       )}
 
-      {/* Placeholder Tabs */}
+      {/* Optics (images) tab */}
       {activeTab === 'optics' && (
-        <div className="offline-tab-placeholder">Optics (Offline)</div>
+        <EntityMedia entityId={user?.uuid} referenceTable="users" mode="image" />
       )}
+      {/* Data (files) tab */}
       {activeTab === 'data' && (
-        <div className="offline-tab-placeholder">Data (Offline)</div>
+        <EntityMedia entityId={user?.uuid} referenceTable="users" mode="file" />
       )}
       {activeTab === 'logs' && (
         <div className="offline-tab-placeholder">Logs (Offline)</div>
