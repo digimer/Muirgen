@@ -1368,18 +1368,19 @@ input[type="number"] {
 .setup-field-header {
   display: flex;
   align-items: top;
-  /* vertically aligns glyphs with the top of the text */
-  gap: 8px;
-  /* Controls width of glyphs */
-  margin-bottom: 4px;
+  gap: 8px;            /* vertically aligns glyphs with the top of the text */
+  margin-bottom: 4px;  /* Controls width of glyphs */
+}
+
+.checkbox-sysop {
+  opacity: 0;
+  user-select: none;
 }
 
 .glyph {
   display: inline-block;
-  width: 20px;
-  /* Set this to the width of the glyph (currently using '◺' */
-  text-align: left;
-  /* Left-justifies the glyph within the 20px box */
+  width: 20px;         /* Set this to the width of the glyph (currently using '◺' */
+  text-align: left;    /* Left-justifies the glyph within the 20px box */
 }
 
 .glyph-specifications {
@@ -1812,6 +1813,7 @@ input[type="number"] {
 .note-console-subject-label {
   font-size: 1.2rem;
   text-transform: uppercase;
+  padding-right: 1em;
 }
 
 .note-console-access {
@@ -2155,11 +2157,6 @@ input[type="number"] {
 }
 
 /* --- 8. COMPONENT LAYOUT HELPERS (SKIN AWARE) --- */
-/* User Management Form Structure */
-.sysop-grant-group {
-  margin-top: 10px;
-}
-
 .sysop-lockout-warning {
   display: block;
   margin-top: 5px;
@@ -2174,10 +2171,19 @@ input[type="number"] {
 
 .security-modal-header {
   margin-bottom: 10px;
+  font-size: 1em;
 }
 
 .setup-form.setup-form-single-column {
   grid-template-columns: 1fr;
+}
+
+/* Force side-by-side layout for new user passwords */
+.new-user-credentials-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
 }
 
 /* Base Entity Form Actions */

@@ -16,16 +16,14 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
     userIsAdmin: user?.is_admin || false,
     userVesselUuid: user?.vessel_uuid || activeVessel?.uuid || 'Unassigned' 
   });
-  
-  // Isolated state for the password modal
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [passwordData, setPasswordData]               = useState({
+  const [passwordData, setPasswordData] = useState({
     newPassword: '',
-    currentPasswordConfirm: ''
+    currentPasswordConfirm: '',
+    existingPasswordVerification: ''
   });
-  const [error, setError]                             = useState(null);
-  const [activeTab, setActiveTab]                     = useLocalStorageState('user_edit_active_tab', 'profile');
-  const [isConfirmingAction, setIsConfirmingAction]   = useState(false);
+  const [error, setError]                           = useState(null);
+  const [activeTab, setActiveTab]                   = useLocalStorageState('user_edit_active_tab', 'profile');
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
   // Determine permissions context
   const activeSessionUuid = localStorage.getItem('muirgen_user_uuid');
@@ -36,21 +34,41 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
     e.preventDefault();
     setError(null);
     
-    // Only process the password if the modal window is actively open
-    if (isPasswordModalOpen && isSelf && !passwordData.currentPasswordConfirm) {
-      setError('Security: Current Access Code Required');
-      return;
-    }
     try {
       const requestBody = {
         ...formData,
         userIsActive: true
       };
 
-      // Only attach password fields if the user actually opened the modal to update them
-      if (isPasswordModalOpen && passwordData.newPassword) {
-         requestBody.userPassword        = passwordData.newPassword;
-         requestBody.userCurrentPassword = passwordData.currentPasswordConfirm;
+      // Password handling
+      if (!user?.uuid) {
+        // New User, they have to set their new Access Code
+        if (!passwordData.newPassword || !passwordData.currentPasswordConfirm) {
+           setError('Security: Access Code and Confirmation Required');
+           return;
+        }
+        if (passwordData.newPassword !== passwordData.currentPasswordConfirm) {
+           setError('Security: Access Codes do not match');
+           return;
+        }
+        requestBody.userPassword        = passwordData.newPassword;
+        requestBody.userPasswordConfirm = passwordData.currentPasswordConfirm;
+      } else {
+        // Existing User: Did they attempt to type a new password?
+        if (passwordData.newPassword) {
+          if (passwordData.newPassword !== passwordData.currentPasswordConfirm) {
+            setError('Security: New Access Codes do not match');
+            return;
+          }
+          // Did they pass along their current password?
+          if (isSelf && !passwordData.existingPasswordVerification) {
+            setError('Security: Current Access Code Required to change credentials');
+            return;
+          }
+          // Attach the payload strings needed by the backend
+          requestBody.userPassword        = passwordData.newPassword;
+          requestBody.userCurrentPassword = passwordData.existingPasswordVerification;
+        }
       }
 
       // We maintain the /update endpoint for modifications
@@ -173,43 +191,54 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
              )}
           </div>
           
-          <div className="field-group sysop-grant-group">
-            <label className="checkbox-container">
-              <span className="label-text strong-text">Grant SysOp</span>
-              <input type="checkbox" checked={formData.userIsAdmin} onChange={(e) => setFormData({ ...formData, userIsAdmin: e.target.checked })} disabled={isSelf} />
-              <span className="retro-checkmark"></span>
-            </label>
+          <div className="field-group">
+            <div className="setup-field-header checkbox-sysop">
+              <span className="cursor-prompt">◺</span>
+              <label>Spacer</label> 
+            </div>
+            
+            {/* The actual checkbox container */}
+            <div style={{ marginTop: '8px' }}>
+              <label className="checkbox-container">
+                <span className="label-text strong-text">Grant SysOp</span>
+                <input type="checkbox" checked={formData.userIsAdmin} onChange={(e) => setFormData({ ...formData, userIsAdmin: e.target.checked })} disabled={isSelf} />
+                <span className="retro-checkmark"></span>
+              </label>
+            </div>
             {isSelf && <span className="soft-text operator-subtitles sysop-lockout-warning">Locked; No self-demote</span>}
           </div>
           
           {/* Security Credentials Block */}
-          <div className="field-group security-section-container">
-            {!isPasswordModalOpen ? (
-               <button type="button" className="touch-button" onClick={() => setIsPasswordModalOpen(true)}>
-                 Update Access Code
-               </button>
-            ) : (
-              <div className="security-modal-inline">
-                  <h4 className="flicker-subtle security-modal-header">Security Override</h4>
-                  
-                 <div className="field-group">
-                   <label>New Access Code</label>
-                   <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} placeholder="<secret>" />
-                   <span className="soft-text operator-subtitles">Blank: Unchanged</span>
-                 </div>
-                 
-                 {isSelf && (
-                   <div className="field-group security-verify">
-                     <label>Current AC</label>
-                     <input type="password" value={passwordData.currentPasswordConfirm} onChange={e => setPasswordData({...passwordData, currentPasswordConfirm: e.target.value})} placeholder="<Current AC Required>" />
-                   </div>
-                 )}
-                 <button type="button" className="touch-button" onClick={() => { setIsPasswordModalOpen(false); setPasswordData({newPassword: '', currentPasswordConfirm: ''}); }}>
-                   Abort
-                 </button>
-              </div>
-            )}
+          <div className="field-group">
+            <div className="setup-field-header">
+              <span className="cursor-prompt">◺</span>
+              <label>{user?.uuid ? 'New Access Code' : 'Access Code'}</label>
+            </div>
+            <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} placeholder="<secret>" required={!user?.uuid} />
+            {user?.uuid && <span className="soft-text operator-subtitles">Blank: No Change</span>}
           </div>
+          
+          <div className="field-group">
+            <div className="setup-field-header">
+              <span className="cursor-prompt">◺</span>
+              <label>Confirm AC</label>
+            </div>
+            <input type="password" value={passwordData.currentPasswordConfirm} onChange={e => setPasswordData({...passwordData, currentPasswordConfirm: e.target.value})} placeholder="<verify secret>" required={!user?.uuid || !!passwordData.newPassword} />
+          </div>
+          
+          {/* Only prompt for the current password if the user is editing their own existing profile */}
+          {user?.uuid && isSelf ? (
+            <div className="field-group">
+              <div className="setup-field-header">
+                <span className="cursor-prompt">◺</span>
+                <label>Current AC</label>
+              </div>
+              <input type="password" value={passwordData.existingPasswordVerification} onChange={e => setPasswordData({...passwordData, existingPasswordVerification: e.target.value})} placeholder="<required for change>" required={!!passwordData.newPassword} />
+            </div>
+          ) : (
+            /* Render an empty div to maintain the two-column grid balance if the third field shouldn't exist */
+            <div className="field-group"></div>
+          )}
 
           {/* The action row */}
           <div className="action-bar-container">

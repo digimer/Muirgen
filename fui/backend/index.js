@@ -737,7 +737,8 @@ app.post('/api/users/:uuid/update', authenticateToken, requireAdmin, async (req,
     userCurrentPassword, 
     userName, 
     userIsAdmin, 
-    userIsActive
+    userIsActive, 
+    userVesselUuid
   } = req.body;
   
   try {
@@ -758,8 +759,8 @@ app.post('/api/users/:uuid/update', authenticateToken, requireAdmin, async (req,
       // Update with the password set.
       const encryptedPassword = await bcrypt.hash(userPassword, 12);
       await pool.query(
-        'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4, password_hash = $5 WHERE uuid = $6;',
-        [userName, userHandle, userIsAdmin, userIsActive, encryptedPassword, req.params.uuid]
+        'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4, password_hash = $5, vessel_uuid = $6 WHERE uuid = $7;',
+        [userName, userHandle, userIsAdmin, userIsActive, encryptedPassword, userVesselUuid, req.params.uuid]
       );
       // Create an audit log for this update.
       await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the password /record for user: [${userHandle}].`);
@@ -767,8 +768,8 @@ app.post('/api/users/:uuid/update', authenticateToken, requireAdmin, async (req,
     } else {
       // Update without the password column.
       await pool.query(
-        'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4 WHERE uuid = $5;',
-        [userName, userHandle, userIsAdmin, userIsActive, req.params.uuid]
+        'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4, vessel_uuid = $5 WHERE uuid = $6;',
+        [userName, userHandle, userIsAdmin, userIsActive, userVesselUuid, req.params.uuid]
       );
       // Create an audit log for this update.
       await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the record for user: [${userHandle}].`);
