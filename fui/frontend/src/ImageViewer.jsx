@@ -82,7 +82,7 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
 
       setIsEditingName(false);
       if (onUpdate) {
-        // Tell VesselMedia to siltently refresh
+        // Tell EntityMedia to siltently refresh
         await onUpdate();
       }
     } catch (err) {
@@ -106,7 +106,7 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      // Tell the VesselMedia to silently refresh
+      // Tell the EntityMedia to silently refresh
       if (onUpdate) await onUpdate();
 
       // Adjust the viewer index so it doesn't crash on an out-of-bounds array when the background refresh

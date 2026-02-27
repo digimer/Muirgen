@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
 import { useLocalStorageState } from './utils/hooks.js';
-// import EntityMedia from './EntityMedia.jsx';
+import EntityMedia from './EntityMedia.jsx';
 // import EntityNotes from './EntityNotes.jsx';
 
 const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {

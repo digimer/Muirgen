@@ -497,6 +497,7 @@ input:-webkit-autofill:active {
 }
 
 /* File and Image related classes */
+.entity-media-container, 
 .vessel-media-container {
   padding: 20px 0;
 }
@@ -794,6 +795,10 @@ input:-webkit-autofill:active {
   font-weight: bold;
   text-transform: uppercase;
   animation: flicker 2s infinite;
+}
+
+.entity-upload-error {
+  margin-left: 20px;
 }
 
 /* Wrapper for tabs and their associated glyphs */
@@ -1184,6 +1189,10 @@ textarea:focus::placeholder {
   letter-spacing: 2px;
 }
 
+.copy-from-memory {
+  margin-bottom: 15px;
+}
+
 /* Disable default outline and apply custom red shadow when focused via keyboard (tab) */
 input:focus,
 input[type="number"]:focus,
@@ -1206,6 +1215,10 @@ button:focus {
   transition: all 0.1s ease-in-out, background-color 0.3s;
   box-shadow: 0 0 5px rgba(136, 0, 0, 0.5);
   margin-bottom: 2px;
+}
+
+.touch-button-pointer {
+  cursor: pointer;
 }
 
 .touch-button-file-download {
@@ -1882,6 +1895,10 @@ input[type="number"] {
   font-family: 'Orbitron', sans-serif;
 }
 
+.flicker-entity-transmit {
+  margin-left: 15px;
+}
+
 /* Used for <h3> */
 .flicker-subtle {
   text-shadow: 0 0 8px var(--strong-red);
@@ -2177,4 +2194,38 @@ input[type="number"] {
 /* Offline placeholders */
 .offline-tab-placeholder {
   padding: 20px; 
+}
+
+/* Media Card Abstraction */
+.media-card {
+  cursor: pointer;
+  padding: 1px;
+  background-color: var(--mid-red);
+  display: flex;
+  flex-direction: column;
+}
+
+.media-card-inner {
+  flex: 1;
+  background-color: var(--dark-bg);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 19px), calc(100% - 19px) 100%, 0 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Using 'cover' crops the image's thumbnail to always fill the 4:3 ratio thumbnail. If we decide to make it
+   retain the full image, switch to 'contain' */
+.security-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+}
+
+.action-bar-container-top {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.intense-text {
+  color: var(--neon-red);
 }

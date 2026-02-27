@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
-import VesselMedia from './VesselMedia.jsx';
+import EntityMedia from './EntityMedia.jsx';
 import VesselNotes from './VesselNotes.jsx';
 import { useLocalStorageState } from './utils/hooks.js';
 
@@ -315,12 +315,12 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
 
       {/* Images tab */}
       {activeTab === 'optics' && (
-        <VesselMedia vessel={vessel} mode="image" />
+        <EntityMedia entityId={vessel?.uuid} referenceTable="vessels" mode="image" />
       )}
 
       {/* Files tab */}
       {activeTab === 'data' && (
-        <VesselMedia vessel={vessel} mode="file" />
+        <EntityMedia entityId={vessel?.uuid} referenceTable="vessels" mode="file" />
       )}
 
       {/* Logs Tab */}
