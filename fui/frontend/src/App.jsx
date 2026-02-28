@@ -169,6 +169,7 @@ const App = () => {
   useEffect(() => {
     if (activeView === 'VESSEL_MANAGEMENT' || 
         activeView === 'VESSEL_EDIT'       || 
+        activeView === 'VESSEL_PROFILE'    ||
         activeView === 'USER_EDIT') {
       fetchManagementData();
     }
@@ -194,7 +195,22 @@ const App = () => {
         setViewContext(freshUser);
       }
     }
-    
+
+    // Rebuild context arrays if we reloaded directly into a vessel profile!
+    if (activeView === 'VESSEL_PROFILE' && viewContext && allVessels.length > 0) {
+      if (viewContextList.length === 0) {
+        setViewContextList(allVessels);
+        const index = allVessels.findIndex(v => v.uuid === viewContext.uuid);
+        setViewContextIndex(Math.max(0, index));
+      } else {
+        // Just update existing viewContext if it's stale
+        const freshVessel = allVessels.find(v => v.uuid === viewContext.uuid);
+        if (freshVessel && JSON.stringify(freshVessel) !== JSON.stringify(viewContext)) {
+          setViewContext(freshVessel);
+        }
+      }
+    }
+
     // Rebuild context arrays if we reloaded directly into a profile!
     if (activeView === 'USER_PROFILE' && viewContext && allUsers.length > 0) {
       if (viewContextList.length === 0) {
@@ -398,27 +414,112 @@ const App = () => {
                   {activeView === 'VESSEL_MANAGEMENT' && (
                     <VesselManagement
                       vessels={allVessels}
+                      onView={(vList, vIndex) => {
+                        setViewContextList(vList);
+                        setViewContextIndex(vIndex);
+                        setReturnView('VESSEL_MANAGEMENT');
+                        setTargetNoteId(null);
+                        setActiveView('VESSEL_PROFILE');
+                      }}
                       onModify={(v) => {
                         setViewContext(v);
+                        setReturnView('VESSEL_MANAGEMENT');
+                        setTargetNoteId(null);
+                        localStorage.removeItem('vessel_edit_active_tab');
                         setActiveView('VESSEL_EDIT');
                       }}
-                      onRegister={() => setActiveView('VESSEL_MANAGEMENT')}
+                      onRegister={() => {
+                        setViewContext(null); 
+                        setReturnView('VESSEL_MANAGEMENT');
+                        setTargetNoteId(null);
+                        localStorage.removeItem('vessel_edit_active_tab');
+                        setActiveView('VESSEL_EDIT');
+                      }}
                     />
                   )}
                   
+                  {activeView === 'VESSEL_PROFILE' && viewContextList.length > 0 && (
+                    <EntityViewer
+                      entities={viewContextList}
+                      initialIndex={viewContextIndex}
+                      referenceTable="vessels"
+                      jumpToNoteId={targetNoteId} 
+                      onOptics={(entity) => {
+                        setViewContext(entity);
+                        setTargetNoteId('optics');
+                        setReturnView('VESSEL_PROFILE');
+                        setActiveView('VESSEL_EDIT');
+                      }}
+                      onEdit={(entity) => {
+                        setTargetNoteId(null);
+                        localStorage.removeItem('vessel_edit_active_tab');
+                        setViewContext(entity);
+                        setReturnView('VESSEL_PROFILE');
+                        setActiveView('VESSEL_EDIT');
+                      }}
+                      onAddNote={(entity) => {
+                        setViewContext(entity);
+                        setTargetNoteId('new');
+                        setReturnView('VESSEL_PROFILE');
+                        setActiveView('VESSEL_EDIT');
+                      }}
+                      onClose={() => setActiveView('VESSEL_MANAGEMENT')}
+                      onNoteSelect={(noteId) => {
+                        setTargetNoteId(noteId);
+                        setReturnView('VESSEL_PROFILE');
+                        setActiveView('VESSEL_EDIT');
+                      }}
+                    >
+                      {/* Merchant Marine Readouts for Vessels */}
+                      {(entity) => (
+                        <>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Vessel Name</div>
+                            <div className="telemetry-value">{entity.name}</div>
+                          </div>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Official Number</div>
+                            <div className="telemetry-value">{entity.official_number || 'Unknown'}</div>
+                          </div>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Hull ID</div>
+                            <div className="telemetry-value">{entity.hull_id_number || 'Unknown'}</div>
+                          </div>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Flag State</div>
+                            <div className="telemetry-value">{entity.flag_nation || 'Unknown'}</div>
+                          </div>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Status</div>
+                            <div className={`telemetry-value ${entity.is_active ? 'entity-status-active' : 'entity-status-inactive'}`}>
+                              {entity.is_active ? 'Active' : 'Inactive'}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </EntityViewer>
+                  )}
+
                   {/* The vessel edit form (for managing existing vessels) */}
                   {activeView === 'VESSEL_EDIT' && viewContext && (
                     <VesselEdit 
                       vessel={viewContext}
                       activeCount={allVessels.filter(v => v.is_active).length}
+                      jumpToNoteId={targetNoteId} 
                       onComplete={() => {
                         fetchManagementData();              // refresh the index
                         setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
                         setViewContext(null);               // Clear the selected vessel
                       }}
-                      onCancel={() => {
-                        setActiveView('VESSEL_MANAGEMENT'); // Return to the list
-                        setViewContext(null);               // Clear the selected vessel
+                      onCancel={(cancelNoteId) => {
+                        setActiveView(returnView);
+                        if (returnView === 'VESSEL_MANAGEMENT') setViewContext(null);
+                        
+                        if (typeof cancelNoteId === 'string') {
+                          setTargetNoteId(cancelNoteId);
+                        } else {
+                          setTargetNoteId(null);
+                        }
                       }}
                     />
                   )}
@@ -470,6 +571,12 @@ const App = () => {
                       initialIndex={viewContextIndex}
                       referenceTable="users"
                       jumpToNoteId={targetNoteId} 
+                      onOptics={(entity) => {
+                        setViewContext(entity);
+                        setTargetNoteId('optics');
+                        setReturnView('USER_PROFILE');
+                        setActiveView('USER_EDIT');
+                      }}
                       onEdit={(entity) => {
                         setTargetNoteId(null);
                         localStorage.removeItem('user_edit_active_tab');

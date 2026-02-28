@@ -3,7 +3,7 @@
  * them, and a button the register new vessels. Given the simplicity, no imports are needed.
  */
 
-const VesselManagement = ({ vessels, onModify, onRegister }) => {
+const VesselManagement = ({ vessels, onView, onModify, onRegister }) => {
   // Track the target vessel waiting to have an action confirmed
   const sortedVessels = [...vessels].sort((a, b) => a.name.localeCompare(b.name));
   
@@ -22,8 +22,12 @@ const VesselManagement = ({ vessels, onModify, onRegister }) => {
           </tr>
         </thead>
         <tbody>
-          {sortedVessels.map((vessel) => (
-            <tr key={vessel.uuid} className={vessel.is_active ? 'entity-active' : 'entity-inactive'}>
+          {sortedVessels.map((vessel, index) => (
+            <tr 
+              key={vessel.uuid} 
+              className={`entity-pointer ${vessel.is_active ? 'entity-active' : 'entity-inactive'}`}
+              onClick={() => onView(sortedVessels, index)}
+            >
               <td className="status-cell">
                 {vessel.is_active ? (
                   <span>╠ Active ╣</span>
@@ -36,7 +40,13 @@ const VesselManagement = ({ vessels, onModify, onRegister }) => {
               <td>{vessel.official_number || '◬ ON Missing ◬' }</td>
               <td className="actions-cell">
                 <div className="actions-wrapper">
-                  <button className="touch-button" onClick={() => onModify(vessel)}>
+                  <button 
+                    className="touch-button" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onModify(vessel);
+                    }}
+                  >
                     Edit
                   </button>
                   <span className="large-icon">⌬</span>

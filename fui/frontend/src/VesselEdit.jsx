@@ -9,7 +9,7 @@ import EntityMedia from './EntityMedia.jsx';
 import EntityNotes from './EntityNotes.jsx';
 import { useLocalStorageState } from './utils/hooks.js';
 
-const VesselEdit = ({ vessel, onComplete, activeCount }) => {
+const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount }) => {
   // Initialize state with the existing data passed from App.jsx. The '|| {''/0} insured the variables are 
   // never "null" to prevent upsetting react.
   const [formData, setFormData] = useState({
@@ -25,11 +25,18 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
   
   const [error, setError] = useState(null);
   // Storage the active tab for browser reload/restart persistence
-  const [activeTab, setActiveTab] = useLocalStorageState('vessel_edit_active_tab', 'specs');
-
-  // 15-second action confirmation interlock. The user needs to confirm before the activation state is 
-  // changed.
+  const [activeTab, setActiveTab]                   = useLocalStorageState('vessel_edit_active_tab', 'specs');
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+
+  // Intercept the tab routing if we are deep-linking to a note. We only want this to run once when the
+  // component initially mounts!
+  useEffect(() => {
+    if (jumpToNoteId === 'optics') {
+      setActiveTab('optics');
+    } else if (jumpToNoteId) {
+       setActiveTab('logs');
+    }
+  }, [jumpToNoteId,]); // activeTab is deliberately missing so it doesn't loop
 
   // The effect that handles the 15 second timeout
   useEffect(() => {
@@ -338,6 +345,10 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
           entityId={vessel?.uuid} 
           referenceTable="vessels" 
           allowedCategories={vesselCategories} 
+          deepLinkNoteId={jumpToNoteId}
+          onExitEdit={(noteId) => {
+             if (onCancel) onCancel(noteId);
+          }}
         />
       )}
 

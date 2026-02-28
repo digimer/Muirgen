@@ -34,7 +34,9 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
   // Intercept the tab routing if we are deep-linking to a note. We only want this to run once when the
   // component initially mounts!
   useEffect(() => {
-    if (jumpToNoteId) {
+    if (jumpToNoteId === 'optics') {
+      setActiveTab('optics');
+    } else if (jumpToNoteId) {
        setActiveTab('logs');
     }
   }, [jumpToNoteId,]); // activeTab is deliberately missing so it doesn't loop

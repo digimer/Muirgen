@@ -1026,6 +1026,12 @@ input:-webkit-autofill:active {
   justify-content: center;
   margin-bottom: 1rem;
   overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.entity-viewer-avatar-box:hover {
+  border-color: var(--neon-red);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
 }
 
 .entity-viewer-avatar-img {
@@ -1081,6 +1087,14 @@ input:-webkit-autofill:active {
   margin: 0;
 }
 
+.entity-status-active {
+  color: var(--neon-red);
+}
+
+.entity-status-inactive {
+  color: var(--soft-red);
+}
+
 .data-table-cell-category {
   width: 150px;
   color: var(--soft-red);
@@ -1129,6 +1143,7 @@ input:-webkit-autofill:active {
   display: flex;
   align-items: center;
 }
+
 .telemetry-value {
   padding: 0.4rem 0.75rem;
   color: var(--neon-red);

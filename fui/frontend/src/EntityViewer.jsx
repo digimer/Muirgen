@@ -7,13 +7,26 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './utils/api.js';
 import { formatMuirgenDate } from './utils/formatters.js';
 import EntityNoteViewer from './EntityNoteViewer.jsx';
+import ImageViewer from './ImageViewer.jsx';
 
-const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", jumpToNoteId, onEdit, onClose, onNoteSelect, onAddNote, children }) => {
+const EntityViewer = ({ 
+  entities, 
+  initialIndex, 
+  notesTitle = "Logs", 
+  jumpToNoteId, 
+  onOptics, 
+  onEdit, 
+  onClose, 
+  onNoteSelect, 
+  onAddNote, 
+  children
+}) => {
   const [currentIndex, setCurrentIndex]         = useState(initialIndex);
   const [avatarUrl, setAvatarUrl]               = useState(null);
   const [notes, setNotes]                       = useState([]);
   const [isLoading, setIsLoading]               = useState(true);
   const [viewingNoteIndex, setViewingNoteIndex] = useState(null);
+  const [viewingAvatar, setViewingAvatar]       = useState(false);
   const currentEntity = entities[currentIndex];
   const entityId = currentEntity?.uuid;
 
@@ -142,7 +155,13 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", jumpToNoteI
                 {/* Top Row: Avatar and Specs */}
                 <div className="entity-viewer-profile-row">
                   <div className="entity-viewer-left">
-                    <div className="entity-viewer-avatar-box">
+                    <div 
+                      className="entity-viewer-avatar-box entity-pointer"
+                      onClick={() => {
+                        if (avatarUrl) setViewingAvatar(true);
+                        else if (onOptics) onOptics(currentEntity);
+                      }}
+                    >
                       {isLoading ? (
                         <div className="soft-text">Loading Avatar...</div>
                       ) : avatarUrl ? (
@@ -229,6 +248,18 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", jumpToNoteI
             setViewingNoteIndex(null);
             if (onNoteSelect) onNoteSelect(note.uuid);
           }}
+        />
+      )}
+
+      {/* Nested Fullscreen Avatar Viewer */}
+      {viewingAvatar && avatarUrl && (
+        <ImageViewer 
+          images={[{ 
+            file_directory: avatarUrl.substring(0, avatarUrl.lastIndexOf('/')), 
+            file_name: avatarUrl.substring(avatarUrl.lastIndexOf('/') + 1) 
+          }]}
+          initialIndex={0}
+          onClose={() => setViewingAvatar(false)}
         />
       )}
     </div>
