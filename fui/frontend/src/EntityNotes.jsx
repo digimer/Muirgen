@@ -55,7 +55,7 @@ const MenuBar = ({ editor }) => {
   );
 }
 
-const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::General'], deepLinkNoteId }) => {
+const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::General'], deepLinkNoteId, onExitEdit }) => {
   const [notes, setNotes]                                   = useState([]);
   const [editingNote, setEditingNote]                       = useState(null);
   const [status, setStatus]                                 = useState({ type: '', message: '' });
@@ -167,9 +167,11 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
 
   // This allows [Esc] to be used to exit the editor _if_ there are no changes.
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyUp = (e) => {
       // Only trigger if editor is open
       if (e.key === 'Escape' && editingNote) {
+        // Prevent UserEdit from catching this event
+        e.stopImmediatePropagation();
         
         // Block Escape if any edits exist.
         if (hasEdits) {
@@ -177,23 +179,20 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
           return;
         }
 
-        // If there's a notes.uuid, send them back to the viewer.
-        if (editingNote.uuid) {
-          const targetIndex = notes.findIndex(n => n.uuid === editingNote.uuid);
-          if (targetIndex !== -1) {
-            setViewingNoteIndex(targetIndex);
-          }
-         }
-
-        // If we got here, the user hit [Esc] on a new note with no changes yet. Go back to the main list.
-        setEditingNote(null);
-        editor?.commands.setContent('');
-        setStatus({ type: '', message: '' });
+        if (deepLinkNoteId && onExitEdit) {
+           // We deep-linked directly into the editor, so exiting the editor means exiting the tab entirely
+           onExitEdit(editingNote.uuid);
+        } else {
+          // Just browsing locally. Return to the list.
+          setEditingNote(null);
+          editor?.commands.setContent('');
+          setStatus({ type: '', message: '' });
+        }
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingNote, notes, editor, hasEdits]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => window.removeEventListener('keyup', handleKeyUp);
+  }, [editingNote, editor, hasEdits, deepLinkNoteId, onExitEdit]);
 
   // Debounce auto-save for drafts
   useEffect(() => {

@@ -35,19 +35,19 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
   }, [files.length]);
 
   // Keyboard navigation.
-  const handleKeyDown = useCallback((e) => {
+  const handleKeyUp = useCallback((e) => {
     if (isEditingName) return;
 
-    if (e.key === 'Escape') onClose;
+    if (e.key === 'Escape') onClose();
     if (e.key === 'ArrowLeft') navigate(-1);
     if (e.key === 'ArrowRight') navigate(1);
   }, [onClose, navigate, isEditingName]);
 
   // Add and remove keyboard listener
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => window.removeEventListener('keyup', handleKeyUp);
+  }, [handleKeyUp]);
 
   const currentFile = files[currentIndex];
 
@@ -89,6 +89,7 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
 
   // Handle rename submission.
   const handleRenameSubmit = async (e) => {
+    e.stopPropagation();
     if (e.key === 'Escape') {
       setIsEditingName(false);
       return;
@@ -279,7 +280,7 @@ const DataViewer = ({ files, initialIndex, onClose, onUpdate }) => {
                       if (renameError) setRenameError(null);
                     }}
                     size={Math.max(15, editedName.length)}
-                    onKeyDown={handleRenameSubmit}
+                    onKeyUp={handleRenameSubmit} 
                     onBlurCapture={() => {
                       setIsEditingName(false);
                       setRenameError(null);

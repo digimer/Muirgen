@@ -24,6 +24,7 @@
   --mid-red: #aa0000;
   --soft-red: #880000;
   --dim-red: #440000;
+  --subtle-red: #220000;
   --dark-bg: #000000;
   --box-max-width: 900px;
   --grid-line: rgba(255, 0, 0, 0.15);
@@ -1102,6 +1103,40 @@ input:-webkit-autofill:active {
 .file-viewer-button-icon span {
   display: block;
   transform: translateY(-1px);
+}
+
+/* --- Telemetry Blocks (Profile Data) --- */
+.telemetry-block {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--soft-red);
+  background-color: rgba(68, 0, 0, 0.15);
+  margin-bottom: 0.5rem;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  text-transform: uppercase;
+}
+
+.telemetry-label {
+  background-color: var(--subtle-red);
+  color: var(--neon-red);
+  padding: 0.4rem 0.75rem;
+  font-weight: bold;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  width: 110px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--strong-red);
+  display: flex;
+  align-items: center;
+}
+.telemetry-value {
+  padding: 0.4rem 0.75rem;
+  color: var(--neon-red);
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  text-shadow: 0 0 4px rgba(255, 0, 0, 0.3);
 }
 
 /* Classes for DataViewer */

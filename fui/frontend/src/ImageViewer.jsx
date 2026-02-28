@@ -33,7 +33,7 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
   }, [images.length]);
 
   // Keyboard navigation
-  const handleKeyDown = useCallback((e) => {
+  const handleKeyUp = useCallback((e) => {
     if (isEditingName) return; // Disable navigation while editing the name
 
     if (e.key === 'Escape')     onClose();
@@ -42,14 +42,15 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
   }, [onClose, navigate, isEditingName]); // Dependencies will be updated by the navigator
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return() => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+    window.addEventListener('keyup', handleKeyUp);
+    return() => window.removeEventListener('keyup', handleKeyUp);
+  }, [handleKeyUp]);
 
   const currentImage = images[currentIndex];
 
   // Handle the actual rename submission
   const handleRenameSubmit = async (e) => {
+    e.stopPropagation();
     if (e.key === 'Escape') {
       setIsEditingName(false);
       return;
@@ -184,7 +185,7 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
                       if (renameError) setRenameError(null);
                     }} 
                     size={Math.max(15, editedName.length)}
-                    onKeyDown={handleRenameSubmit} 
+                    onKeyUp={handleRenameSubmit} 
                     onBlurCapture={() => {
                       setIsEditingName(false);
                       setRenameError(null); 

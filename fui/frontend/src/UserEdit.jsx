@@ -41,7 +41,7 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
 
   // Handle [Esc] to cancel/close
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyUp = (e) => {
       // Don't override if the user is actively typing in an input field
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'Escape') {
@@ -49,8 +49,8 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
       }
     };
     
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => window.removeEventListener('keyup', handleKeyUp);
   }, [onCancel]);
 
   // Save the user's data
@@ -327,7 +327,10 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
           entityId={user?.uuid} 
           referenceTable="users" 
           allowedCategories={userCategories} 
-          deepLinkNoteId={jumpToNoteId}
+          deepLinkNoteId={jumpToNoteId} 
+          onExitEdit={(noteId) => {
+             if (onCancel) onCancel(noteId);
+          }}
         />
       )}
     </div>

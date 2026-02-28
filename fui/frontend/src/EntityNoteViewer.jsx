@@ -17,7 +17,7 @@ const EntityNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
     });
   }, [notes.length]);
 
-  const handleKeyDown = useCallback((e) => {
+  const handleKeyUp = useCallback((e) => {
     if (e.key === 'Escape')     onClose();
     if (e.key === 'ArrowLeft')  navigate(-1);
     if (e.key === 'ArrowRight') navigate(1);
@@ -28,9 +28,9 @@ const EntityNoteViewer = ({ notes, initialIndex, onClose, onEdit }) => {
   }, [onClose, navigate, onEdit, notes, currentIndex]);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => window.removeEventListener('keyup', handleKeyUp);
+  }, [handleKeyUp]);
 
   const currentNote = notes[currentIndex];
   if (!currentNote) return null;

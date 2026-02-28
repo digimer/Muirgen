@@ -8,7 +8,7 @@ import { apiFetch } from './utils/api.js';
 import { formatMuirgenDate } from './utils/formatters.js';
 import EntityNoteViewer from './EntityNoteViewer.jsx';
 
-const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onClose, onNoteSelect, onAddNote, children }) => {
+const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", jumpToNoteId, onEdit, onClose, onNoteSelect, onAddNote, children }) => {
   const [currentIndex, setCurrentIndex]         = useState(initialIndex);
   const [avatarUrl, setAvatarUrl]               = useState(null);
   const [notes, setNotes]                       = useState([]);
@@ -66,9 +66,19 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onC
     loadEntityData();
   }, [loadEntityData]);
 
+  // Intercept deep linking to open the Note Viewer automatically
+  useEffect(() => {
+    if (jumpToNoteId && notes.length > 0 && !isLoading) {
+      const targetIndex = notes.findIndex(n => n.uuid === jumpToNoteId);
+      if (targetIndex !== -1) {
+        setViewingNoteIndex(targetIndex);
+      }
+    }
+  }, [jumpToNoteId, notes, isLoading]);
+
   // Handle [Esc] to close, [E] to edit, and left/right arrows for navigation.
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyUp = (e) => {
       // Ignore hotkeys while a child overlay is active
       if (viewingNoteIndex !== null) return;
 
@@ -88,15 +98,20 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onC
       }
     };
     
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => window.removeEventListener('keyup', handleKeyUp);
   }, [onClose, onEdit, navigate, viewingNoteIndex]);
 
   if (!currentEntity) return null;
 
   return (
     <div className="file-viewer-backdrop" onClick={onClose}>
-      <div className="file-viewer-frame" onClick={e => e.stopPropagation()}>
+      <div 
+        className="file-viewer-frame" 
+        onClick={e => e.stopPropagation()}
+        /* Hide the profile if the viewer active so it doesn't peek out behind the viewer */
+        style={{ display: viewingNoteIndex !== null ? 'none' : 'block' }}
+      >
         <div className="file-viewer-outer" />
         <div className="file-viewer-inner">
           

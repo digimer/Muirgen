@@ -172,7 +172,7 @@ const App = () => {
         activeView === 'USER_EDIT') {
       fetchManagementData();
     }
-    if (activeView === 'USER_MANAGEMENT' || activeView === 'USER_EDIT') {
+    if (activeView === 'USER_MANAGEMENT' || activeView === 'USER_EDIT' || activeView === 'USER_PROFILE') {
       fetchUserManagementData();
     }
   }, [activeView, fetchManagementData, fetchUserManagementData]);
@@ -194,7 +194,22 @@ const App = () => {
         setViewContext(freshUser);
       }
     }
-  }, [allVessels, allUsers, activeView, viewContext]);
+    
+    // Rebuild context arrays if we reloaded directly into a profile!
+    if (activeView === 'USER_PROFILE' && viewContext && allUsers.length > 0) {
+      if (viewContextList.length === 0) {
+        setViewContextList(allUsers);
+        const index = allUsers.findIndex(u => u.uuid === viewContext.uuid);
+        setViewContextIndex(Math.max(0, index));
+      } else {
+        // Just update existing viewContext if it's stale
+        const freshUser = allUsers.find(u => u.uuid === viewContext.uuid);
+        if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(viewContext)) {
+          setViewContext(freshUser);
+        }
+      }
+    }
+  }, [allVessels, allUsers, activeView, viewContext, viewContextList.length]);
 
   // Handle Logging the user out
   const handleLogout = async () => {
@@ -428,17 +443,22 @@ const App = () => {
                         setViewContextList(uList);
                         setViewContextIndex(uIndex);
                         setReturnView('USER_MANAGEMENT');
+                        setTargetNoteId(null);
                         setActiveView('USER_PROFILE');
                       }}
                       onModify={(u) => {
                         setViewContext(u);
                         setReturnView('USER_MANAGEMENT');
+                        setTargetNoteId(null);
+                        localStorage.removeItem('user_edit_active_tab');
                         setActiveView('USER_EDIT');
                       }}
                       onRegister={() => {
                         // Clear context to trigger "New Operator" mode
                         setViewContext(null); 
                         setReturnView('USER_MANAGEMENT');
+                        setTargetNoteId(null);
+                        localStorage.removeItem('user_edit_active_tab');
                         setActiveView('USER_EDIT');
                       }}
                     />
@@ -449,7 +469,10 @@ const App = () => {
                       entities={viewContextList}
                       initialIndex={viewContextIndex}
                       referenceTable="users"
+                      jumpToNoteId={targetNoteId} 
                       onEdit={(entity) => {
+                        setTargetNoteId(null);
+                        localStorage.removeItem('user_edit_active_tab');
                         setViewContext(entity);
                         setReturnView('USER_PROFILE');
                         setActiveView('USER_EDIT');
@@ -464,15 +487,26 @@ const App = () => {
                       onNoteSelect={(noteId) => {
                         setTargetNoteId(noteId);
                         setReturnView('USER_PROFILE');
-                        setIsViewerActive(true);
+                        setActiveView('USER_EDIT');
                       }}
                     >
                       {/* These are the custom child specs for an Operator! */}
                       {(entity) => (
                         <>
-                          <p className="soft-text">Name: {entity.name}</p>
-                          <p className="soft-text">Access: {entity.is_admin ? '◈ SysOp' : '◇ Operator'}</p>
-                          <p className="soft-text">Status: {entity.is_active ? 'Active' : 'Deactivated'}</p>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Name</div>
+                            <div className="telemetry-value">{entity.name}</div>
+                          </div>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Access</div>
+                            <div className="telemetry-value">{entity.is_admin ? '◈ SysOp' : '◇ Operator'}</div>
+                          </div>
+                          <div className="telemetry-block">
+                            <div className="telemetry-label">Status</div>
+                            <div className="telemetry-value" style={{ color: entity.is_active ? 'var(--neon-red)' : 'var(--soft-red)' }}>
+                              {entity.is_active ? 'Aactive' : 'Deactivated'}
+                            </div>
+                          </div>
                         </>
                       )}
                     </EntityViewer>
@@ -497,12 +531,16 @@ const App = () => {
                         fetchUserManagementData(); 
                         setActiveView(returnView);
                         if (returnView === 'USER_MANAGEMENT') setViewContext(null);
-                        setTargetNoteId(null);
                       }}
-                      onCancel={() => {
+                      onCancel={(cancelNoteId) => {
                         setActiveView(returnView);
                         if (returnView === 'USER_MANAGEMENT') setViewContext(null);
-                        setTargetNoteId(null);
+
+                        if (typeof cancelNoteId === 'string') {
+                          setTargetNoteId(cancelNoteId);
+                        } else {
+                          setTargetNoteId(null);
+                        }
                       }}
                     />
                   )}
