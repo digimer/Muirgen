@@ -464,7 +464,7 @@ const App = () => {
                       onNoteSelect={(noteId) => {
                         setTargetNoteId(noteId);
                         setReturnView('USER_PROFILE');
-                        setActiveView('USER_EDIT');
+                        setIsViewerActive(true);
                       }}
                     >
                       {/* These are the custom child specs for an Operator! */}

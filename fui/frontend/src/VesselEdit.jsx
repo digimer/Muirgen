@@ -22,6 +22,7 @@ const VesselEdit = ({ vessel, onComplete, activeCount }) => {
     vesselKeelOffset: vessel?.keel_offset_cm || 0,
     vesselWaterlineOffset: vessel?.waterline_offset_cm || 0
   });
+  
   const [error, setError] = useState(null);
   // Storage the active tab for browser reload/restart persistence
   const [activeTab, setActiveTab] = useLocalStorageState('vessel_edit_active_tab', 'specs');

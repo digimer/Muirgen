@@ -22,10 +22,10 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
     currentPasswordConfirm: '',
     existingPasswordVerification: ''
   });
-  const [error, setError]                           = useState(null);
-  const [saveMessage, setSaveMessage]               = useState(null);
-  const [activeTab, setActiveTab]                   = useLocalStorageState('user_edit_active_tab', 'profile');
-  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
+  const [error, setError]                             = useState(null);
+  const [saveMessage, setSaveMessage]                 = useState(null);
+  const [activeTab, setActiveTab]                     = useLocalStorageState('user_edit_active_tab', 'profile');
+  const [isConfirmingAction, setIsConfirmingAction]   = useState(false);
 
   // Determine permissions context
   const activeSessionUuid = localStorage.getItem('muirgen_user_uuid');
@@ -37,7 +37,7 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
     if (jumpToNoteId) {
        setActiveTab('logs');
     }
-  }, [jumpToNoteId]); // activeTab is deliberately missing so it doesn't loop
+  }, [jumpToNoteId,]); // activeTab is deliberately missing so it doesn't loop
 
   // Handle [Esc] to cancel/close
   useEffect(() => {
@@ -167,7 +167,8 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
     'Record::Background',
     'Record::Medical',
     'Record::Performance',
-    'Note::General'
+    'Note::General',
+    'Log::Personal'
   ];
 
   return (

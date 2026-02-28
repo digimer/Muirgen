@@ -63,6 +63,7 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
   const [isConfirmingDeactivate, setIsConfirmingDeactivate] = useState(false);
   const [viewingNoteIndex, setViewingNoteIndex]             = useState(null);
   const [hasEdits, setHasEdits]                             = useState(false);
+  const [isLoadingNotes, setIsLoadingNotes]                 = useState(true);
 
   // Initialize Tiptap
   const editor = useEditor({
@@ -98,6 +99,7 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
   // Load existing notes (using Callback as it's called from multiple places)
   const fetchNotes = useCallback(async () => {
     try {
+      setIsLoadingNotes(true);
       const res = await apiFetch(`/api/notes/${entityId}/list`);
       if (res.ok) {
         const data = await res.json();
@@ -111,13 +113,14 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
            if (deepLinkNoteId === 'new') {
              handleNewLog();
            } else {
-             const targetNote = sortedData.find(n => n.uuid === deepLinkNoteId);
-             if (targetNote) {
-               handleEditSelect(targetNote);
-             }
+            const targetNote = sortedData.find(n => n.uuid === deepLinkNoteId);
+            if (targetNote) {
+                handleEditSelect(targetNote);
+              }
            }
-         }
+        }
       }
+      setIsLoadingNotes(false);
 
     } catch (err) {
       console.error("Failed to load vessel logs. Error: ", err)
@@ -316,7 +319,7 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
   return(
     <div className="vessel-media-container setup-display">
       {/* Search column (list of logs, hidden while editing) */}
-      {!editingNote && (
+      {!editingNote && !isLoadingNotes && (
         <div className="directory-column">
           <div className="button-with-glyph" style={{ marginBottom: '20px' }}>
             <span className="glyph-new-record">❖</span>

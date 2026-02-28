@@ -6,12 +6,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './utils/api.js';
 import { formatMuirgenDate } from './utils/formatters.js';
+import EntityNoteViewer from './EntityNoteViewer.jsx';
 
 const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onClose, onNoteSelect, onAddNote, children }) => {
-  const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [avatarUrl, setAvatarUrl]       = useState(null);
-  const [notes, setNotes]               = useState([]);
-  const [isLoading, setIsLoading]       = useState(true);
+  const [currentIndex, setCurrentIndex]         = useState(initialIndex);
+  const [avatarUrl, setAvatarUrl]               = useState(null);
+  const [notes, setNotes]                       = useState([]);
+  const [isLoading, setIsLoading]               = useState(true);
+  const [viewingNoteIndex, setViewingNoteIndex] = useState(null);
   const currentEntity = entities[currentIndex];
   const entityId = currentEntity?.uuid;
 
@@ -67,6 +69,9 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onC
   // Handle [Esc] to close, [E] to edit, and left/right arrows for navigation.
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Ignore hotkeys while a child overlay is active
+      if (viewingNoteIndex !== null) return;
+
       // Don't override if user is typing
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'Escape') {
@@ -85,7 +90,7 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onC
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, onEdit, navigate]);
+  }, [onClose, onEdit, navigate, viewingNoteIndex]);
 
   if (!currentEntity) return null;
 
@@ -162,7 +167,7 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onC
                           <tr 
                             key={n.uuid} 
                             className="entity-pointer"
-                            onClick={() => onNoteSelect && onNoteSelect(n.uuid)}
+                            onClick={() => setViewingNoteIndex(notes.findIndex(note => note.uuid === n.uuid))}
                           >
                             <td className="data-table-cell-category">{n.category}</td>
                             <td className="data-table-cell-title">{n.note_name}</td>
@@ -198,6 +203,19 @@ const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onC
           <div className="file-viewer-decoration-line" />
         </div>
       </div>
+
+      {/* Nested Interstitial Viewer for Logs */}
+      {viewingNoteIndex !== null && (
+        <EntityNoteViewer 
+          notes={notes}
+          initialIndex={viewingNoteIndex}
+          onClose={() => setViewingNoteIndex(null)}
+          onEdit={(note) => {
+            setViewingNoteIndex(null);
+            if (onNoteSelect) onNoteSelect(note.uuid);
+          }}
+        />
+      )}
     </div>
   );
 };
