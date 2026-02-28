@@ -5,11 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from './utils/api.js';
-import { useLocalStorageState } from './utils/hooks.js';
+import { useLocalStorageState, useSystemStatus } from './utils/hooks.js';
 import EntityMedia from './EntityMedia.jsx';
 import EntityNotes from './EntityNotes.jsx';
 
-const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
+const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, activeVessel, vessels, jumpToNoteId }) => {
+  const { triggerHddLed }       = useSystemStatus();
   const [formData, setFormData] = useState({
     userHandle: user?.handle || '',
     userName: user?.name || '',
@@ -22,12 +23,35 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
     existingPasswordVerification: ''
   });
   const [error, setError]                           = useState(null);
+  const [saveMessage, setSaveMessage]               = useState(null);
   const [activeTab, setActiveTab]                   = useLocalStorageState('user_edit_active_tab', 'profile');
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
   // Determine permissions context
   const activeSessionUuid = localStorage.getItem('muirgen_user_uuid');
   const isSelf = user?.uuid === activeSessionUuid;
+  
+  // Intercept the tab routing if we are deep-linking to a note. We only want this to run once when the
+  // component initially mounts!
+  useEffect(() => {
+    if (jumpToNoteId) {
+       setActiveTab('logs');
+    }
+  }, [jumpToNoteId]); // activeTab is deliberately missing so it doesn't loop
+
+  // Handle [Esc] to cancel/close
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't override if the user is actively typing in an input field
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'Escape') {
+        if (onCancel) onCancel();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
 
   // Save the user's data
   const handleSubmit = async (e) => {
@@ -79,7 +103,24 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
       });
       
       if (res.ok) {
-        onComplete();
+        const data = await res.json();
+        
+        // Fire the global context indicator!
+        triggerHddLed(250); // Short pulse instead of the 500ms default
+        
+        // Show the success ribbon locally
+        setSaveMessage('Operator Profile Saved.');
+        setTimeout(() => setSaveMessage(null), 3000);
+        
+        // Tell App.jsx it worked, so it can give us an active UUID if we're a new user
+        if (onSaveSuccess) onSaveSuccess(data.uuid || user?.uuid);
+        
+        // Blank out the password fields so they don't submit again
+        setPasswordData({
+          newPassword: '',
+          currentPasswordConfirm: '',
+          existingPasswordVerification: ''
+        });
       } else {
         const data = await res.json();
         setError(data.error || 'Update Failed; comms error?');
@@ -132,6 +173,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
   return (
     <div className="setup-mode">
       {error && <div className="status-display error">{error}</div>}
+      {saveMessage && <div className="status-display success with-margin">{saveMessage}</div>}
       <div className="tab-bar">
         <div className={`tab-pair ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
           <span className="tab-icon glyph-specifications">⧲</span>
@@ -284,6 +326,7 @@ const UserEdit = ({ user, onComplete, activeCount, activeVessel, vessels }) => {
           entityId={user?.uuid} 
           referenceTable="users" 
           allowedCategories={userCategories} 
+          deepLinkNoteId={jumpToNoteId}
         />
       )}
     </div>

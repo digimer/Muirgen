@@ -275,6 +275,63 @@ app.get('/api/files/:uuid/list', authenticateToken, async (req, res) => {
   }
 });
 
+// Update metadata for a given file (e.g. flagging an image as an "avatar")
+app.post('/api/files/:uuid/metadata', authenticateToken, async (req, res) => {
+  try {
+    const fileUuid       = req.params.uuid;
+    const { metadata }   = req.body; // Expects a generic JSON object
+    const userUuid       = req.user.uuid;
+    const userVesselUuid = req.user.vessel_uuid;
+    const userHandle     = req.user.handle;
+
+    if (!metadata || typeof metadata !== 'object') {
+      return res.status(400).json({ error: 'Error: Valid JSON metadata object required' });
+    }
+
+    // Verify the file actually exists and get its context
+    const fileRes = await pool.query('SELECT file_name, reference_table, reference_id FROM files WHERE uuid = $1 AND is_active = TRUE;', [fileUuid]);
+    if (fileRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Error: Active file not found.' });
+    }
+    const targetFile = fileRes.rows[0];
+
+    // If the user is specifically trying to set this file as an 'avatar', we should strip the 'avatar' flag
+    // from any OTHER files linked to the same entity. We do this by deleting the "avatar" key from the 
+    // metadata JSONB column using the '-' operator.
+    if (metadata.avatar === true && targetFile.reference_id && targetFile.reference_table) {
+      await pool.query(
+        `UPDATE files 
+         SET metadata = metadata - 'avatar' 
+         WHERE reference_id = $1 
+         AND reference_table = $2 
+         AND uuid != $3 
+         AND is_active = TRUE;`,
+        [targetFile.reference_id, targetFile.reference_table, fileUuid]
+      );
+    }
+
+    // To make this endpoint universally flexible, we use Postgres '||' to MERGE the new JSON into the 
+    // existing JSON. This means sending {"avatar": true} won't delete {"passport": true or similar} if they
+    // exist.If metadata is currently NULL, COALESCE ensures we merge against an empty JSON object '{}' 
+    // instead of failing.
+    const result = await pool.query(
+      `UPDATE files 
+       SET metadata = COALESCE(metadata, '{}'::jsonb) || $1 
+       WHERE uuid = $2 
+       RETURNING metadata;`,
+      [metadata, fileUuid]
+    );
+
+    // Log the metadata change
+    await auditLog(pool, userVesselUuid, userUuid, 'File::Metadata', `Operator: [${userHandle}] updated metadata for file: [${targetFile.file_name}].`);
+
+    res.json({ success: true, metadata: result.rows[0].metadata });
+  } catch(err) {
+    console.error('Metadata update failed. Error: ', err);
+    res.status(500).json({ error: `Metadata update failed. Error: [${err.message}]` });
+  }
+});
+
 // Rename a specific file by it's UUID
 app.post('/api/files/:uuid/rename', authenticateToken, async (req, res) => {
   try {

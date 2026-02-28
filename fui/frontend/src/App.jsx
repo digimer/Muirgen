@@ -11,8 +11,9 @@ import VesselManagement from './VesselManagement';
 import VesselRegistration from './VesselRegistration';
 import UserEdit from './UserEdit';
 import UserManagement from './UserManagement';
+import EntityViewer from './EntityViewer.jsx';
 
-function App() {
+const App = () => {
   // Remember where the user was in case the browser reloads. 
   const [activeView, setActiveView]       = useState('VSM');  // VSM = Vessel Status Monitor
   const [allVessels, setAllVessels]       = useState([]);
@@ -29,6 +30,8 @@ function App() {
   const [setupState, setSetupState]       = useState({userRequired: false, vesselRequired: false });
   const [vessel, setVessel]               = useState(null);
   const [viewContext, setViewContext]     = useState(null);
+  const [returnView, setReturnView]       = useState('VSM');
+  const [targetNoteId, setTargetNoteId]   = useState(null);
   
   // Local tick to update the displayed time each second.
   useInterval(() => {
@@ -419,29 +422,73 @@ function App() {
                   {activeView === 'USER_MANAGEMENT' && (
                     <UserManagement
                       users={allUsers}
+                      onView={(u) => {
+                        setViewContext(u);
+                        setReturnView('USER_MANAGEMENT');
+                        setActiveView('USER_PROFILE');
+                      }}
                       onModify={(u) => {
                         setViewContext(u);
+                        setReturnView('USER_MANAGEMENT');
                         setActiveView('USER_EDIT');
                       }}
                       onRegister={() => {
                         // Clear context to trigger "New Operator" mode
                         setViewContext(null); 
+                        setReturnView('USER_MANAGEMENT');
                         setActiveView('USER_EDIT');
                       }}
                     />
                   )}
                   
+                  {activeView === 'USER_PROFILE' && viewContext && (
+                    <EntityViewer
+                      title={`${viewContext.handle} // Profile`}
+                      entityId={viewContext.uuid}
+                      referenceTable="users"
+                      onEdit={() => {
+                        setReturnView('USER_PROFILE');
+                        setActiveView('USER_EDIT');
+                      }}
+                      onClose={() => setActiveView('USER_MANAGEMENT')}
+                      onNoteSelect={(noteId) => {
+                        setTargetNoteId(noteId);
+                        setReturnView('USER_PROFILE');
+                        setActiveView('USER_EDIT');
+                      }}
+                    >
+                      {/* These are the custom child specs for an Operator! */}
+                      <p className="soft-text">Name: {viewContext.name}</p>
+                      <p className="soft-text">Access Level: {viewContext.is_admin ? '◈ SysOp' : '◇ Operator'}</p>
+                      <p className="soft-text">Status: {viewContext.is_active ? 'Active' : 'Deactivated'}</p>
+                    </EntityViewer>
+                  )}
+
                   {activeView === 'USER_EDIT' && (
                     <UserEdit 
                       user={viewContext}
                       activeCount={allUsers.filter(u => u.is_active).length}
                       activeVessel={vessel}
                       vessels={allVessels}
+                      jumpToNoteId={targetNoteId}
+                      onSaveSuccess={(newUuid) => {
+                        fetchUserManagementData();
+                        if (!viewContext) {
+                          // If this was a creation, transition to edit mode instantly
+                          setViewContext({ uuid: newUuid });
+                        }
+                      }}
                       onComplete={() => {
                         // Refresh list to reflect updates
                         fetchUserManagementData(); 
-                        setActiveView('USER_MANAGEMENT');
-                        setViewContext(null);
+                        setActiveView(returnView);
+                        if (returnView === 'USER_MANAGEMENT') setViewContext(null);
+                        setTargetNoteId(null);
+                      }}
+                      onCancel={() => {
+                        setActiveView(returnView);
+                        if (returnView === 'USER_MANAGEMENT') setViewContext(null);
+                        setTargetNoteId(null);
                       }}
                     />
                   )}

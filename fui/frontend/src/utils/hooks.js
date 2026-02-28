@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
 
 /**
  * useLocalStorageState
@@ -30,3 +30,31 @@ export const useLocalStorageState = (key, initialValue) => {
 
   return [state, setState];
 };
+
+/* 
+ * This handles the virtual HDD LED to show when something is saved (or whatever makes sense).
+ */
+const SystemStatusContext = createContext({
+  isHddActive: false,
+  triggerHddLed: () => {}
+});
+
+export const SystemStatusProvider = ({ children }) => {
+  const [isHddActive, setIsHddActive] = useState(false);
+
+  const triggerHddLed = useCallback((durationMs = 500) =>{
+    setIsHddActive(true);
+    setTimeout(() => {
+      setIsHddActive(false);
+    }, durationMs);
+  }, []);
+
+  // Using native React.createElement so Vite doesn't complain about JSX markup in a .js file
+  return React.createElement(
+    SystemStatusContext.Provider,
+    { value: { isHddActive, triggerHddLed } },
+    children
+  );
+};
+
+export const useSystemStatus = () => useContext(SystemStatusContext);

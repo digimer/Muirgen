@@ -5,8 +5,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import SecurityMedia from './SecurityMedia.jsx';
 import { apiFetch } from './utils/api.js'; 
+import { useSystemStatus } from './utils/hooks.js';
 
 const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
+  const { triggerHddLed }                           = useSystemStatus();
   const [currentIndex, setCurrentIndex]             = useState(initialIndex);
   const [isEditingName, setIsEditingName]           = useState(false); 
   const [editedName, setEditedName]                 = useState('');
@@ -14,6 +16,8 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
   const [renameError, setRenameError]               = useState(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError]               = useState(null);
+  const [isSettingAvatar, setIsSettingAvatar]       = useState(false);
+  const [avatarError, setAvatarError]               = useState(null);
 
   const navigate = useCallback((direction) => {
     setIsEditingName(false);
@@ -90,6 +94,31 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
       setRenameError(`Rename failed. Error: ${err.message}`);
     } finally {
       setIsRenaming(false);
+    }
+  };
+
+  const handleMakeAvatar = async () => {
+    setIsSettingAvatar(true);
+    setAvatarError(null);
+    try {
+      const res = await apiFetch(`/api/files/${currentImage.uuid}/metadata`, {
+        method: 'POST',
+        body: JSON.stringify({ metadata: { avatar: true } })
+      });
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      // Success, flash the HDD LED to show the change was saved.
+      triggerHddLed(250); 
+
+      // Tell EntityMedia to silently refresh so it sees the new metadata
+      if (onUpdate) await onUpdate();
+    } catch (err) {
+      console.error('Failed to set avatar. Error: ', err);
+      setAvatarError(`Failed to set avatar. Error: [${err.message}]`);
+    } finally {
+      setIsSettingAvatar(false);
     }
   };
 
@@ -180,6 +209,15 @@ const ImageViewer = ({ images, initialIndex, onClose, onUpdate }) => {
             </span>
             <span className="file-viewer-index">
               {deleteError && <span className="file-viewer-action-error">{deleteError}</span>}
+              {avatarError && <span className="file-viewer-action-error">{avatarError}</span>}
+              <button 
+                className="file-viewer-action-button file-viewer-action-button-padding"
+                onClick={handleMakeAvatar}
+                disabled={isSettingAvatar || currentImage.metadata?.avatar === true}
+                title="Set Entity Avatar"
+              >
+                {currentImage.metadata?.avatar ? '[ AVATAR SET ]' : 'SET AVATAR'}
+              </button>
               <span className="glyph-remove">⍀</span>
               <button 
                 className={`file-viewer-delete-button ${isConfirmingDelete ? 'button-confirm-state' : ''}`} 

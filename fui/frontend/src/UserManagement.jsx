@@ -3,7 +3,7 @@
  * provides edit buttons for them, and a button to register new users. 
  */
 
-const UserManagement = ({ users, onModify, onRegister }) => {
+const UserManagement = ({ users, onView, onModify, onRegister }) => {
   // Track the target user waiting to have an action confirmed
   const sortedUsers = [...users].sort((a, b) => a.handle.localeCompare(b.handle));
   
@@ -22,7 +22,11 @@ const UserManagement = ({ users, onModify, onRegister }) => {
         </thead>
         <tbody>
           {sortedUsers.map((user) => (
-            <tr key={user.uuid} className={user.is_active ? 'vessel-active' : 'vessel-inactive'}>
+            <tr 
+              key={user.uuid} 
+              className={`entity-pointer ${user.is_active ? 'entity-active' : 'entity-inactive'}`}
+              onClick={() => onView(user)}
+            >
               <td className="status-cell">
                 {user.is_active ? (
                   <span>╠ Active ╣</span>
@@ -30,8 +34,8 @@ const UserManagement = ({ users, onModify, onRegister }) => {
                   <span>╔ Deactivated ╗</span>
                 )}
               </td>
-              <td style={{ color: user.is_admin ? 'var(--neon-green)' : 'inherit' }}>
-                {user.handle} {user.is_admin && '[SysOp]'}
+              <td>
+                {user.is_admin ? '◈ ' : '◇ '}{user.handle}
               </td>
               <td>{user.name}</td>
               <td className="actions-cell">

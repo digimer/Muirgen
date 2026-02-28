@@ -1,7 +1,9 @@
 import React from 'react';
+import { useSystemStatus } from './utils/hooks';
 
 const Sidebar = ({ activeView, setActiveView }) => {
-  const menuItems = [
+  const { isHddActive } = useSystemStatus();
+  const menuItems       = [
     { id: 'VSM',               label: 'VSM Root',  glyph: '◫' },
     { id: 'VESSEL_MANAGEMENT', label: 'Vessels',   glyph: '⏃' },
     { id: 'USER_MANAGEMENT',   label: 'Operators', glyph: '⏿' },
@@ -27,6 +29,19 @@ const Sidebar = ({ activeView, setActiveView }) => {
           </li>
         ))}
       </ul>
+
+      {/* System Status Indicators (Bottom of sidebar) */}
+      <div className="sidebar-status-indicators">
+        <div className="status-led-group" title="Database Activity">
+          {/* Virtual HDD Activity LED */}
+          <span className={`auto-save-indicator ${isHddActive ? 'active' : ''}`}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" >
+              <ellipse cx="12" cy="6" rx="7" ry="3"></ellipse>
+              <path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6"></path>
+            </svg>
+          </span>
+        </div>
+      </div>
     </nav>
   );
 };

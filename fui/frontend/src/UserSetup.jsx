@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import config from '@shared/config.js';
 
-function UserSetup({ onComplete }) {
+const UserSetup = ({ onComplete }) => {
   const [shakeField, setShakeField] = useState(null);
   const [formData, setFormData] = useState({
     userHandle: '',

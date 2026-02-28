@@ -55,7 +55,7 @@ const MenuBar = ({ editor }) => {
   );
 }
 
-function EntityNotes({ entityId, referenceTable, allowedCategories = ['Note::General'] }) {
+const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::General'], deepLinkNoteId }) => {
   const [notes, setNotes]                                   = useState([]);
   const [editingNote, setEditingNote]                       = useState(null);
   const [status, setStatus]                                 = useState({ type: '', message: '' });
@@ -83,6 +83,13 @@ function EntityNotes({ entityId, referenceTable, allowedCategories = ['Note::Gen
         // Force standard string sorting on the UUIDv7 prefix to guarantee newest-first
         const sortedData = data.sort((a, b) => b.uuid.localeCompare(a.uuid));
         setNotes(sortedData);
+        // Deep linking intercept
+         if (deepLinkNoteId) {
+           const targetNote = sortedData.find(n => n.uuid === deepLinkNoteId);
+           if (targetNote) {
+             handleEditSelect(targetNote);
+           }
+         }
       }
 
     } catch (err) {

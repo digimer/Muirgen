@@ -23,7 +23,7 @@ const VesselManagement = ({ vessels, onModify, onRegister }) => {
         </thead>
         <tbody>
           {sortedVessels.map((vessel) => (
-            <tr key={vessel.uuid} className={vessel.is_active ? 'vessel-active' : 'vessel-inactive'}>
+            <tr key={vessel.uuid} className={vessel.is_active ? 'entity-active' : 'entity-inactive'}>
               <td className="status-cell">
                 {vessel.is_active ? (
                   <span>╠ Active ╣</span>

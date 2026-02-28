@@ -1,6 +1,6 @@
 import { useState } from 'react';
         
-function VesselSetup({ onComplete }) {
+const VesselSetup = ({ onComplete }) => {
   const [formData, setFormData] = useState({
     vesselName: '', 
     vesselOfficialNumber: '', 
