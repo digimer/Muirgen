@@ -759,10 +759,10 @@ input:-webkit-autofill:active {
 }
 
 .file-viewer-action-button:hover:not(:disabled) {
-  background-color: rgba(255, 0, 0, 0.1);
-  color: var(--neon-red);
-  border-color: var(--neon-red);
-  box-shadow: 0 0 10px var(--dim-red);
+  background-color: var(--strong-red);
+  color: var(--dark-bg);
+  border-color: var(--strong-red);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
 }
 
 .file-viewer-action-button:disabled {
@@ -956,13 +956,34 @@ input:-webkit-autofill:active {
 }
 
 /* Entity viewer classes */
+.entity-profile-outer {
+  background-color: var(--mid-red);
+  padding: 1px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 40px), calc(100% - 40px) 100%, 0 100%);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.15); /* Drop shadow on the clipped element */
+}
+
+.entity-profile-inner {
+  background-color: var(--dark-bg);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 39px), calc(100% - 39px) 100%, 0 100%);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.entity-viewer-content-area {
+  width: 100%;
+  padding: 0;
+}
+
 .entity-viewer-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--neon-red);
-  padding-bottom: 0.5rem;
+  margin-bottom: 0;
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 
 .entity-viewer-hotkeys {
@@ -972,18 +993,27 @@ input:-webkit-autofill:active {
 
 .entity-viewer-split {
   display: flex;
-  gap: 2rem;
+  gap: 3rem;
+  flex-direction: column;
   margin-top: 2rem;
 }
 
+.entity-viewer-profile-row {
+  display: flex;
+  gap: 3rem;
+  align-items: flex-start;
+}
+
 .entity-viewer-left {
-  flex: 1;
+  width: 300px;
+  flex-shrink: 0;
 }
 
 .entity-viewer-right {
-  flex: 2;
-  border-left: 1px solid var(--dim-red);
-  padding-left: 2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .entity-viewer-avatar-box {
@@ -1009,31 +1039,12 @@ input:-webkit-autofill:active {
   gap: 0.5rem;
 }
 
-.entity-viewer-notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  max-height: 600px;
-  overflow-y: auto;
-}
-
-.entity-viewer-note-item {
-  padding: 0.5rem;
-  border: 1px solid var(--dim-red);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.entity-viewer-note-item:hover {
-  background-color: rgba(255, 0, 0, 0.1);
-  border-color: var(--neon-red);
-}
-
-.entity-viewer-note-title {
-  font-weight: bold;
-  color: var(--neon-red);
-}
-
+.entity-viewer-logs-row {
+  width: 100%;
+  border-top: 1px solid var(--dim-red);
+  padding-top: 2rem;
+ }
+ 
 .entity-viewer-note-meta {
   font-size: 0.85em;
   margin-top: 0.25rem;
@@ -1045,7 +1056,52 @@ input:-webkit-autofill:active {
   margin-top: 0;
   margin-bottom: 1rem;
   color: var(--neon-red);
+  margin-top: 0;
+}
+
+.entity-notes-header h3 {
   text-transform: uppercase;
+ }
+
+ /* Entity Layout Helper Classes */
+.entity-viewer-viewport {
+  align-items: flex-start;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+.entity-notes-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.entity-notes-title {
+  margin: 0;
+}
+
+.data-table-cell-category {
+  width: 150px;
+  color: var(--soft-red);
+}
+
+.data-table-cell-title {
+  font-weight: bold;
+}
+
+.data-table-cell-date {
+  width: 200px;
+  text-align: right;
+  color: var(--soft-red);
+}
+
+.file-viewer-button-icon {
+  line-height: 0;
+}
+
+.file-viewer-button-icon span {
+  display: block;
+  transform: translateY(-1px);
 }
 
 /* Classes for DataViewer */

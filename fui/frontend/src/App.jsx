@@ -15,23 +15,25 @@ import EntityViewer from './EntityViewer.jsx';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
-  const [activeView, setActiveView]       = useState('VSM');  // VSM = Vessel Status Monitor
-  const [allVessels, setAllVessels]       = useState([]);
-  const [allUsers, setAllUsers]           = useState([]);
-  const [currentUser, setCurrentUser]     = useState(null);
-  const [displayTime, setDisplayTime]     = useState('Acquiring Time Source...');
-  const [dbData, setDbData]               = useState({ status: 'Connecting...', serverTime: '' });
-  const hasRestoredSession                = useRef(false);
+  const [activeView, setActiveView]             = useState('VSM');  // VSM = Vessel Status Monitor
+  const [allVessels, setAllVessels]             = useState([]);
+  const [allUsers, setAllUsers]                 = useState([]);
+  const [currentUser, setCurrentUser]           = useState(null);
+  const [displayTime, setDisplayTime]           = useState('Acquiring Time Source...');
+  const [dbData, setDbData]                     = useState({ status: 'Connecting...', serverTime: '' });
+  const hasRestoredSession                      = useRef(false);
   // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
-  const [isLoggingOut, setIsLoggingOut]   = useState(false);
-  const isLoggingOutRef                   = useRef(false);
-  const [isLoggedIn, setIsLoggedIn]       = useState(false);
-  const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
-  const [setupState, setSetupState]       = useState({userRequired: false, vesselRequired: false });
-  const [vessel, setVessel]               = useState(null);
-  const [viewContext, setViewContext]     = useState(null);
-  const [returnView, setReturnView]       = useState('VSM');
-  const [targetNoteId, setTargetNoteId]   = useState(null);
+  const [isLoggingOut, setIsLoggingOut]         = useState(false);
+  const isLoggingOutRef                         = useRef(false);
+  const [isLoggedIn, setIsLoggedIn]             = useState(false);
+  const [logoutMessage, setLogoutMessage]       = useState('Carrier dropped, session closed');
+  const [setupState, setSetupState]             = useState({userRequired: false, vesselRequired: false });
+  const [vessel, setVessel]                     = useState(null);
+  const [viewContext, setViewContext]           = useState(null);
+  const [viewContextList, setViewContextList]   = useState([]);
+  const [viewContextIndex, setViewContextIndex] = useState(0);
+  const [returnView, setReturnView]             = useState('VSM');
+  const [targetNoteId, setTargetNoteId]         = useState(null);
   
   // Local tick to update the displayed time each second.
   useInterval(() => {
@@ -422,8 +424,9 @@ const App = () => {
                   {activeView === 'USER_MANAGEMENT' && (
                     <UserManagement
                       users={allUsers}
-                      onView={(u) => {
-                        setViewContext(u);
+                      onView={(uList, uIndex) => {
+                        setViewContextList(uList);
+                        setViewContextIndex(uIndex);
                         setReturnView('USER_MANAGEMENT');
                         setActiveView('USER_PROFILE');
                       }}
@@ -441,12 +444,19 @@ const App = () => {
                     />
                   )}
                   
-                  {activeView === 'USER_PROFILE' && viewContext && (
+                  {activeView === 'USER_PROFILE' && viewContextList.length > 0 && (
                     <EntityViewer
-                      title={`${viewContext.handle} // Profile`}
-                      entityId={viewContext.uuid}
+                      entities={viewContextList}
+                      initialIndex={viewContextIndex}
                       referenceTable="users"
-                      onEdit={() => {
+                      onEdit={(entity) => {
+                        setViewContext(entity);
+                        setReturnView('USER_PROFILE');
+                        setActiveView('USER_EDIT');
+                      }}
+                      onAddNote={(entity) => {
+                        setViewContext(entity);
+                        setTargetNoteId('new');
                         setReturnView('USER_PROFILE');
                         setActiveView('USER_EDIT');
                       }}
@@ -458,9 +468,13 @@ const App = () => {
                       }}
                     >
                       {/* These are the custom child specs for an Operator! */}
-                      <p className="soft-text">Name: {viewContext.name}</p>
-                      <p className="soft-text">Access Level: {viewContext.is_admin ? '◈ SysOp' : '◇ Operator'}</p>
-                      <p className="soft-text">Status: {viewContext.is_active ? 'Active' : 'Deactivated'}</p>
+                      {(entity) => (
+                        <>
+                          <p className="soft-text">Name: {entity.name}</p>
+                          <p className="soft-text">Access: {entity.is_admin ? '◈ SysOp' : '◇ Operator'}</p>
+                          <p className="soft-text">Status: {entity.is_active ? 'Active' : 'Deactivated'}</p>
+                        </>
+                      )}
                     </EntityViewer>
                   )}
 

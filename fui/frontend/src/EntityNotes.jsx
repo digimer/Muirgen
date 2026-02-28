@@ -74,20 +74,47 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
     onUpdate: () => { setHasEdits(true) }         // Disable the [Escape] button
   });
 
+  // Handle opening a new log editor (resuming drafts if they exist)
+  const handleNewLog = useCallback(() => {
+    const draft = localStorage.getItem(`muirgen_draft_log_${referenceTable}_${entityId}`);
+    if (draft) {
+      try {
+        const parsedDraft = JSON.parse(draft);
+        setEditingNote(parsedDraft);
+        editor?.commands.setContent(parsedDraft.note_body || '');
+        setStatus({ type: 'success', message: 'Restored draft.'});
+      } catch (e) {
+        console.error("Failed to recover draft!", e);
+        setEditingNote({ note_name: '', category: 'Note::General', is_pinned: false, access_level: ['general'] });
+        editor?.commands.setContent('');
+      }
+    } else {
+      setEditingNote({ note_name: '', category: 'Note::General', is_pinned: false, access_level: ['general'] });
+      editor?.commands.setContent('');
+    }
+    setStatus({ type: '', message: '' });
+  }, [editor, entityId, referenceTable]);
+
   // Load existing notes (using Callback as it's called from multiple places)
   const fetchNotes = useCallback(async () => {
     try {
       const res = await apiFetch(`/api/notes/${entityId}/list`);
       if (res.ok) {
         const data = await res.json();
+        
         // Force standard string sorting on the UUIDv7 prefix to guarantee newest-first
         const sortedData = data.sort((a, b) => b.uuid.localeCompare(a.uuid));
         setNotes(sortedData);
+
         // Deep linking intercept
          if (deepLinkNoteId) {
-           const targetNote = sortedData.find(n => n.uuid === deepLinkNoteId);
-           if (targetNote) {
-             handleEditSelect(targetNote);
+           if (deepLinkNoteId === 'new') {
+             handleNewLog();
+           } else {
+             const targetNote = sortedData.find(n => n.uuid === deepLinkNoteId);
+             if (targetNote) {
+               handleEditSelect(targetNote);
+             }
            }
          }
       }
@@ -95,7 +122,7 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
     } catch (err) {
       console.error("Failed to load vessel logs. Error: ", err)
     }
-  }, [entityId]);
+  }, [entityId, deepLinkNoteId, handleNewLog]);
 
   // Reload existing notes using the entityID changes.
   useEffect(() => {
@@ -293,29 +320,7 @@ const EntityNotes = ({ entityId, referenceTable, allowedCategories = ['Note::Gen
         <div className="directory-column">
           <div className="button-with-glyph" style={{ marginBottom: '20px' }}>
             <span className="glyph-new-record">❖</span>
-            <button 
-              type="button" 
-              className="touch-button" 
-              onClick={() => {
-                const draft = localStorage.getItem(`muirgen_draft_log_${referenceTable}_${entityId}`);
-                if (draft) {
-                  try {
-                    const parsedDraft = JSON.parse(draft);
-                    setEditingNote(parsedDraft);
-                    editor?.commands.setContent(parsedDraft.note_body || '');
-                    setStatus({ type: 'success', message: 'Restored draft.'});
-                  } catch (e) {
-                    console.error("Failed to recover draft!", e);
-                    setEditingNote({ note_name: '', category: 'Note::General', is_pinned: false, access_level: ['general'] });
-                    editor?.commands.setContent('');
-                  }
-                } else {
-                  setEditingNote({ note_name: '', category: 'Note::General', is_pinned: false, access_level: ['general'] });
-                  editor?.commands.setContent('');
-                }
-                setStatus({ type: '', message: '' });
-              }}
-            >
+            <button type="button" className="touch-button" onClick={() => {  handleNewLog(); }}>
               Log Entry
             </button>
           </div>

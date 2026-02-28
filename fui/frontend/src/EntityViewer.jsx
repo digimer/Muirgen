@@ -7,12 +7,25 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './utils/api.js';
 import { formatMuirgenDate } from './utils/formatters.js';
 
-const EntityViewer = ({ title, notesTitle = "Logs", entityId, onEdit, onClose, onNoteSelect, children }) => {
-  const [avatarUrl, setAvatarUrl] = useState(null);
-  const [notes, setNotes]         = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+const EntityViewer = ({ entities, initialIndex, notesTitle = "Logs", onEdit, onClose, onNoteSelect, onAddNote, children }) => {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [avatarUrl, setAvatarUrl]       = useState(null);
+  const [notes, setNotes]               = useState([]);
+  const [isLoading, setIsLoading]       = useState(true);
+  const currentEntity = entities[currentIndex];
+  const entityId = currentEntity?.uuid;
+
+  const navigate = useCallback((direction) => {
+    setCurrentIndex(prevIndex => {
+      let newIndex = prevIndex + direction;
+      if (newIndex < 0) newIndex = entities.length - 1;
+      if (newIndex >= entities.length) newIndex = 0;
+      return newIndex;
+    });
+  }, [entities.length]);
 
   const loadEntityData = useCallback(async () => {
+    if (!entityId) return;
     setIsLoading(true);
 
     // Fetch files to find the avatar, if any.
@@ -51,7 +64,7 @@ const EntityViewer = ({ title, notesTitle = "Logs", entityId, onEdit, onClose, o
     loadEntityData();
   }, [loadEntityData]);
 
-  // Handle [Esc] to close, [E] to edit
+  // Handle [Esc] to close, [E] to edit, and left/right arrows for navigation.
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Don't override if user is typing
@@ -59,66 +72,132 @@ const EntityViewer = ({ title, notesTitle = "Logs", entityId, onEdit, onClose, o
       if (e.key === 'Escape') {
         if (onClose) onClose();
       }
+      if (e.key === 'ArrowLeft') {
+        navigate(-1);
+      }
+      if (e.key === 'ArrowRight') {
+        navigate(1);
+       }
       if (e.key === 'e' || e.key === 'E') {
-        if (onEdit) onEdit();
+        if (onEdit) onEdit(currentEntity);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, onEdit]);
+  }, [onClose, onEdit, navigate]);
+
+  if (!currentEntity) return null;
 
   return (
-    <div className="tab-pane active fade-in text-focus-in">
-      {/* Title */}
-      <div className="entity-viewer-header">
-         <h2 className="flicker-subtle" style={{ margin: 0 }}>{title}</h2>
-      </div>
-       <div className="entity-viewer-split">
-          <div className="entity-viewer-left">
-
-            {/* Avatar Area */}
-            <div className="entity-viewer-avatar-box">
-              {isLoading ? (
-                <div className="soft-text">Seaching For Avatar...</div>
-              ) : avatarUrl ? (
-                <img src={avatarUrl} alt="Entity Avatar" className="entity-viewer-avatar-img" />
-              ) : (
-                <div className="soft-text">No Avatar set</div>
-              )}
-            </div>
-
-            {/* Custom Profile Specs (Composition injected here) */}
-            <div className="entity-viewer-specs">
-              {children}
-            </div>
+    <div className="file-viewer-backdrop" onClick={onClose}>
+      <div className="file-viewer-frame" onClick={e => e.stopPropagation()}>
+        <div className="file-viewer-outer" />
+        <div className="file-viewer-inner">
+          
+          {/* Header bar */}
+          <div className="file-viewer-header">
+            <span className="file-viewer-title">
+              Entity Record // {currentEntity.handle || currentEntity.name || 'Unknown'}
+            </span>
+            <span className="file-viewer-index">
+              <button 
+                className="file-viewer-action-button file-viewer-action-button-padding"
+                onClick={() => onEdit(currentEntity)}
+                title="Edit Entity"
+              >
+                Edit
+              </button>
+              <span>
+                Index: {String(currentIndex + 1).padStart(2, '0')} / {String(entities.length).padStart(2, '0')}
+              </span>
+            </span>
           </div>
 
-          {/* Logs Area */}
-          <div className="entity-viewer-right">
-            <h3 className="entity-notes-header">{notesTitle}</h3>
-            <div className="entity-viewer-notes-list">
-              {isLoading ? (
-                <div className="soft-text">Retrieving...</div>
-              ) : notes.length === 0 ? (
-                 <div className="soft-text">No records found</div>
-              ) : (
-                notes.map(n => (
-                  <div 
-                    key={n.uuid} 
-                    className="entity-viewer-note-item" 
-                    onClick={() => onNoteSelect && onNoteSelect(n.uuid)}
-                  >
-                    <div className="entity-viewer-note-title">{n.note_name}</div>
-                    <div className="entity-viewer-note-meta soft-text">
-                        {formatMuirgenDate(n.modified_date)} // {n.category}
+          {/* Viewport area */}
+          <div className="file-viewer-viewport entity-viewer-viewport">
+            <div className="entity-viewer-content-area">
+              <div className="entity-viewer-split">
+                
+                {/* Top Row: Avatar and Specs */}
+                <div className="entity-viewer-profile-row">
+                  <div className="entity-viewer-left">
+                    <div className="entity-viewer-avatar-box">
+                      {isLoading ? (
+                        <div className="soft-text">Loading Avatar...</div>
+                      ) : avatarUrl ? (
+                        <img src={avatarUrl} alt="Entity Avatar" className="entity-viewer-avatar-img" />
+                      ) : (
+                        <div className="soft-text">No Avatar set</div>
+                      )}
                     </div>
                   </div>
-                ))
-              )}
+                  <div className="entity-viewer-right">
+                    <div className="entity-viewer-specs">
+                      {typeof children === 'function' ? children(currentEntity) : children}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Logs Table */}
+                <div className="entity-viewer-logs-row">
+                  <div className="entity-notes-header entity-notes-header-flex">
+                    <h3 className="entity-notes-title">{notesTitle}</h3>
+                    <button 
+                      className="file-viewer-action-button"
+                      onClick={() => onAddNote && onAddNote(currentEntity)}
+                      title={`Add New ${notesTitle}`}
+                    >
+                      New Entry
+                    </button>
+                  </div>
+                  {isLoading ? (
+                    <div className="soft-text">Retrieving...</div>
+                  ) : notes.length === 0 ? (
+                    <div className="soft-text">No records found</div>
+                  ) : (
+                    <table className="data-table">
+                      <tbody>
+                        {notes.map(n => (
+                          <tr 
+                            key={n.uuid} 
+                            className="entity-pointer"
+                            onClick={() => onNoteSelect && onNoteSelect(n.uuid)}
+                          >
+                            <td className="data-table-cell-category">{n.category}</td>
+                            <td className="data-table-cell-title">{n.note_name}</td>
+                            <td className="data-table-cell-date">{formatMuirgenDate(n.modified_date)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-       </div>
+
+          {/* Bottom control bar */}
+          <div className="file-viewer-controls">
+            <button onClick={() => navigate(-1)} className="file-viewer-button">
+              ⧏
+            </button>
+
+            <button onClick={onClose} className="file-viewer-button file-viewer-button-icon">
+              <span>
+                ⎚
+              </span>
+            </button>
+
+            <button onClick={() => navigate(1)} className="file-viewer-button">
+              ⧐
+            </button>
+          </div>
+
+          {/* Decorative internal lines */}
+          <div className="file-viewer-decoration-line" />
+        </div>
+      </div>
     </div>
   );
 };

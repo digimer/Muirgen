@@ -21,11 +21,11 @@ const UserManagement = ({ users, onView, onModify, onRegister }) => {
           </tr>
         </thead>
         <tbody>
-          {sortedUsers.map((user) => (
+          {sortedUsers.map((user, index) => (
             <tr 
               key={user.uuid} 
               className={`entity-pointer ${user.is_active ? 'entity-active' : 'entity-inactive'}`}
-              onClick={() => onView(user)}
+              onClick={() => onView(sortedUsers, index)}
             >
               <td className="status-cell">
                 {user.is_active ? (
