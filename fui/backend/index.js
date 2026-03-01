@@ -803,8 +803,8 @@ app.post('/api/users/:uuid/update', authenticateToken, requireAdmin, async (req,
     const result = await pool.query('SELECT * FROM users WHERE uuid = $1',  [targetUuid]);
     const user = result.rows[0];
     
-    // If the editing user is editing themselves, verify the curren password.
-    if (targetUuid === requesterUuid) {
+    // If the editing user is editing themselves AND changing their password, verify the current password.
+    if (targetUuid === requesterUuid && userPassword) {
       const isValid = await bcrypt.compare(userCurrentPassword, user.password_hash);
       if (!isValid) {
         return res.status(401).json({ error: "Security Violation: Current Access Code not Correct." });

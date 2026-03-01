@@ -93,7 +93,7 @@ const EntityViewer = ({
   useEffect(() => {
     const handleKeyUp = (e) => {
       // Ignore hotkeys while a child overlay is active
-      if (viewingNoteIndex !== null) return;
+      if (viewingNoteIndex !== null || viewingAvatar) return;
 
       // Don't override if user is typing
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;

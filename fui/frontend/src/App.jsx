@@ -15,26 +15,54 @@ import EntityViewer from './EntityViewer.jsx';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
-  const [activeView, setActiveView]             = useState('VSM');  // VSM = Vessel Status Monitor
-  const [allVessels, setAllVessels]             = useState([]);
-  const [allUsers, setAllUsers]                 = useState([]);
-  const [currentUser, setCurrentUser]           = useState(null);
-  const [displayTime, setDisplayTime]           = useState('Acquiring Time Source...');
-  const [dbData, setDbData]                     = useState({ status: 'Connecting...', serverTime: '' });
-  const hasRestoredSession                      = useRef(false);
+  const [viewStack, setViewStack] = useState([
+    { id: 'VSM', context: null, list: [], index: 0, noteTarget: null }
+  ]);
+  const [allVessels, setAllVessels]   = useState([]);
+  const [allUsers, setAllUsers]       = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [displayTime, setDisplayTime] = useState('Acquiring Time Source...');
+  const [dbData, setDbData]           = useState({ status: 'Connecting...', serverTime: '' });
+  const hasRestoredSession            = useRef(false);
   // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
-  const [isLoggingOut, setIsLoggingOut]         = useState(false);
-  const isLoggingOutRef                         = useRef(false);
-  const [isLoggedIn, setIsLoggedIn]             = useState(false);
-  const [logoutMessage, setLogoutMessage]       = useState('Carrier dropped, session closed');
-  const [setupState, setSetupState]             = useState({userRequired: false, vesselRequired: false });
-  const [vessel, setVessel]                     = useState(null);
-  const [viewContext, setViewContext]           = useState(null);
-  const [viewContextList, setViewContextList]   = useState([]);
-  const [viewContextIndex, setViewContextIndex] = useState(0);
-  const [returnView, setReturnView]             = useState('VSM');
-  const [targetNoteId, setTargetNoteId]         = useState(null);
+  const [isLoggingOut, setIsLoggingOut]   = useState(false);
+  const isLoggingOutRef                   = useRef(false);
+  const [isLoggedIn, setIsLoggedIn]       = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
+  const [setupState, setSetupState]       = useState({userRequired: false, vesselRequired: false });
+  const [vessel, setVessel]               = useState(null);
   
+  // Navigation helpers.
+  const currentView = viewStack[viewStack.length - 1];
+  const pushView    = useCallback((id, context = null, list = [], index = 0, noteTarget = null) => {
+    setViewStack(prev => [...prev, { id, context, list, index, noteTarget }]);
+  }, []);
+  const popView = useCallback((optionalTargetNoteId = null) => {
+    setViewStack(prev => {
+      if (prev.length <= 1) return prev; // Never pop the last view (VSM)
+      
+      const newStack = [...prev];
+      newStack.pop(); // Remove the top view
+      
+      // If a specific note target was passed back from the popped view, inject it into the new top view
+      if (typeof optionalTargetNoteId === 'string') {
+        newStack[newStack.length - 1] = { 
+          ...newStack[newStack.length - 1], 
+          noteTarget: optionalTargetNoteId 
+        };
+      } else {
+        newStack[newStack.length - 1] = { 
+          ...newStack[newStack.length - 1], 
+          noteTarget: null 
+        };
+      }
+      return newStack;
+    });
+  }, []);
+  const resetToView = useCallback((id) => {
+    setViewStack([{ id, context: null, list: [], index: 0, noteTarget: null }]);
+  }, []);
+
   // Local tick to update the displayed time each second.
   useInterval(() => {
     if (dbData.serverTime) {
@@ -70,51 +98,36 @@ const App = () => {
       return;
     }
     
-    // Build the storage key from their ID.
-    const storageKey = `muirgen_view_${id}`;
-    const contextKey = `muirgen_view_context_${id}`;
+    // Build the storage key from their ID. (Context is now stored inherently in the stack!)
+    const stackKey = `muirgen_viewstack_${id}`;
     
     // Restore logic; Run only once.
-    // Only attempt restore if we haven't yet and the current view is VSM.
     if (!hasRestoredSession.current) {
-      const savedView = localStorage.getItem(storageKey);
+      const savedStack = localStorage.getItem(stackKey);
       
-      if (savedView && savedView !== 'VSM') {
-        console.log(`Persistence: Restoring: [${savedView}] for operator: [${id}]`);
-        setActiveView(savedView);
-
-        // Load any context for this view;
-        const savedContext = localStorage.getItem(contextKey);
-        if (savedContext) {
-          try {
-            setViewContext(JSON.parse(savedContext));
-          } catch (err) {
-            console.warn("Persistence: Failed to parse the saved context! The error was: ", err);
+      if (savedStack) {
+        try {
+          const parsedStack = JSON.parse(savedStack);
+          if (Array.isArray(parsedStack) && parsedStack.length > 0) {
+            console.log(`Persistence: Restoring ViewStack for operator: [${id}]`, parsedStack);
+            setViewStack(parsedStack);
           }
+        } catch (err) {
+          console.warn("Persistence: Failed to parse the saved view stack! The error was: ", err);
         }
         hasRestoredSession.current = true;
-        // Exit early so we don't immediately resave 'VSM'
         return;
       }
       hasRestoredSession.current = true;
     }
     
-    // If the user is logged in and changes the view, save it.
+    // If the user is logged in and changes the stack, save the whole array.
     if (isLoggedIn && !isLoggingOutRef.current) {
-      console.log(`Persistence: Recording: [${activeView}] to: [${storageKey}]`);
-
-      // Save the view
-      localStorage.setItem(storageKey, activeView);
-
-      // Save the context, if there is any.
-      if (viewContext) {
-        localStorage.setItem(contextKey, JSON.stringify(viewContext));
-      } else {
-        localStorage.removeItem(contextKey);
-      }
+      console.log(`Persistence: Recording ViewStack to: [${stackKey}]`);
+      localStorage.setItem(stackKey, JSON.stringify(viewStack));
     }
-  }, [activeView, currentUser, isLoggedIn, viewContext]);
-  
+  }, [viewStack, currentUser, isLoggedIn]);
+
   // Watch for 401 or 403 errors indicating a bad token and triggering a logout.
   useEffect(() => {
     const handleAuthFailure = (event) => {
@@ -167,65 +180,50 @@ const App = () => {
 
   // Where are we?
   useEffect(() => {
-    if (activeView === 'VESSEL_MANAGEMENT' || 
-        activeView === 'VESSEL_EDIT'       || 
-        activeView === 'VESSEL_PROFILE'    ||
-        activeView === 'USER_EDIT') {
+    if (currentView?.id === 'VESSEL_MANAGEMENT' || 
+        currentView?.id === 'VESSEL_EDIT'       || 
+        currentView?.id === 'VESSEL_PROFILE'    ||
+        currentView?.id === 'USER_EDIT') {
       fetchManagementData();
     }
-    if (activeView === 'USER_MANAGEMENT' || activeView === 'USER_EDIT' || activeView === 'USER_PROFILE') {
+    if (currentView?.id === 'USER_MANAGEMENT' || currentView?.id === 'USER_EDIT' || currentView?.id === 'USER_PROFILE') {
       fetchUserManagementData();
     }
-  }, [activeView, fetchManagementData, fetchUserManagementData]);
+  }, [currentView?.id, fetchManagementData, fetchUserManagementData]);
   
   // Refresh ViewContext with live data if we are editing.
   useEffect(() => {
-    if (activeView === 'VESSEL_EDIT' && viewContext && allVessels.length > 0) {
+    // We only refresh context if there's a valid ID and context to refresh!
+    if (!currentView || !currentView.context) return;
+     
+    if (currentView?.id === 'VESSEL_EDIT' && allVessels.length > 0) {
       // Find the updated version of the vessel we're editing.
-      const freshVessel = allVessels.find(v => v.uuid === viewContext.uuid);
+      const freshVessel = allVessels.find(v => v.uuid === currentView.context.uuid);
 
       // If found, and it's different (e.g. user count changed), update out context.
-      if (freshVessel && JSON.stringify(freshVessel) !== JSON.stringify(viewContext)) {
-        setViewContext(freshVessel);
+      if (freshVessel && JSON.stringify(freshVessel) !== JSON.stringify(currentView.context)) {
+        // Replace the top of the stack with the fresh context
+        setViewStack(prev => {
+          const newStack = [...prev];
+          newStack[newStack.length - 1].context = freshVessel;
+          return newStack;
+        });
       }
     }
-    if (activeView === 'USER_EDIT' && viewContext && allUsers.length > 0) {
-      const freshUser = allUsers.find(u => u.uuid === viewContext.uuid);
-      if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(viewContext)) {
-        setViewContext(freshUser);
+    
+    if (currentView?.id === 'USER_EDIT' && allUsers.length > 0) {
+      const freshUser = allUsers.find(u => u.uuid === currentView.context.uuid);
+      if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(currentView.context)) {
+        setViewStack(prev => {
+          const newStack = [...prev];
+          newStack[newStack.length - 1].context = freshUser;
+          return newStack;
+        });
       }
     }
-
-    // Rebuild context arrays if we reloaded directly into a vessel profile!
-    if (activeView === 'VESSEL_PROFILE' && viewContext && allVessels.length > 0) {
-      if (viewContextList.length === 0) {
-        setViewContextList(allVessels);
-        const index = allVessels.findIndex(v => v.uuid === viewContext.uuid);
-        setViewContextIndex(Math.max(0, index));
-      } else {
-        // Just update existing viewContext if it's stale
-        const freshVessel = allVessels.find(v => v.uuid === viewContext.uuid);
-        if (freshVessel && JSON.stringify(freshVessel) !== JSON.stringify(viewContext)) {
-          setViewContext(freshVessel);
-        }
-      }
-    }
-
-    // Rebuild context arrays if we reloaded directly into a profile!
-    if (activeView === 'USER_PROFILE' && viewContext && allUsers.length > 0) {
-      if (viewContextList.length === 0) {
-        setViewContextList(allUsers);
-        const index = allUsers.findIndex(u => u.uuid === viewContext.uuid);
-        setViewContextIndex(Math.max(0, index));
-      } else {
-        // Just update existing viewContext if it's stale
-        const freshUser = allUsers.find(u => u.uuid === viewContext.uuid);
-        if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(viewContext)) {
-          setViewContext(freshUser);
-        }
-      }
-    }
-  }, [allVessels, allUsers, activeView, viewContext, viewContextList.length]);
+    // Note: We don't need the other reload interceptors for VESSEL_PROFILE and USER_PROFILE anymore, 
+    // because with the ViewStack, the full list context is persisted automatically in localStorage! 
+  }, [allVessels, allUsers, currentView]);
 
   // Handle Logging the user out
   const handleLogout = async () => {
@@ -247,7 +245,7 @@ const App = () => {
       setVessel(null);
       
       // Reset the VSM as the default display for the next user/session.
-      setActiveView('VSM');
+      resetToView('VSM');
       
       // unblur for the next session
       setIsLoggingOut(false);
@@ -340,7 +338,7 @@ const App = () => {
       <main className="main-layout">
         {/* Navigation Sidebar */}
         {isLoggedIn && !isLoggingOut && (
-          <Sidebar activeView={activeView} setActiveView={setActiveView} />
+          <Sidebar activeView={currentView?.id} setActiveView={resetToView} />
         )}
         
         {/* Dynamic background Viewport */}
@@ -360,20 +358,20 @@ const App = () => {
               </div>
             ) : (
               <div className="task-header-wrapper">
-                {activeView === 'VESSEL_MANAGEMENT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // Vessel Index</h2>
+                {currentView?.id === 'VESSEL_MANAGEMENT' && (
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // Vessel Index</h2>
                 )}
-                {activeView === 'VESSEL_EDIT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Edit</h2>
+                {currentView?.id === 'VESSEL_EDIT' && (
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => popView()}>Vessels</span> // Edit</h2>
                 )}
-                {activeView === 'VESSEL_REGISTRATION' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('VESSEL_MANAGEMENT')}>Vessels</span> // Registration</h2>
+                {currentView?.id === 'VESSEL_REGISTRATION' && (
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => popView()}>Vessels</span> // Registration</h2>
                 )}
-                {activeView === 'USER_MANAGEMENT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // Operator Index</h2>
+                {currentView?.id === 'USER_MANAGEMENT' && (
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // Operator Index</h2>
                 )}
-                {activeView === 'USER_EDIT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => setActiveView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => setActiveView('USER_MANAGEMENT')}>Operators</span> // Edit</h2>
+                {currentView?.id === 'USER_EDIT' && (
+                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => popView()}>Operators</span> // Edit</h2>
                 )}
               </div>
             )}
@@ -398,7 +396,7 @@ const App = () => {
               ) : (
                 <>
                   {/* The main / initial page. For now, it's a simple data box */}
-                  {activeView === 'VSM' && vessel && (
+                  {currentView?.id === 'VSM' && vessel && (
                     <>
                       <h3 className="step-title">◫ Vessel Status Monitor // {vessel.vesselName || 'Loading...'}</h3>
                       <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
@@ -411,63 +409,42 @@ const App = () => {
                   )}
                   
                   {/* The vessel management */}
-                  {activeView === 'VESSEL_MANAGEMENT' && (
+                  {currentView?.id === 'VESSEL_MANAGEMENT' && (
                     <VesselManagement
                       vessels={allVessels}
                       onView={(vList, vIndex) => {
-                        setViewContextList(vList);
-                        setViewContextIndex(vIndex);
-                        setReturnView('VESSEL_MANAGEMENT');
-                        setTargetNoteId(null);
-                        setActiveView('VESSEL_PROFILE');
+                        pushView('VESSEL_PROFILE', vList[vIndex], vList, vIndex);
                       }}
                       onModify={(v) => {
-                        setViewContext(v);
-                        setReturnView('VESSEL_MANAGEMENT');
-                        setTargetNoteId(null);
                         localStorage.removeItem('vessel_edit_active_tab');
-                        setActiveView('VESSEL_EDIT');
+                        pushView('VESSEL_EDIT', v);
                       }}
                       onRegister={() => {
-                        setViewContext(null); 
-                        setReturnView('VESSEL_MANAGEMENT');
-                        setTargetNoteId(null);
                         localStorage.removeItem('vessel_edit_active_tab');
-                        setActiveView('VESSEL_EDIT');
+                        pushView('VESSEL_EDIT', null);
                       }}
                     />
                   )}
                   
-                  {activeView === 'VESSEL_PROFILE' && viewContextList.length > 0 && (
+                  {currentView?.id === 'VESSEL_PROFILE' && currentView.list?.length > 0 && (
                     <EntityViewer
-                      entities={viewContextList}
-                      initialIndex={viewContextIndex}
+                      entities={currentView.list}
+                      initialIndex={currentView.index}
                       referenceTable="vessels"
-                      jumpToNoteId={targetNoteId} 
+                      jumpToNoteId={currentView.noteTarget} 
                       onOptics={(entity) => {
-                        setViewContext(entity);
-                        setTargetNoteId('optics');
-                        setReturnView('VESSEL_PROFILE');
-                        setActiveView('VESSEL_EDIT');
+                        pushView('VESSEL_EDIT', entity, [], 0, 'optics');
                       }}
                       onEdit={(entity) => {
-                        setTargetNoteId(null);
                         localStorage.removeItem('vessel_edit_active_tab');
-                        setViewContext(entity);
-                        setReturnView('VESSEL_PROFILE');
-                        setActiveView('VESSEL_EDIT');
+                        pushView('VESSEL_EDIT', entity);
                       }}
                       onAddNote={(entity) => {
-                        setViewContext(entity);
-                        setTargetNoteId('new');
-                        setReturnView('VESSEL_PROFILE');
-                        setActiveView('VESSEL_EDIT');
+                        pushView('VESSEL_EDIT', entity, [], 0, 'new');
                       }}
-                      onClose={() => setActiveView('VESSEL_MANAGEMENT')}
+                      onClose={() => popView()}
                       onNoteSelect={(noteId) => {
-                        setTargetNoteId(noteId);
-                        setReturnView('VESSEL_PROFILE');
-                        setActiveView('VESSEL_EDIT');
+                        pushView('VESSEL_EDIT', currentView.list[currentView.index], [], 0, noteId);
                       }}
                     >
                       {/* Merchant Marine Readouts for Vessels */}
@@ -501,100 +478,69 @@ const App = () => {
                   )}
 
                   {/* The vessel edit form (for managing existing vessels) */}
-                  {activeView === 'VESSEL_EDIT' && viewContext && (
+                  {currentView?.id === 'VESSEL_EDIT' && currentView.context && (
                     <VesselEdit 
-                      vessel={viewContext}
+                      vessel={currentView.context}
                       activeCount={allVessels.filter(v => v.is_active).length}
-                      jumpToNoteId={targetNoteId} 
+                      jumpToNoteId={currentView.noteTarget} 
                       onComplete={() => {
-                        fetchManagementData();              // refresh the index
-                        setActiveView('VESSEL_MANAGEMENT'); // Return to the list.
-                        setViewContext(null);               // Clear the selected vessel
+                        fetchManagementData();  // refresh the index
+                        popView();
                       }}
                       onCancel={(cancelNoteId) => {
-                        setActiveView(returnView);
-                        if (returnView === 'VESSEL_MANAGEMENT') setViewContext(null);
-                        
-                        if (typeof cancelNoteId === 'string') {
-                          setTargetNoteId(cancelNoteId);
-                        } else {
-                          setTargetNoteId(null);
-                        }
+                        popView(typeof cancelNoteId === 'string' ? cancelNoteId : null);
                       }}
                     />
                   )}
                   
                   {/* The new vessel registration form (adding addition vessels) */}
-                  {activeView === 'VESSEL_REGISTRATION' && (
+                  {currentView?.id === 'VESSEL_REGISTRATION' && (
                     <VesselRegistration 
                       onComplete={() => {
                         // refresh the index
                         fetchManagementData(); 
-                        // Return to the list.
-                        setActiveView('VESSEL_MANAGEMENT'); 
+                        popView();
                       }}
                     />
                   )}
 
                   {/* The Operator views */}
-                  {activeView === 'USER_MANAGEMENT' && (
+                  {currentView?.id === 'USER_MANAGEMENT' && (
                     <UserManagement
                       users={allUsers}
                       onView={(uList, uIndex) => {
-                        setViewContextList(uList);
-                        setViewContextIndex(uIndex);
-                        setReturnView('USER_MANAGEMENT');
-                        setTargetNoteId(null);
-                        setActiveView('USER_PROFILE');
+                        pushView('USER_PROFILE', uList[uIndex], uList, uIndex);
                       }}
                       onModify={(u) => {
-                        setViewContext(u);
-                        setReturnView('USER_MANAGEMENT');
-                        setTargetNoteId(null);
                         localStorage.removeItem('user_edit_active_tab');
-                        setActiveView('USER_EDIT');
+                        pushView('USER_EDIT', u);
                       }}
                       onRegister={() => {
-                        // Clear context to trigger "New Operator" mode
-                        setViewContext(null); 
-                        setReturnView('USER_MANAGEMENT');
-                        setTargetNoteId(null);
                         localStorage.removeItem('user_edit_active_tab');
-                        setActiveView('USER_EDIT');
+                        pushView('USER_EDIT', null);
                       }}
                     />
                   )}
                   
-                  {activeView === 'USER_PROFILE' && viewContextList.length > 0 && (
+                  {currentView?.id === 'USER_PROFILE' && currentView.list?.length > 0 && (
                     <EntityViewer
-                      entities={viewContextList}
-                      initialIndex={viewContextIndex}
+                      entities={currentView.list}
+                      initialIndex={currentView.index}
                       referenceTable="users"
-                      jumpToNoteId={targetNoteId} 
+                      jumpToNoteId={currentView.noteTarget} 
                       onOptics={(entity) => {
-                        setViewContext(entity);
-                        setTargetNoteId('optics');
-                        setReturnView('USER_PROFILE');
-                        setActiveView('USER_EDIT');
+                        pushView('USER_EDIT', entity, [], 0, 'optics');
                       }}
                       onEdit={(entity) => {
-                        setTargetNoteId(null);
                         localStorage.removeItem('user_edit_active_tab');
-                        setViewContext(entity);
-                        setReturnView('USER_PROFILE');
-                        setActiveView('USER_EDIT');
+                        pushView('USER_EDIT', entity);
                       }}
                       onAddNote={(entity) => {
-                        setViewContext(entity);
-                        setTargetNoteId('new');
-                        setReturnView('USER_PROFILE');
-                        setActiveView('USER_EDIT');
+                        pushView('USER_EDIT', entity, [], 0, 'new');
                       }}
-                      onClose={() => setActiveView('USER_MANAGEMENT')}
+                      onClose={() => popView()}
                       onNoteSelect={(noteId) => {
-                        setTargetNoteId(noteId);
-                        setReturnView('USER_PROFILE');
-                        setActiveView('USER_EDIT');
+                        pushView('USER_EDIT', currentView.list[currentView.index], [], 0, noteId);
                       }}
                     >
                       {/* These are the custom child specs for an Operator! */}
@@ -619,35 +565,31 @@ const App = () => {
                     </EntityViewer>
                   )}
 
-                  {activeView === 'USER_EDIT' && (
+                  {currentView?.id === 'USER_EDIT' && (
                     <UserEdit 
-                      user={viewContext}
+                      user={currentView.context}
                       activeCount={allUsers.filter(u => u.is_active).length}
                       activeVessel={vessel}
                       vessels={allVessels}
-                      jumpToNoteId={targetNoteId}
+                      jumpToNoteId={currentView.noteTarget}
                       onSaveSuccess={(newUuid) => {
                         fetchUserManagementData();
-                        if (!viewContext) {
+                        if (!currentView.context) {
                           // If this was a creation, transition to edit mode instantly
-                          setViewContext({ uuid: newUuid });
+                          setViewStack(prev => {
+                            const newStack = [...prev];
+                            newStack[newStack.length - 1].context = { uuid: newUuid };
+                            return newStack;
+                          });
                         }
                       }}
                       onComplete={() => {
                         // Refresh list to reflect updates
                         fetchUserManagementData(); 
-                        setActiveView(returnView);
-                        if (returnView === 'USER_MANAGEMENT') setViewContext(null);
+                        popView();
                       }}
                       onCancel={(cancelNoteId) => {
-                        setActiveView(returnView);
-                        if (returnView === 'USER_MANAGEMENT') setViewContext(null);
-
-                        if (typeof cancelNoteId === 'string') {
-                          setTargetNoteId(cancelNoteId);
-                        } else {
-                          setTargetNoteId(null);
-                        }
+                        popView(typeof cancelNoteId === 'string' ? cancelNoteId : null);
                       }}
                     />
                   )}
@@ -659,8 +601,8 @@ const App = () => {
           {/* System Controls (floating top-right - VSM when navigating, End Session always */}
           {isLoggedIn && !isLoggingOut && (
             <div className="system-controls">
-              {activeView !== 'VSM' && (
-                <button onClick={() => setActiveView('VSM')} className="action-bar-button">
+              {currentView?.id !== 'VSM' && (
+                <button onClick={() => resetToView('VSM')} className="action-bar-button">
                   <span className="glyph">◫</span>
                   <span className="label-text">VSM</span>
                 </button>
