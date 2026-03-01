@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import useInterval from './useInterval';
-import './App.css';
 import VesselSetup from './VesselSetup'; 
 import UserSetup from './UserSetup';
 import Login from './Login';
@@ -347,255 +346,224 @@ const App = () => {
           {/* View Center Container */}
           <div className="view-center-container">
             
-            {/* Which header are we showing? */}
-            {(!isLoggedIn) ? (
-              <div className="task-header-wrapper">
-                {(setupState.vesselRequired || setupState.userRequired) ? (
-                  <h2 className="flicker">Initial System Configuration</h2>
-                ) : (
-                  <h2 className="flicker">⧲ Operator Authentication</h2>
-                )}
-              </div>
-            ) : (
-              <div className="task-header-wrapper">
-                {currentView?.id === 'VESSEL_MANAGEMENT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // Vessel Index</h2>
-                )}
-                {currentView?.id === 'VESSEL_EDIT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => popView()}>Vessels</span> // Edit</h2>
-                )}
-                {currentView?.id === 'VESSEL_REGISTRATION' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => popView()}>Vessels</span> // Registration</h2>
-                )}
-                {currentView?.id === 'USER_MANAGEMENT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // Operator Index</h2>
-                )}
-                {currentView?.id === 'USER_EDIT' && (
-                  <h2 className="flicker"><span className="task-header-button" onClick={() => resetToView('VSM')}>VSM</span> // <span className="task-header-button" onClick={() => popView()}>Operators</span> // Edit</h2>
-                )}
-              </div>
-            )}
-            
             {/* The main VSM box */}
-            <div className="vessel-box">
-              {setupState.vesselRequired ? (
-                <>
-                  <h3 className="step-title">⏃ Initial Vessel Registration</h3>
-                  <VesselSetup onComplete={fetchData} />
-                </>
-              ) : setupState.userRequired ? (
-                <>
-                  <h3 className="step-title">⏿ System Operator Registration</h3>
-                  <UserSetup onComplete={fetchData} />
-                </>
-              ) : !isLoggedIn ? (
-                <>
-                  <h3 className="step-title">Security: Enter Credentials</h3>
-                  <Login onLoginSuccess={() => { setIsLoggedIn(true); fetchData();}} />
-                </>
-              ) : (
-                <>
-                  {/* The main / initial page. For now, it's a simple data box */}
-                  {currentView?.id === 'VSM' && vessel && (
-                    <>
-                      <h3 className="step-title">◫ Vessel Status Monitor // {vessel.vesselName || 'Loading...'}</h3>
-                      <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
-                      <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
-                      <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
-                      <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
-                      <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
-                      <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
-                    </>
-                  )}
-                  
-                  {/* The vessel management */}
-                  {currentView?.id === 'VESSEL_MANAGEMENT' && (
-                    <VesselManagement
-                      vessels={allVessels}
-                      onView={(vList, vIndex) => {
-                        pushView('VESSEL_PROFILE', vList[vIndex], vList, vIndex);
-                      }}
-                      onModify={(v) => {
-                        localStorage.removeItem('vessel_edit_active_tab');
-                        pushView('VESSEL_EDIT', v);
-                      }}
-                      onRegister={() => {
-                        localStorage.removeItem('vessel_edit_active_tab');
-                        pushView('VESSEL_EDIT', null);
-                      }}
-                    />
-                  )}
-                  
-                  {currentView?.id === 'VESSEL_PROFILE' && currentView.list?.length > 0 && (
-                    <EntityViewer
-                      entities={currentView.list}
-                      initialIndex={currentView.index}
-                      referenceTable="vessels"
-                      jumpToNoteId={currentView.noteTarget} 
-                      onOptics={(entity) => {
-                        pushView('VESSEL_EDIT', entity, [], 0, 'optics');
-                      }}
-                      onEdit={(entity) => {
-                        localStorage.removeItem('vessel_edit_active_tab');
-                        pushView('VESSEL_EDIT', entity);
-                      }}
-                      onAddNote={(entity) => {
-                        pushView('VESSEL_EDIT', entity, [], 0, 'new');
-                      }}
-                      onClose={() => popView()}
-                      onNoteSelect={(noteId) => {
-                        pushView('VESSEL_EDIT', currentView.list[currentView.index], [], 0, noteId);
-                      }}
-                    >
-                      {/* Merchant Marine Readouts for Vessels */}
-                      {(entity) => (
-                        <>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Vessel Name</div>
-                            <div className="telemetry-value">{entity.name}</div>
+            {setupState.vesselRequired ? (
+              <>
+                <h3 className="step-title">⏃ Initial Vessel Registration</h3>
+                <VesselSetup onComplete={fetchData} />
+              </>
+            ) : setupState.userRequired ? (
+              <>
+                <h3 className="step-title">⏿ System Operator Registration</h3>
+                <UserSetup onComplete={fetchData} />
+              </>
+            ) : !isLoggedIn ? (
+              <>
+                <h3 className="step-title">Security: Enter Credentials</h3>
+                <Login onLoginSuccess={() => { setIsLoggedIn(true); fetchData();}} />
+              </>
+            ) : (
+              <>
+                {/* The main / initial page. For now, it's a simple data box */}
+                {currentView?.id === 'VSM' && vessel && (
+                  <>
+                    <h3 className="step-title">◫ Vessel Status Monitor // {vessel.vesselName || 'Loading...'}</h3>
+                    <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
+                    <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
+                    <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
+                    <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
+                    <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
+                    <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
+                  </>
+                )}
+                
+                {/* The vessel management */}
+                {currentView?.id === 'VESSEL_MANAGEMENT' && (
+                  <VesselManagement
+                    vessels={allVessels}
+                    onView={(vList, vIndex) => {
+                      pushView('VESSEL_PROFILE', vList[vIndex], vList, vIndex);
+                    }}
+                    onModify={(v) => {
+                      localStorage.removeItem('vessel_edit_active_tab');
+                      pushView('VESSEL_EDIT', v);
+                    }}
+                    onRegister={() => {
+                      localStorage.removeItem('vessel_edit_active_tab');
+                      pushView('VESSEL_EDIT', null);
+                    }}
+                  />
+                )}
+                
+                {currentView?.id === 'VESSEL_PROFILE' && currentView.list?.length > 0 && (
+                  <EntityViewer
+                    entities={currentView.list}
+                    initialIndex={currentView.index}
+                    referenceTable="vessels"
+                    jumpToNoteId={currentView.noteTarget} 
+                    onOptics={(entity) => {
+                      pushView('VESSEL_EDIT', entity, [], 0, 'optics');
+                    }}
+                    onEdit={(entity) => {
+                      localStorage.removeItem('vessel_edit_active_tab');
+                      pushView('VESSEL_EDIT', entity);
+                    }}
+                    onAddNote={(entity) => {
+                      pushView('VESSEL_EDIT', entity, [], 0, 'new');
+                    }}
+                    onClose={() => popView()}
+                    onNoteSelect={(noteId) => {
+                      pushView('VESSEL_EDIT', currentView.list[currentView.index], [], 0, noteId);
+                    }}
+                  >
+                    {/* Merchant Marine Readouts for Vessels */}
+                    {(entity) => (
+                      <>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Vessel Name</div>
+                          <div className="telemetry-value">{entity.name}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Official Number</div>
+                          <div className="telemetry-value">{entity.official_number || 'Unknown'}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Hull ID</div>
+                          <div className="telemetry-value">{entity.hull_id_number || 'Unknown'}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Flag State</div>
+                          <div className="telemetry-value">{entity.flag_nation || 'Unknown'}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Status</div>
+                          <div className={`telemetry-value ${entity.is_active ? 'entity-status-active' : 'entity-status-inactive'}`}>
+                            {entity.is_active ? 'Active' : 'Inactive'}
                           </div>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Official Number</div>
-                            <div className="telemetry-value">{entity.official_number || 'Unknown'}</div>
-                          </div>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Hull ID</div>
-                            <div className="telemetry-value">{entity.hull_id_number || 'Unknown'}</div>
-                          </div>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Flag State</div>
-                            <div className="telemetry-value">{entity.flag_nation || 'Unknown'}</div>
-                          </div>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Status</div>
-                            <div className={`telemetry-value ${entity.is_active ? 'entity-status-active' : 'entity-status-inactive'}`}>
-                              {entity.is_active ? 'Active' : 'Inactive'}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </EntityViewer>
-                  )}
+                        </div>
+                      </>
+                    )}
+                  </EntityViewer>
+                )}
 
-                  {/* The vessel edit form (for managing existing vessels) */}
-                  {currentView?.id === 'VESSEL_EDIT' && currentView.context && (
-                    <VesselEdit 
-                      vessel={currentView.context}
-                      activeCount={allVessels.filter(v => v.is_active).length}
-                      jumpToNoteId={currentView.noteTarget} 
-                      onComplete={() => {
-                        fetchManagementData();  // refresh the index
-                        popView();
-                      }}
-                      onCancel={(cancelNoteId) => {
-                        popView(typeof cancelNoteId === 'string' ? cancelNoteId : null);
-                      }}
-                    />
-                  )}
-                  
-                  {/* The new vessel registration form (adding addition vessels) */}
-                  {currentView?.id === 'VESSEL_REGISTRATION' && (
-                    <VesselRegistration 
-                      onComplete={() => {
-                        // refresh the index
-                        fetchManagementData(); 
-                        popView();
-                      }}
-                    />
-                  )}
+                {/* The vessel edit form (for managing existing vessels) */}
+                {currentView?.id === 'VESSEL_EDIT' && currentView.context && (
+                  <VesselEdit 
+                    vessel={currentView.context}
+                    activeCount={allVessels.filter(v => v.is_active).length}
+                    jumpToNoteId={currentView.noteTarget} 
+                    onComplete={() => {
+                      fetchManagementData();  // refresh the index
+                      popView();
+                    }}
+                    onCancel={(cancelNoteId) => {
+                      popView(typeof cancelNoteId === 'string' ? cancelNoteId : null);
+                    }}
+                  />
+                )}
+                
+                {/* The new vessel registration form (adding addition vessels) */}
+                {currentView?.id === 'VESSEL_REGISTRATION' && (
+                  <VesselRegistration 
+                    onComplete={() => {
+                      // refresh the index
+                      fetchManagementData(); 
+                      popView();
+                    }}
+                  />
+                )}
 
-                  {/* The Operator views */}
-                  {currentView?.id === 'USER_MANAGEMENT' && (
-                    <UserManagement
-                      users={allUsers}
-                      onView={(uList, uIndex) => {
-                        pushView('USER_PROFILE', uList[uIndex], uList, uIndex);
-                      }}
-                      onModify={(u) => {
-                        localStorage.removeItem('user_edit_active_tab');
-                        pushView('USER_EDIT', u);
-                      }}
-                      onRegister={() => {
-                        localStorage.removeItem('user_edit_active_tab');
-                        pushView('USER_EDIT', null);
-                      }}
-                    />
-                  )}
-                  
-                  {currentView?.id === 'USER_PROFILE' && currentView.list?.length > 0 && (
-                    <EntityViewer
-                      entities={currentView.list}
-                      initialIndex={currentView.index}
-                      referenceTable="users"
-                      jumpToNoteId={currentView.noteTarget} 
-                      onOptics={(entity) => {
-                        pushView('USER_EDIT', entity, [], 0, 'optics');
-                      }}
-                      onEdit={(entity) => {
-                        localStorage.removeItem('user_edit_active_tab');
-                        pushView('USER_EDIT', entity);
-                      }}
-                      onAddNote={(entity) => {
-                        pushView('USER_EDIT', entity, [], 0, 'new');
-                      }}
-                      onClose={() => popView()}
-                      onNoteSelect={(noteId) => {
-                        pushView('USER_EDIT', currentView.list[currentView.index], [], 0, noteId);
-                      }}
-                    >
-                      {/* These are the custom child specs for an Operator! */}
-                      {(entity) => (
-                        <>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Name</div>
-                            <div className="telemetry-value">{entity.name}</div>
+                {/* The Operator views */}
+                {currentView?.id === 'USER_MANAGEMENT' && (
+                  <UserManagement
+                    users={allUsers}
+                    onView={(uList, uIndex) => {
+                      pushView('USER_PROFILE', uList[uIndex], uList, uIndex);
+                    }}
+                    onModify={(u) => {
+                      localStorage.removeItem('user_edit_active_tab');
+                      pushView('USER_EDIT', u);
+                    }}
+                    onRegister={() => {
+                      localStorage.removeItem('user_edit_active_tab');
+                      pushView('USER_EDIT', null);
+                    }}
+                  />
+                )}
+                
+                {currentView?.id === 'USER_PROFILE' && currentView.list?.length > 0 && (
+                  <EntityViewer
+                    entities={currentView.list}
+                    initialIndex={currentView.index}
+                    referenceTable="users"
+                    jumpToNoteId={currentView.noteTarget} 
+                    onOptics={(entity) => {
+                      pushView('USER_EDIT', entity, [], 0, 'optics');
+                    }}
+                    onEdit={(entity) => {
+                      localStorage.removeItem('user_edit_active_tab');
+                      pushView('USER_EDIT', entity);
+                    }}
+                    onAddNote={(entity) => {
+                      pushView('USER_EDIT', entity, [], 0, 'new');
+                    }}
+                    onClose={() => popView()}
+                    onNoteSelect={(noteId) => {
+                      pushView('USER_EDIT', currentView.list[currentView.index], [], 0, noteId);
+                    }}
+                  >
+                    {/* These are the custom child specs for an Operator! */}
+                    {(entity) => (
+                      <>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Name</div>
+                          <div className="telemetry-value">{entity.name}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Access</div>
+                          <div className="telemetry-value">{entity.is_admin ? '◈ SysOp' : '◇ Operator'}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Status</div>
+                          <div className="telemetry-value" style={{ color: entity.is_active ? 'var(--neon-red)' : 'var(--soft-red)' }}>
+                            {entity.is_active ? 'Aactive' : 'Deactivated'}
                           </div>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Access</div>
-                            <div className="telemetry-value">{entity.is_admin ? '◈ SysOp' : '◇ Operator'}</div>
-                          </div>
-                          <div className="telemetry-block">
-                            <div className="telemetry-label">Status</div>
-                            <div className="telemetry-value" style={{ color: entity.is_active ? 'var(--neon-red)' : 'var(--soft-red)' }}>
-                              {entity.is_active ? 'Aactive' : 'Deactivated'}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </EntityViewer>
-                  )}
+                        </div>
+                      </>
+                    )}
+                  </EntityViewer>
+                )}
 
-                  {currentView?.id === 'USER_EDIT' && (
-                    <UserEdit 
-                      user={currentView.context}
-                      activeCount={allUsers.filter(u => u.is_active).length}
-                      activeVessel={vessel}
-                      vessels={allVessels}
-                      jumpToNoteId={currentView.noteTarget}
-                      onSaveSuccess={(newUuid) => {
-                        fetchUserManagementData();
-                        if (!currentView.context) {
-                          // If this was a creation, transition to edit mode instantly
-                          setViewStack(prev => {
-                            const newStack = [...prev];
-                            newStack[newStack.length - 1].context = { uuid: newUuid };
-                            return newStack;
-                          });
-                        }
-                      }}
-                      onComplete={() => {
-                        // Refresh list to reflect updates
-                        fetchUserManagementData(); 
-                        popView();
-                      }}
-                      onCancel={(cancelNoteId) => {
-                        popView(typeof cancelNoteId === 'string' ? cancelNoteId : null);
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </div>
+                {currentView?.id === 'USER_EDIT' && (
+                  <UserEdit 
+                    user={currentView.context}
+                    activeCount={allUsers.filter(u => u.is_active).length}
+                    activeVessel={vessel}
+                    vessels={allVessels}
+                    jumpToNoteId={currentView.noteTarget}
+                    onSaveSuccess={(newUuid) => {
+                      fetchUserManagementData();
+                      if (!currentView.context) {
+                        // If this was a creation, transition to edit mode instantly
+                        setViewStack(prev => {
+                          const newStack = [...prev];
+                          newStack[newStack.length - 1].context = { uuid: newUuid };
+                          return newStack;
+                        });
+                      }
+                    }}
+                    onComplete={() => {
+                      // Refresh list to reflect updates
+                      fetchUserManagementData(); 
+                      popView();
+                    }}
+                    onCancel={(cancelNoteId) => {
+                      popView(typeof cancelNoteId === 'string' ? cancelNoteId : null);
+                    }}
+                  />
+                )}
+              </>
+            )}
           </div>
             
           {/* System Controls (floating top-right - VSM when navigating, End Session always */}

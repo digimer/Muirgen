@@ -174,7 +174,12 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
   ];
 
   return (
-    <div className="setup-mode">
+    <div className="setup-mode panel-viewport">
+      <div className="task-header-wrapper">
+        <h2 className="flicker">VSM // {user?.uuid ? 'OPERATORS' : 'REGISTER'} // [{activeTab.toUpperCase()}]</h2>
+      </div>
+
+      {/* The navigation bar */}
       <div className="tab-bar">
         <div className={`tab-pair ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
           <span className="tab-icon glyph-specifications">⧲</span>
@@ -199,126 +204,101 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
         {error && <div className="tab-banner error">{error}</div>}
         {saveMessage && <div className="tab-banner success">{saveMessage}</div>}
       </div>
-      
-      {activeTab === 'profile' && (
-        <form className="setup-form" onSubmit={handleSubmit}>
-          
-          <div className="field-group">
-            <div className="setup-field-header">
-              <span className="cursor-prompt">◺</span>
-              <label htmlFor="userHandle"><span className="label-text">Handle</span></label>
-            </div>
-            <input type="text" id="userHandle" value={formData.userHandle} onChange={(e) => setFormData({ ...formData, userHandle: e.target.value })} required />
-          </div>
-          <div className="field-group">
-             <div className="setup-field-header">
-              <span className="cursor-prompt">◺</span>
-              <label htmlFor="userName"><span className="label-text">Operator Name</span></label>
-             </div>
-             <input type="text" id="userName" value={formData.userName} onChange={(e) => setFormData({ ...formData, userName: e.target.value })} required />
-          </div>
-          <div className="field-group">
-             <div className="setup-field-header">
-               <span className="cursor-prompt">◺</span>
-               <label htmlFor="userVesselUuid"><span className="label-text">Assigned Vessel</span></label>
-             </div>
-            {vessels && vessels.length > 1 ? (
-               <select 
-                 id="userVesselUuid" 
-                 value={formData.userVesselUuid} 
-                 onChange={(e) => setFormData({ ...formData, userVesselUuid: e.target.value })}
-                 className="setup-input-select"
-               >
-                 {vessels.map(v => (
-                   <option key={v.uuid} value={v.uuid}>{v.name}</option>
-                 ))}
-               </select>
-             ) : (
-               <>
-                 <input type="text" id="userVesselUuid" value={formData.userVesselUuid} disabled className="disabled-input" />
-                 <span className="soft-text operator-subtitles">Single Vessel; Auto-Assigned</span>
-               </>
-             )}
-          </div>
-          
-          <div className="field-group">
-            <div className="setup-field-header checkbox-sysop">
-              <span className="cursor-prompt">◺</span>
-              <label>Spacer</label> 
-            </div>
+
+      <div className="panel-body">
+        {activeTab === 'profile' && (
+          <form className="setup-form" onSubmit={handleSubmit}>
             
-            {/* The actual checkbox container */}
-            <div style={{ marginTop: '8px' }}>
-              <label className="checkbox-container">
-                <span className="label-text strong-text">Grant SysOp</span>
-                <input type="checkbox" checked={formData.userIsAdmin} onChange={(e) => setFormData({ ...formData, userIsAdmin: e.target.checked })} disabled={isSelf} />
-                <span className="retro-checkmark"></span>
-              </label>
-            </div>
-            {isSelf && <span className="soft-text operator-subtitles sysop-lockout-warning">Locked; No self-demote</span>}
-          </div>
-          
-          {/* Security Credentials Block */}
-          <div className="field-group">
-            <div className="setup-field-header">
-              <span className="cursor-prompt">◺</span>
-              <label>{user?.uuid ? 'New Access Code' : 'Access Code'}</label>
-            </div>
-            <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} placeholder="<secret>" required={!user?.uuid} />
-            {user?.uuid && <span className="soft-text operator-subtitles">Blank: No Change</span>}
-          </div>
-          
-          <div className="field-group">
-            <div className="setup-field-header">
-              <span className="cursor-prompt">◺</span>
-              <label>Confirm AC</label>
-            </div>
-            <input type="password" value={passwordData.currentPasswordConfirm} onChange={e => setPasswordData({...passwordData, currentPasswordConfirm: e.target.value})} placeholder="<verify secret>" required={!user?.uuid || !!passwordData.newPassword} />
-          </div>
-          
-          {/* Only prompt for the current password if the user is editing their own existing profile */}
-          {user?.uuid && isSelf ? (
             <div className="field-group">
               <div className="setup-field-header">
                 <span className="cursor-prompt">◺</span>
-                <label>Current AC</label>
+                <label htmlFor="userHandle"><span className="label-text">Handle</span></label>
               </div>
-              <input type="password" value={passwordData.existingPasswordVerification} onChange={e => setPasswordData({...passwordData, existingPasswordVerification: e.target.value})} placeholder="<required for change>" required={!!passwordData.newPassword} />
+              <input type="text" id="userHandle" value={formData.userHandle} onChange={(e) => setFormData({ ...formData, userHandle: e.target.value })} required />
             </div>
-          ) : (
-            /* Render an empty div to maintain the two-column grid balance if the third field shouldn't exist */
-            <div className="field-group"></div>
-          )}
-
-          {/* The action row */}
-          <div className="action-bar-container">
-            {user?.uuid && user?.is_active && (
-              <div className="action-group-vertical">
-                <div className="action-group-horizontal">
-                  <button type="button" 
-                    className={`touch-button ${isConfirmingAction ? 'button-confirm-state' : ''}`}
-                    onClick={handleStatusToggle} 
-                    disabled={isLockoutActive}
-                  >
-                    {isConfirmingAction ? 'Confirm' : 'Deactivate'}
-                  </button>
-                  <span className="large-icon">⌧</span>
-                </div>
-                {isLockoutActive && (
-                  <span className="soft-text operator-subtitles action-lockout-text">
-                    {lockoutMessage}
-                  </span>
-                )}
+            <div className="field-group">
+              <div className="setup-field-header">
+                <span className="cursor-prompt">◺</span>
+                <label htmlFor="userName"><span className="label-text">Operator Name</span></label>
               </div>
-            )}
+              <input type="text" id="userName" value={formData.userName} onChange={(e) => setFormData({ ...formData, userName: e.target.value })} required />
+            </div>
+            <div className="field-group">
+              <div className="setup-field-header">
+                <span className="cursor-prompt">◺</span>
+                <label htmlFor="userVesselUuid"><span className="label-text">Assigned Vessel</span></label>
+              </div>
+              {vessels && vessels.length > 1 ? (
+                <select 
+                  id="userVesselUuid" 
+                  value={formData.userVesselUuid} 
+                  onChange={(e) => setFormData({ ...formData, userVesselUuid: e.target.value })}
+                  className="setup-input-select"
+                >
+                  {vessels.map(v => (
+                    <option key={v.uuid} value={v.uuid}>{v.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <input type="text" id="userVesselUuid" value={formData.userVesselUuid} disabled className="disabled-input" />
+                  <span className="soft-text operator-subtitles">Single Vessel; Auto-Assigned</span>
+                </>
+              )}
+            </div>
             
-            <div style={{ flex: 1 }}></div>
-            <button type="submit" className="touch-button action-submit-button" disabled={!isFormValid}>
-              {user?.uuid ? 'Update' : 'Register'}
-            </button>
-          </div>
-        </form>
-      )}
+            <div className="field-group">
+              <div className="setup-field-header checkbox-sysop">
+                <span className="cursor-prompt">◺</span>
+                <label>Spacer</label> 
+              </div>
+              
+              {/* The actual checkbox container */}
+              <div style={{ marginTop: '8px' }}>
+                <label className="checkbox-container">
+                  <span className="label-text strong-text">Grant SysOp</span>
+                  <input type="checkbox" checked={formData.userIsAdmin} onChange={(e) => setFormData({ ...formData, userIsAdmin: e.target.checked })} disabled={isSelf} />
+                  <span className="retro-checkmark"></span>
+                </label>
+              </div>
+              {isSelf && <span className="soft-text operator-subtitles sysop-lockout-warning">Locked; No self-demote</span>}
+            </div>
+            
+            {/* Security Credentials Block */}
+            <div className="field-group">
+              <div className="setup-field-header">
+                <span className="cursor-prompt">◺</span>
+                <label>{user?.uuid ? 'New Access Code' : 'Access Code'}</label>
+              </div>
+              <input type="password" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} placeholder="<secret>" required={!user?.uuid} />
+              {user?.uuid && <span className="soft-text operator-subtitles">Blank: No Change</span>}
+            </div>
+            
+            <div className="field-group">
+              <div className="setup-field-header">
+                <span className="cursor-prompt">◺</span>
+                <label>Confirm AC</label>
+              </div>
+              <input type="password" value={passwordData.currentPasswordConfirm} onChange={e => setPasswordData({...passwordData, currentPasswordConfirm: e.target.value})} placeholder="<verify secret>" required={!user?.uuid || !!passwordData.newPassword} />
+            </div>
+            
+            {/* Only prompt for the current password if the user is editing their own existing profile */}
+            {user?.uuid && isSelf ? (
+              <div className="field-group">
+                <div className="setup-field-header">
+                  <span className="cursor-prompt">◺</span>
+                  <label>Current AC</label>
+                </div>
+                <input type="password" value={passwordData.existingPasswordVerification} onChange={e => setPasswordData({...passwordData, existingPasswordVerification: e.target.value})} placeholder="<required for change>" required={!!passwordData.newPassword} />
+              </div>
+            ) : (
+              /* Render an empty div to maintain the two-column grid balance if the third field shouldn't exist */
+              <div className="field-group"></div>
+            )}
+
+          </form>
+        )}
+      </div>
 
       {/* Optics (images) tab */}
       {activeTab === 'optics' && (
@@ -340,6 +320,37 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
           }}
         />
       )}
+      
+      {/* Pinned Footer */}
+      <div className="panel-footer">
+        {/* Left Side: Deactivation Controls */}
+        {user?.uuid && user?.is_active ? (
+          <div className="action-group-vertical">
+            <div className="action-group-horizontal">
+              <button type="button" 
+                className={`touch-button ${isConfirmingAction ? 'button-confirm-state' : ''}`}
+                onClick={handleStatusToggle} 
+                disabled={isLockoutActive}
+              >
+                {isConfirmingAction ? 'Confirm' : 'Deactivate'}
+              </button>
+              <span className="large-icon">⌧</span>
+            </div>
+            {isLockoutActive && (
+              <span className="soft-text operator-subtitles action-lockout-text">
+                {lockoutMessage}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div></div> /* Empty div to push the Update button to the right */
+        )}
+        
+        {/* Right Side: Save Controls */}
+        <button type="button" className="touch-button action-submit-button" disabled={!isFormValid} onClick={handleSubmit}>
+          {user?.uuid ? 'Update' : 'Register'}
+        </button>
+      </div>
     </div>
   );
 }

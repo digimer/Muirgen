@@ -9,6 +9,9 @@ const UserManagement = ({ users, onView, onModify, onRegister }) => {
   
   return (
     <div className="management-container">
+      <div className="task-header-wrapper">
+        <h2 className="flicker">VSM // Operator Index</h2>
+      </div>
      <h3 className="flicker-subtle">Edit Existing // Register New</h3>
       
       <table className="data-table">

@@ -9,7 +9,10 @@ const VesselManagement = ({ vessels, onView, onModify, onRegister }) => {
   
   return (
     <div className="management-container">
-     <h3 className="flicker-subtle">Edit Existing // Register New</h3>
+     <div className="task-header-wrapper">
+        <h2 className="flicker">VSM // Vessel Index</h2>
+      </div>
+      <h3 className="flicker-subtle">Edit Existing // Register New</h3>
       
       <table className="data-table">
         <thead>

@@ -1,0 +1,40 @@
+/* 
+ * This is the "mature" CSS file. Any classes that are entered here must be catergorised and properly 
+ * structured such that their names indicate where and how they are used.  
+ * 
+ * Any "quick tests" or other scratch classes must be placed in App.css. 
+ * 
+ * App.css is to be removed BEFORE v1.0 is released.
+ */
+
+/* ========================================================================== */
+/* MUIRGEN CORE LAYOUTS (V1 STANDARD)                                         */
+/* ========================================================================== */
+
+/* --- 1. Pinned Dashboard Architecture --- */
+.panel-viewport {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--dim-red);
+  background-color: rgba(10, 0, 0, 0.4); 
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9);
+}
+
+.panel-footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 2px dashed var(--dim-red);
+}
