@@ -485,6 +485,35 @@ input:-webkit-autofill:active {
   margin-bottom: 15px;
 }
 
+/* Tabbed Interface Status Banners */
+.tab-banner-container {
+  min-height: 48px; /* reserves exactly two lines of height */
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-banner {
+  width: 100%;
+  padding: 10px 15px;
+  font-weight: 900;
+  border: 2px solid var(--strong-red);
+  text-align: center;
+}
+
+.tab-banner.success {
+  background-color: var(--dark-bg);
+  color: var(--neon-red);
+}
+
+.tab-banner.error,
+.tab-banner.warning {
+  background-color: var(--strong-red);
+  color: var(--dark-bg);
+  animation: pulse 1s infinite;
+}
+
 .vessel-box {
   border: 2px solid var(--neon-red);
   padding: 2rem;

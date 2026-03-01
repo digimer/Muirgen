@@ -175,8 +175,6 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
 
   return (
     <div className="setup-mode">
-      {error && <div className="status-display error">{error}</div>}
-      {saveMessage && <div className="status-display success with-margin">{saveMessage}</div>}
       <div className="tab-bar">
         <div className={`tab-pair ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
           <span className="tab-icon glyph-specifications">⧲</span>
@@ -195,6 +193,13 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
           <button type="button" className="tab-button">Logs</button>
         </div>
       </div>
+
+      {/* Fixed-Height Status Banner */}
+      <div className="tab-banner-container">
+        {error && <div className="tab-banner error">{error}</div>}
+        {saveMessage && <div className="tab-banner success">{saveMessage}</div>}
+      </div>
+      
       {activeTab === 'profile' && (
         <form className="setup-form" onSubmit={handleSubmit}>
           

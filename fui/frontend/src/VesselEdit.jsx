@@ -139,9 +139,6 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
   return (
     <div className="setup-mode">
 
-      {/* Display errors if they're activer */}
-      {error && <div className="status-display error">{error}</div>}
-
       {/* The navigation bar */}
       <div className="tab-bar">
         <div className={`tab-pair ${activeTab === 'specs' ? 'active' : ''}`} onClick={() => setActiveTab('specs')}>
@@ -160,6 +157,11 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
           <span className="tab-icon glyph-logs">⧉</span>
           <button type="button" className="tab-button">Logs</button>
         </div>
+      </div>
+      
+      {/* Fixed-Height Status Banner */}
+      <div className="tab-banner-container">
+        {error && <div className="tab-banner error">{error}</div>}
       </div>
 
       {activeTab === 'specs' && (
