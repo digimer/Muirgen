@@ -11,23 +11,482 @@
 /* MUIRGEN CORE LAYOUTS (V1 STANDARD)                                         */
 /* ========================================================================== */
 
-/* --- 1. Pinned Dashboard Architecture --- */
-.panel-viewport {
+/* Font Definitions */
+
+@font-face {
+  font-family: 'Orbitron';
+  src: url('./assets/fonts/orbitron.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('./assets/fonts/oxanium.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Ubuntu Sans Mono';
+  src: url('./assets/fonts/ubuntu_sans_mono.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+/* Global Variables */
+
+:root {
+  --neon-red: #ff0000;
+  --strong-red: #dd0000;
+  --mid-red: #aa0000;
+  --soft-red: #880000;
+  --dim-red: #440000;
+  --subtle-red: #220000;
+  --dark-bg: #000000;
+  --box-max-width: 900px;
+  --grid-line: rgba(255, 0, 0, 0.15);
+  --inactive-border: rgba(255, 0, 0, 0.5);
+  --crt-scanline: linear-gradient(rgba(18, 0, 0, 0) 50%, rgba(50, 0, 0, 0.05) 50%);
+
+  /* Plyr Player Overrides */
+  --plyr-color-main: var(--strong-red);
+  --plyr-video-background: var(--dark-bg);
+  --plyr-menu-background: var(--dark-bg);
+  --plyr-menu-color: var(--neon-red);
+  --plyr-audio-controls-background: transparent;
+  --plyr-audio-control-color: var(--neon-red);
+
+  /* Scrubber & Slider Themes */
+  --plyr-range-thumb-background: var(--neon-red);
+  --plyr-video-progress-buffered-background: var(--soft-red);
+  --plyr-audio-progress-buffered-background: var(--soft-red);
+  --plyr-video-range-track-background: var(--dim-red);
+  --plyr-audio-range-track-background: var(--dim-red);
+  --plyr-video-control-color: var(--neon-red);
+  --plyr-video-control-color-hover: var(--dark-bg);
+  --plyr-video-control-background-hover: var(--neon-red);
+}
+
+
+
+/* ========================================================================== */
+/* FORM ELEMENTS (V1 STANDARD)                                                */
+/* ========================================================================== */
+
+
+/* Tabbed Interface Status Banners */
+.tab-banner-container {
+  display: flex;
+  position: absolute;
+  top: 100%; /* Position this directly below the relative wrapper */
+  left: 0;
+  width: 100%;
+  margin-top: 20px; /* space between us and the form above. */
+  z-index: 10;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-banner {
+  width: 100%;
+  padding: 10px 15px;
+  font-weight: 900;
+  border: 2px solid var(--strong-red);
+  text-align: center;
+}
+
+.tab-banner.error  {
+  background-color: var(--subtle-red);
+  color: var(--neon-red);
+  animation: pulse-error 2s ease-in-out 5;
+}
+
+.tab-banner.success {
+  background-color: var(--dark-bg);
+  color: var(--neon-red);
+  animation: success-fade-out 6s forwards;
+}
+
+.tab-banner.warning {
+  background-color: var(--dim-red);
+  color: var(--neon-red);
+}
+
+/* ========================================================================== */
+/* File/Image upload staging quque (V1 STANDARD)                              */
+/* ========================================================================== */
+
+.staging-queue-container {
+  border: 1px solid var(--mid-red);
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: rgba(50, 0, 0, 0.3);
+}
+
+/* Visual queue that the user can now paste an image from their clipboard */
+.staging-queue-container:focus {
+  outline: none;
+  border-color: var(--neon-red);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+}
+
+.staging-queue-title {
+  color: var(--strong-red);
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.staging-queue-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 15px;
+}
+
+.staging-queue-item {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--strong-red);
+  padding: 5px 0;
+  font-family: 'Ubuntu Sans Mono', monospace;
+}
+
+.staging-queue-filename.duplicate {
+  color: var(--soft-red);
+  text-decoration: line-through;
+}
+
+.staging-queue-filename.valid {
+  color: var(--strong-red);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.staging-queue-filename-name {
+  background: rgba(20,0,0,0.5);
+  border: 1px solid var(--dim-red);
+  color: var(--neon-red);
+  padding: 5px;
+  width: 100%;
+  font-family: inherit;
+}
+
+.staging-queue-filename-edit {
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.staging-queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Base text/glyph properties */
+.staging-queue-action-text {
+  text-transform: uppercase;
+  width: 100px;
+  text-align: right;
+}
+
+.staging-queue-action-glyph {
+  width: 30px;
+  text-align: center;
+}
+
+/* Modifiers for duplicates */
+.staging-queue-action-text.duplicate,
+.staging-queue-action-glyph.duplicate {
+  color: var(--soft-red);
+}
+
+.staging-queue-action-glyph.duplicate {
+  font-size: 1.4rem;
+}
+
+/* Modifiers for valid / active files */
+.staging-queue-action-text.valid,
+.staging-queue-action-glyph.valid {
+  color: var(--strong-red);
+  cursor: pointer;
+}
+
+.staging-queue-action-glyph.valid {
+  font-size: 1.2rem;
+}
+
+.staging-queue-controls {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ========================================================================== */
+/* SIDEBAR NAVIGATION (V1 STANDARD)                                           */
+/* ========================================================================== */
+
+/* The main sidebar frame itself */
+.sidebar-nav {
+  background: rgba(20, 0, 0, 0.8);
+  border-right: 2px solid var(--neon-red);
   display: flex;
   flex-direction: column;
-  height: 100%;
+  z-index: 20;
+  padding: 1em;
+}
+
+/* The program header (where the program name is shown) */
+.sidebar-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;                                             /* Align the title and divider to the left edge */
+}
+
+/* The actual program name itself */
+.sidebar-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;                                       /* Reduce the size slightly to fit the sidebar */
+  font-weight: 900;                                        /* Bump the font weight */
+  color: var(--neon-red);                                  /* Max boldness for the Orbitron font */
+  letter-spacing: 0.35rem;                                 /* Bright red, but not neon red */
+  padding-bottom: 0.5em;
+  text-align: center;                                      /* Spread the text to fill the sidebar */
+  width: 100%;                                             /* Centers the title in the sidebar */
+  display: block;                                          /* Push to use the full sidebar width */
+  text-shadow: 0 0 5px var(--dim-red);                     /* Subtle phosphorescent glow */
+}
+
+/* The base sidebar divider */
+.sidebar-divider {
+  height: 2px;
+  background: var(--strong-red);                           /* Match the title for unified header block */
+  width: calc(100% + 20px);                                /* Width + the sidebar-nav padding (I think) */
+  margin-left: -10px;                                      /* calc accounts for the 10px padding on the .sidebar-nav class */
+  opacity: 0.4;                                            /* Dim the line so it doesn't over-power the text */
+}
+
+/* Tuning for the top divider */
+.sidebar-divider-top {
+  margin: 10px;                                            /* Pull the line left to touch the vertical border */
+  white-space: nowrap;
+}
+
+/* Tuning for the bottom divider */
+.sidebar-divider-bottom {
+  margin-bottom: 10px;                                     /* Pull the line left to touch the vertical border */
+}
+
+/* Buttons for indexes on the sidebar */
+.sidebar-list {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0;
+  flex: 1;                                                 /* Grow the list to push the bottom elements to the bottom */
+}
+
+/* The flex row holding both the glyph and the button */
+.sidebar-item-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: 100%;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+/* Sidebar button/glyph states */
+.sidebar-item-container.is-active .sidebar-item-button {
+  background: rgba(50, 0, 0, 0.6);                       /* Slightly brighter soft background */
+  border: 1px solid var(--neon-red);                       /* Brighter border */
+  color: var(--neon-red);                                  /* Brighter text */
+  box-shadow: inset 0 0 10px rgba(255, 0, 0, 0.2);
+}
+
+.sidebar-item-container.is-active .sidebar-item-glyph {
+  color: var(--neon-red);
+  opacity: 1;
+  text-shadow: 0 0 5px var(--neon-red);
+}
+
+/* Invert colors when hovering anywhere on the container row */
+.sidebar-item-container:hover .sidebar-item-button {
+  background: var(--neon-red) !important;
+  color: var(--dark-bg) !important;
+  border-color: var(--neon-red);
+  box-shadow: 0 0 15px var(--neon-red);
+}
+
+.sidebar-item-container:hover .sidebar-item-glyph {
+  color: var(--neon-red) !important;
+  opacity: 1;
+  text-shadow: 0 0 10px var(--neon-red);
+}
+
+/* The standalone glyph to the left of the button */
+.sidebar-item-glyph {
+  font-size: 1.6rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; /* Fixed width keeps buttons aligned */
+  color: var(--soft-red);
+  opacity: 0.8;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Add specific nudges here to align certain utf-8 glyphs. 
+ * Names are 'glyph-{lc(item.id)}'
+ * Example for 'vsm':
+ */
+
+.glyph-logout {
+  transform: rotate(180deg);
+}
+
+.glyph-user_management {
+  font-size: 2em;
+}
+
+.glyph-sensor_management {
+  font-size: 3em;
+}
+
+.glyph-vessel_management {
+  transform: rotate(45deg);
+}
+
+.glyph-vsm {
+  font-size: 2em;
+}
+
+
+/* The framed button box */
+.sidebar-item-button {
+  background: rgba(20, 0, 0, 0.4);                         /* Dim red background */
+  border: 1px solid var(--dim-red);                          /* Faint but visible border */
+  color: var(--soft-red);
+  width: 100%;
+  text-align: left;
+  padding: 15px 12px;
+  font-size: 1rem;
+  font-family: 'Oxanium', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.sidebar-label-text {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Status LEDs (currently only HDD) */
+.sidebar-status-led-group {
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  gap: 5px;
+  padding-top: 0.5em;
+}
+
+/* Auto-Save LED Indicator */
+.sidebar-hdd-led-indicator {
+  color: var(--strong-red);
+  font-family: 'Oxanium', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.6;
+  transition: opacity 0.5s ease;
+}
+
+.sidebar-hdd-led-indicator.active {
+  color: var(--strong-red);
+  opacity: 1;
+  /* Rapid blink for HDD effect */
+  animation: hdd-flicker 0.1s infinite alternate;
+}
+
+@keyframes hdd-flicker {
+  0% { 
+    opacity: 0.5; 
+    color: var(--strong-red);
+  }
+  100% {
+    opacity: 1; 
+    color: var(--neon-red); 
+    text-shadow: 0 0 10px var(--neon-red); 
+  }
+}
+
+/* ========================================================================== */
+/* MUIRGEN ANIMATIONS (V1 STANDARD)                                           */
+/* ========================================================================== */
+
+@keyframes success-fade-out {
+  0%, 80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-error {
+  0%, 100% {
+    box-shadow: none;
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--neon-red);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+/* --- 1. Pinned Dashboard Architecture --- */
+.view-pane-wrapper {
+  display: flex;
+  flex-direction: column;
+  /* Maximally utilize screen real-estate to minimize scrolling */
+  height: 90vh; 
+  width: 90vw;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.panel-viewport {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--neon-red);
+  background-color: rgba(10, 0, 0, 0.6); 
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.1); 
+  padding: 20px;
 }
 
 .panel-body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px;
   margin-bottom: 20px;
-  border: 1px solid var(--dim-red);
-  background-color: rgba(10, 0, 0, 0.4); 
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.9);
+  padding-right: 15px; /* Prevent scrollbar overlap */
 }
 
 .panel-footer {
@@ -35,6 +494,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 10px;
-  border-top: 2px dashed var(--dim-red);
+  padding-top: 5px;/* The dashed line is gone, buttons float free like the mockup */
 }
+
+/* --- PER-GLYPH TUNING (Examples) --- */
+
+/* --- 2. Dashboard Containers (For full-pane arrays like Vessel Index) --- */
+.vsm-dashboard {
+  border: 1px solid var(--neon-red);
+  padding: 2rem;
+  margin: 0 auto;
+  background-color: rgba(10, 0, 0, 0.6); 
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+  width: 90%;
+  max-width: var(--box-max-width, 800px);
+ }

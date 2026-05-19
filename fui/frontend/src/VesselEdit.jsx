@@ -13,17 +13,20 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
   // Initialize state with the existing data passed from App.jsx. The '|| {''/0} insured the variables are 
   // never "null" to prevent upsetting react.
   const [formData, setFormData] = useState({
-    vesselName: vessel?.name || '',
-    vesselOfficialNumber: vessel?.flag_nation || '',
-    vesselFlagNation: vessel?.flag_nation || '',
-    vesselPortOfRegistry: vessel?.port_of_registry || '',
-    vesselBuildDetails: vessel?.build_details || '',
-    vesselHullIdentificationNumber: vessel?.hull_id_number || '',
-    vesselKeelOffset: vessel?.keel_offset_cm || 0,
-    vesselWaterlineOffset: vessel?.waterline_offset_cm || 0
+    vesselName:                     vessel?.name                || '',
+    vesselOfficialNumber:           vessel?.flag_nation         || '',
+    vesselFlagNation:               vessel?.flag_nation         || '',
+    vesselPortOfRegistry:           vessel?.port_of_registry    || '',
+    vesselBuildDetails:             vessel?.build_details       || '',
+    vesselHullIdentificationNumber: vessel?.hull_id_number      || '',
+    vesselKeelOffset:               vessel?.keel_offset_cm      || 0,
+    vesselWaterlineOffset:          vessel?.waterline_offset_cm || 0
   });
   
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
+  const [success, setSuccess] = useState(null);
+  /* const [error, setError] = useState("Test: This is a test of the error broadcast system."); */
+
   // Storage the active tab for browser reload/restart persistence
   const [activeTab, setActiveTab]                   = useLocalStorageState('vessel_edit_active_tab', 'specs');
   const [isConfirmingAction, setIsConfirmingAction] = useState(false);
@@ -53,6 +56,7 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
     try {
       const res = await apiFetch(`/api/vessels/${vessel.uuid}/update`, {
         method: 'POST',
@@ -60,7 +64,9 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
       });
       if (res.ok) {
         // Notify the parent to refresh the list.
-        onComplete();
+        //onComplete();
+        setSuccess("Updated parameters recorded successfully.");
+        setTimeout(() => setSuccess(null), 6000);
       } else {
         const data = await res.json();
         setError(data.error || 'Update Failed; Unknown Error');
@@ -106,8 +112,8 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
 
   // Deactivation logic
   const minActiveVessels = 1;
-  const isLastActive = activeCount <= minActiveVessels;
-  const hasActiveUsers = (vessel.active_user_count || 0) > 0;
+  const isLastActive     = activeCount <= minActiveVessels;
+  const hasActiveUsers   = (vessel.active_user_count || 0) > 0;
 
   // The button is locked if the is active and either it's the last active vessel, or there are active uses
   // who are assigned to this vessel.
@@ -160,11 +166,6 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
           <span className="tab-icon glyph-logs">⧉</span>
           <button type="button" className="tab-button">Logs</button>
         </div>
-      </div>
-
-      {/* Fixed-Height Status Banner */}
-      <div className="tab-banner-container">
-        {error && <div className="tab-banner error">{error}</div>}
       </div>
 
       <div className="panel-body">
@@ -306,7 +307,6 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
           </form>
         )}
         
-
         {/* Images tab */}
         {activeTab === 'optics' && (
           <EntityMedia entityId={vessel?.uuid} referenceTable="vessels" mode="image" />
@@ -363,6 +363,14 @@ const VesselEdit = ({ vessel, onComplete, onCancel, jumpToNoteId, activeCount })
           {vessel?.uuid ? 'Update' : 'Register'}
         </button>
       </div>
+
+      {/* Fixed-Height Status Banner */}
+      {(error || success) && (
+        <div className="tab-banner-container">
+          {error && <div className="tab-banner error">{error}</div>}
+          {success && <div className="tab-banner success">{success}</div>}
+        </div>
+      )}
     </div>
   );
 }

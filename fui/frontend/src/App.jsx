@@ -335,9 +335,10 @@ const App = () => {
       
       {/* The main view port */}
       <main className="main-layout">
+
         {/* Navigation Sidebar */}
         {isLoggedIn && !isLoggingOut && (
-          <Sidebar activeView={currentView?.id} setActiveView={resetToView} />
+          <Sidebar activeView={currentView?.id} setActiveView={resetToView} onLogout={handleLogout} />
         )}
         
         {/* Dynamic background Viewport */}
@@ -565,23 +566,6 @@ const App = () => {
               </>
             )}
           </div>
-            
-          {/* System Controls (floating top-right - VSM when navigating, End Session always */}
-          {isLoggedIn && !isLoggingOut && (
-            <div className="system-controls">
-              {currentView?.id !== 'VSM' && (
-                <button onClick={() => resetToView('VSM')} className="action-bar-button">
-                  <span className="glyph">◫</span>
-                  <span className="label-text">VSM</span>
-                </button>
-              )}
-
-              <button onClick={handleLogout} className="action-bar-button" style={{ marginLeft: 'auto' }}>
-                <span className="glyph">🞪</span>
-                <span className="label-text">End Session</span>
-              </button>
-            </div>
-          )}
           
           {/* Telemetry footer */}
           <div className="telemetry-footer">

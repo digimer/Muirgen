@@ -8,7 +8,7 @@ const VesselManagement = ({ vessels, onView, onModify, onRegister }) => {
   const sortedVessels = [...vessels].sort((a, b) => a.name.localeCompare(b.name));
   
   return (
-    <div className="management-container">
+    <div className="management-container vsm-dashboard">
      <div className="task-header-wrapper">
         <h2 className="flicker">VSM // Vessel Index</h2>
       </div>

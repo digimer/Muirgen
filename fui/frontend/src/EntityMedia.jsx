@@ -71,6 +71,15 @@ const EntityMedia = ({ entityId, referenceTable, mode = 'file' }) => {
     setStagedFiles(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
+  // Allow renaming files in the queue. 
+  // This creates a new File pointer without duplicating the raw image data in memory.
+  const handleRename = (indexToRename, newName) => {
+    setStagedFiles(prev => prev.map((file, index) => {
+      if (index !== indexToRename) return file;
+      return new File([file], newName, { type: file.type });
+    }));
+  };
+
   // Helper to check if a staged file shares a name with an already uploaded file. This checks against files
   // that will be converted using the target name as they'll become post-processing.
   const isDuplicate = (fileName) => {
@@ -196,7 +205,7 @@ const EntityMedia = ({ entityId, referenceTable, mode = 'file' }) => {
   );
 
   return (
-    <div className="entity-media-container">
+    <div>
       {/* Upload bar */}
       <div className="action-bar-container action-bar-container-top">
         <div className="action-group-horizontal">
@@ -232,7 +241,15 @@ const EntityMedia = ({ entityId, referenceTable, mode = 'file' }) => {
                       </>
                     ) : (
                       <>
-                        <span className="staging-queue-filename valid">{file.name} ({formatSize(file.size)})</span>
+                        <div className="staging-queue-filename valid">
+                          <input 
+                            type="text" 
+                            value={file.name}
+                            onChange={(e) => handleRename(index, e.target.value)}
+                            className="staging-queue-filename-name"
+                          />
+                          <span className="staging-queue-filename-edit">({formatSize(file.size)})</span>
+                        </div>
                         <div className="staging-queue-actions">
                           <span className="staging-queue-action-text valid" onClick={() => removeStagedFile(index)}>Reject</span>
                           <span className="staging-queue-action-glyph valid" onClick={() => removeStagedFile(index)}>⬎</span>

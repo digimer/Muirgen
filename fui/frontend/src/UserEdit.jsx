@@ -12,9 +12,9 @@ import EntityNotes from './EntityNotes.jsx';
 const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, activeVessel, vessels, jumpToNoteId }) => {
   const { triggerHddLed }       = useSystemStatus();
   const [formData, setFormData] = useState({
-    userHandle: user?.handle || '',
-    userName: user?.name || '',
-    userIsAdmin: user?.is_admin || false,
+    userHandle:     user?.handle      || '',
+    userName:       user?.name        || '',
+    userIsAdmin:    user?.is_admin    || false,
     userVesselUuid: user?.vessel_uuid || activeVessel?.uuid || 'Unassigned' 
   });
   const [passwordData, setPasswordData] = useState({
@@ -22,10 +22,10 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
     currentPasswordConfirm: '',
     existingPasswordVerification: ''
   });
-  const [error, setError]                             = useState(null);
-  const [saveMessage, setSaveMessage]                 = useState(null);
-  const [activeTab, setActiveTab]                     = useLocalStorageState('user_edit_active_tab', 'profile');
-  const [isConfirmingAction, setIsConfirmingAction]   = useState(false);
+  const [error, setError]                           = useState(null);
+  const [saveMessage, setSaveMessage]               = useState(null);
+  const [activeTab, setActiveTab]                   = useLocalStorageState('user_edit_active_tab', 'profile');
+  const [isConfirmingAction, setIsConfirmingAction] = useState(false);
 
   // Determine permissions context
   const activeSessionUuid = localStorage.getItem('muirgen_user_uuid');
@@ -112,7 +112,7 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
         
         // Show the success ribbon locally
         setSaveMessage('Operator Profile Saved.');
-        setTimeout(() => setSaveMessage(null), 3000);
+        setTimeout(() => setSaveMessage(null), 6000);
         
         // Tell App.jsx it worked, so it can give us an active UUID if we're a new user
         if (onSaveSuccess) onSaveSuccess(data.uuid || user?.uuid);
@@ -197,12 +197,6 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
           <span className="tab-icon glyph-logs">⧉</span>
           <button type="button" className="tab-button">Logs</button>
         </div>
-      </div>
-
-      {/* Fixed-Height Status Banner */}
-      <div className="tab-banner-container">
-        {error && <div className="tab-banner error">{error}</div>}
-        {saveMessage && <div className="tab-banner success">{saveMessage}</div>}
       </div>
 
       <div className="panel-body">
@@ -298,28 +292,28 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
 
           </form>
         )}
-      </div>
 
-      {/* Optics (images) tab */}
-      {activeTab === 'optics' && (
-        <EntityMedia entityId={user?.uuid} referenceTable="users" mode="image" />
-      )}
-      {/* Data (files) tab */}
-      {activeTab === 'data' && (
-        <EntityMedia entityId={user?.uuid} referenceTable="users" mode="file" />
-      )}
-      {/* Logs (notes) tab */}
-      {activeTab === 'logs' && (
-        <EntityNotes 
-          entityId={user?.uuid} 
-          referenceTable="users" 
-          allowedCategories={userCategories} 
-          deepLinkNoteId={jumpToNoteId} 
-          onExitEdit={(noteId) => {
-             if (onCancel) onCancel(noteId);
-          }}
-        />
-      )}
+        {/* Optics (images) tab */}
+        {activeTab === 'optics' && (
+          <EntityMedia entityId={user?.uuid} referenceTable="users" mode="image" />
+        )}
+        {/* Data (files) tab */}
+        {activeTab === 'data' && (
+          <EntityMedia entityId={user?.uuid} referenceTable="users" mode="file" />
+        )}
+        {/* Logs (notes) tab */}
+        {activeTab === 'logs' && (
+          <EntityNotes 
+            entityId={user?.uuid} 
+            referenceTable="users" 
+            allowedCategories={userCategories} 
+            deepLinkNoteId={jumpToNoteId} 
+            onExitEdit={(noteId) => {
+              if (onCancel) onCancel(noteId);
+            }}
+          />
+        )}
+      </div>
       
       {/* Pinned Footer */}
       <div className="panel-footer">
@@ -350,6 +344,12 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
         <button type="button" className="touch-button action-submit-button" disabled={!isFormValid} onClick={handleSubmit}>
           {user?.uuid ? 'Update' : 'Register'}
         </button>
+      </div>
+
+      {/* Fixed-Height Status Banner */}
+      <div className="tab-banner-container">
+        {error && <div className="tab-banner error">{error}</div>}
+        {saveMessage && <div className="tab-banner success">{saveMessage}</div>}
       </div>
     </div>
   );

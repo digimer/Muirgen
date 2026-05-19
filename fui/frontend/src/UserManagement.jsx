@@ -8,7 +8,7 @@ const UserManagement = ({ users, onView, onModify, onRegister }) => {
   const sortedUsers = [...users].sort((a, b) => a.handle.localeCompare(b.handle));
   
   return (
-    <div className="management-container">
+    <div className="management-container vsm-dashboard">
       <div className="task-header-wrapper">
         <h2 className="flicker">VSM // Operator Index</h2>
       </div>
