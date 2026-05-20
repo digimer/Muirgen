@@ -4,10 +4,11 @@ import { useLocalStorageState, useSystemStatus } from './utils/hooks.js';
 import EntityMedia from './EntityMedia.jsx';
 import EntityNotes from './EntityNotes.jsx';
 
-const BatteryEdit = ({ battery, activeVessel, onCancel, onComplete, onSaveSuccess, jumpToNoteId }) => {
+const BatteryEdit = ({ battery, activeVessel, vessels, onCancel, onComplete, onSaveSuccess, jumpToNoteId }) => {
   const { triggerHddLed } = useSystemStatus();
   
-  const [formData, setFormData] = useState({
+  const storageKey = battery?.uuid ? `battery_edit_${battery.uuid}` : 'battery_edit_new';
+  const [formData, setFormData] = useLocalStorageState(storageKey, {
     name:            battery?.name            || '',
     make:            battery?.make            || '',
     model:           battery?.model           || '',
@@ -35,20 +36,26 @@ const BatteryEdit = ({ battery, activeVessel, onCancel, onComplete, onSaveSucces
   useEffect(() => {
     const handleKeyUp = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'Escape' && onCancel) onCancel();
+      if (e.key === 'Escape' && onCancel) {
+        localStorage.removeItem(storageKey);
+        onCancel();
+      }
     };
     window.addEventListener('keyup', handleKeyUp);
     return () => window.removeEventListener('keyup', handleKeyUp);
-  }, [onCancel]);
+  }, [onCancel, storageKey]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     
     try {
-      const requestBody = { ...formData, is_active: true };
-      const url         = battery?.uuid ? `/api/batteries/${battery.uuid}/update` : '/api/batteries/create';
-      
+      const requestBody = { 
+        ...formData, 
+        vessel_uuid: formData.vessel_uuid || activeVessel?.uuid || activeVessel?.vesselUuid, 
+        is_active: true 
+      };
+      const url = battery?.uuid ? `/api/batteries/${battery.uuid}/update` : '/api/batteries/create';
       const res = await apiFetch(url, {
         method: 'POST',
         body: JSON.stringify(requestBody)
@@ -57,6 +64,8 @@ const BatteryEdit = ({ battery, activeVessel, onCancel, onComplete, onSaveSucces
       if (res.ok) {
         const data = await res.json();
         triggerHddLed(250);
+        // Clear the cached form data
+        localStorage.removeItem(storageKey);
         setSaveMessage('Battery Profile Saved.');
         setTimeout(() => setSaveMessage(null), 6000);
         
@@ -79,6 +88,7 @@ const BatteryEdit = ({ battery, activeVessel, onCancel, onComplete, onSaveSucces
       const res = await apiFetch(`/api/batteries/${battery.uuid}/delete`, { method: 'POST' });
       if (res.ok) {
         setIsConfirmingAction(false);
+        localStorage.removeItem(storageKey);
         onComplete();
       } else {
         const data = await res.json();
@@ -180,7 +190,9 @@ const BatteryEdit = ({ battery, activeVessel, onCancel, onComplete, onSaveSucces
                 <span className="cursor-prompt">◺</span>
                 <label>Label Capacity</label>
               </div>
-              <input type="number" step="0.1" value={formData.capacity} onBlur={e => {
+              <input type="number" step="0.1" value={formData.capacity} 
+              onChange={e => setFormData({ ...formData, capacity: e.target.value })}
+              onBlur={e => {
                 const newCap = e.target.value;
                 setFormData(prev => ({
                   ...prev,
@@ -194,9 +206,24 @@ const BatteryEdit = ({ battery, activeVessel, onCancel, onComplete, onSaveSucces
             <div className="field-group">
               <div className="setup-field-header">
                 <span className="cursor-prompt">◺</span>
-                <label>Last Tested Capacity</label>
+                <label>Assigned Vessel</label>
               </div>
-              <input type="number" step="0.1" value={formData.last_capacity} onChange={e => setFormData({ ...formData, last_capacity: e.target.value })} required />
+              {vessels && vessels.length > 1 ? (
+                <select 
+                  value={formData.vessel_uuid || activeVessel?.uuid || activeVessel?.vesselUuid || ''} 
+                  onChange={(e) => setFormData({ ...formData, vessel_uuid: e.target.value })}
+                  className="setup-input-select"
+                >
+                  {vessels.map(v => (
+                    <option key={v.uuid} value={v.uuid}>{v.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <input type="text" value={activeVessel?.name || activeVessel?.vesselName || 'Loading...'} disabled className="disabled-input" />
+                  <span className="soft-text operator-subtitles">Single Vessel; Auto-Assigned</span>
+                </>
+              )}
             </div>
           </form>
         )}

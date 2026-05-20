@@ -183,8 +183,9 @@ const App = () => {
   // Get the list of batteries.
   const fetchBatteryData = useCallback(async () => {
     try {
-      if (vessel?.uuid) {
-        const res = await apiFetch(`/api/batteries/${vessel.uuid}/list`);
+      const vesselUuid = vessel?.uuid || vessel?.vesselUuid;
+      if (vesselUuid) {
+        const res = await apiFetch(`/api/batteries/${vesselUuid}/list`);
         if (res.ok) {
           const data = await res.json();
           setAllBatteries(data);
@@ -193,14 +194,15 @@ const App = () => {
     } catch (err) {
       console.error('Battery fetch error:', err);
     }
-  }, [vessel?.uuid]);
+  }, [vessel]);
 
   // Where are we?
   useEffect(() => {
     if (currentView?.id === 'VESSEL_MANAGEMENT' || 
         currentView?.id === 'VESSEL_EDIT'       || 
         currentView?.id === 'VESSEL_PROFILE'    ||
-        currentView?.id === 'USER_EDIT') {
+        currentView?.id === 'USER_EDIT'         ||
+        currentView?.id === 'BATTERY_EDIT') {
       fetchManagementData();
     }
     if (currentView?.id === 'USER_MANAGEMENT' || currentView?.id === 'USER_EDIT' || currentView?.id === 'USER_PROFILE') {
@@ -668,6 +670,7 @@ const App = () => {
                   <BatteryEdit 
                     battery={currentView.context}
                     activeVessel={vessel}
+                    vessels={allVessels}
                     jumpToNoteId={currentView.noteTarget}
                     onSaveSuccess={(newUuid) => {
                       fetchBatteryData();
