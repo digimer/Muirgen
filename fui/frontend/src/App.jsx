@@ -11,18 +11,21 @@ import VesselRegistration from './VesselRegistration';
 import UserEdit from './UserEdit';
 import UserManagement from './UserManagement';
 import EntityViewer from './EntityViewer.jsx';
+import BatteryEdit from './BatteryEdit';
+import BatteryManagement from './BatteryManagement.jsx';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
   const [viewStack, setViewStack] = useState([
     { id: 'VSM', context: null, list: [], index: 0, noteTarget: null }
   ]);
-  const [allVessels, setAllVessels]   = useState([]);
-  const [allUsers, setAllUsers]       = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [displayTime, setDisplayTime] = useState('Acquiring Time Source...');
-  const [dbData, setDbData]           = useState({ status: 'Connecting...', serverTime: '' });
-  const hasRestoredSession            = useRef(false);
+  const [allVessels, setAllVessels]       = useState([]);
+  const [allUsers, setAllUsers]           = useState([]);
+  const [allBatteries, setAllBatteries]   = useState([]);
+  const [currentUser, setCurrentUser]     = useState(null);
+  const [displayTime, setDisplayTime]     = useState('Acquiring Time Source...');
+  const [dbData, setDbData]               = useState({ status: 'Connecting...', serverTime: '' });
+  const hasRestoredSession                = useRef(false);
   // We need to make sure that isLoggingOut always reflects the current value, and isn't cached.
   const [isLoggingOut, setIsLoggingOut]   = useState(false);
   const isLoggingOutRef                   = useRef(false);
@@ -177,6 +180,21 @@ const App = () => {
     }
   }, []);
 
+  // Get the list of batteries.
+  const fetchBatteryData = useCallback(async () => {
+    try {
+      if (vessel?.uuid) {
+        const res = await apiFetch(`/api/batteries/${vessel.uuid}/list`);
+        if (res.ok) {
+          const data = await res.json();
+          setAllBatteries(data);
+        }
+      }
+    } catch (err) {
+      console.error('Battery fetch error:', err);
+    }
+  }, [vessel?.uuid]);
+
   // Where are we?
   useEffect(() => {
     if (currentView?.id === 'VESSEL_MANAGEMENT' || 
@@ -188,13 +206,41 @@ const App = () => {
     if (currentView?.id === 'USER_MANAGEMENT' || currentView?.id === 'USER_EDIT' || currentView?.id === 'USER_PROFILE') {
       fetchUserManagementData();
     }
+    if (currentView?.id === 'BATTERY_MANAGEMENT' || currentView?.id === 'BATTERY_EDIT' || currentView?.id === 'BATTERY_PROFILE') {
+      fetchBatteryData();
+    }
   }, [currentView?.id, fetchManagementData, fetchUserManagementData]);
   
   // Refresh ViewContext with live data if we are editing.
   useEffect(() => {
     // We only refresh context if there's a valid ID and context to refresh!
     if (!currentView || !currentView.context) return;
-     
+    
+    // Battery pages
+    if (currentView?.id === 'BATTERY_EDIT' && allBatteries.length > 0) {
+      const freshBattery = allBatteries.find(b => b.uuid === currentView.context.uuid);
+      if (freshBattery && JSON.stringify(freshBattery) !== JSON.stringify(currentView.context)) {
+        setViewStack(prev => {
+          const newStack = [...prev];
+          newStack[newStack.length - 1].context = freshBattery;
+          return newStack;
+        });
+      }
+    }
+
+    // User pages
+    if (currentView?.id === 'USER_EDIT' && allUsers.length > 0) {
+      const freshUser = allUsers.find(u => u.uuid === currentView.context.uuid);
+      if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(currentView.context)) {
+        setViewStack(prev => {
+          const newStack = [...prev];
+          newStack[newStack.length - 1].context = freshUser;
+          return newStack;
+        });
+      }
+    }
+
+    // Vessel pages
     if (currentView?.id === 'VESSEL_EDIT' && allVessels.length > 0) {
       // Find the updated version of the vessel we're editing.
       const freshVessel = allVessels.find(v => v.uuid === currentView.context.uuid);
@@ -210,16 +256,6 @@ const App = () => {
       }
     }
     
-    if (currentView?.id === 'USER_EDIT' && allUsers.length > 0) {
-      const freshUser = allUsers.find(u => u.uuid === currentView.context.uuid);
-      if (freshUser && JSON.stringify(freshUser) !== JSON.stringify(currentView.context)) {
-        setViewStack(prev => {
-          const newStack = [...prev];
-          newStack[newStack.length - 1].context = freshUser;
-          return newStack;
-        });
-      }
-    }
     // Note: We don't need the other reload interceptors for VESSEL_PROFILE and USER_PROFILE anymore, 
     // because with the ViewStack, the full list context is persisted automatically in localStorage! 
   }, [allVessels, allUsers, currentView]);
@@ -563,6 +599,95 @@ const App = () => {
                     }}
                   />
                 )}
+
+                {/* The battery views */}
+                {currentView?.id === 'BATTERY_MANAGEMENT' && (
+                  <BatteryManagement 
+                    batteries={allBatteries}
+                    onView={(batteryList, batteryIndex) => {
+                      pushView('BATTERY_PROFILE', batteryList[batteryIndex], batteryList, batteryIndex);
+                    }}
+                    onModify={(battery) => {
+                      localStorage.removeItem('battery_edit_active_tab');
+                      pushView('BATTERY_EDIT', battery);
+                    }}
+                    onRegister={() => {
+                      localStorage.removeItem('battery_edit_active_tab')
+                      pushView('BATTERY_EDIT', null);
+                    }}
+                  />
+                )}
+
+                {currentView?.id === 'BATTERY_PROFILE' && currentView.list?.length > 0 && (
+                  <EntityViewer
+                    entities={currentView.list}
+                    initialIndex={currentView.index}
+                    referenceTable="batteries"
+                    jumpToNoteId={currentView.noteTarget} 
+                    onOptics={(entity) => {
+                      pushView('BATTERY_EDIT', entity, [], 0, 'optics');
+                    }}
+                    onEdit={(entity) => {
+                      localStorage.removeItem('battery_edit_active_tab');
+                      pushView('BATTERY_EDIT', entity);
+                    }}
+                    onAddNote={(entity) => {
+                      pushView('BATTERY_EDIT', entity, [], 0, 'new');
+                    }}
+                    onClose={() => popView()}
+                    onNoteSelect={(noteId) => {
+                      pushView('BATTERY_EDIT', currentView.list[currentView.index], [], 0, noteId);
+                    }}
+                  >
+                    {(entity) => (
+                      <>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Name</div>
+                          <div className="telemetry-value">{entity.name}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Capacity</div>
+                          <div className="telemetry-value">{entity.nominal_voltage} VDC, {entity.capacity} Ah</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Chemistry</div>
+                          <div className="telemetry-value">{entity.chemistry}</div>
+                        </div>
+                        <div className="telemetry-block">
+                          <div className="telemetry-label">Status</div>
+                          <div className={`telemetry-value ${entity.is_active ? 'entity-status-active' : 'entity-status-inactive'}`}>
+                            {entity.is_active ? 'Active' : 'Inactive'}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </EntityViewer>
+                )}
+
+                {currentView?.id === 'BATTERY_EDIT' && (
+                  <BatteryEdit 
+                    battery={currentView.context}
+                    activeVessel={vessel}
+                    jumpToNoteId={currentView.noteTarget}
+                    onSaveSuccess={(newUuid) => {
+                      fetchBatteryData();
+                      if (!currentView.context) {
+                        setViewStack(prev => {
+                          const newStack = [...prev];
+                          newStack[newStack.length - 1].context = { uuid: newUuid };
+                          return newStack;
+                        });
+                      }
+                    }}
+                    onComplete={() => {
+                      fetchBatteryData(); 
+                      popView();
+                    }}
+                    onCancel={(cancelNoteId) => {
+                      popView(typeof cancelNoteId === 'string' ? cancelNoteId : null);
+                    }}
+                  />
+                  )}
               </>
             )}
           </div>

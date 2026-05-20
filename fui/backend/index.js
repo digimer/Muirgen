@@ -186,6 +186,81 @@ app.get('/api/auth/session-sync', async (req, res) => {
 });
 
 /* *********************************************************************************************************/
+/* Battery Management Endpoints                                                                            */
+/* *********************************************************************************************************/
+
+// List all batteries for the active vessel
+app.get('/api/batteries/:vessel_uuid/list', authenticateToken, async (req, res) => {
+  try {
+    const vesselUuid = req.params.vessel_uuid;
+    const result     = await pool.query('SELECT * FROM batteries WHERE vessel_uuid = $1 ORDER BY name ASC;', [vesselUuid]);
+    res.json(result.rows);
+  }
+  catch (err) {
+    res.status(500).json({ error: `Battery load failed. Error: [${err.message}]` });
+  }
+});
+
+// Register a new battery
+app.post('/api/batteries/create', authenticateToken, async (req, res) => {
+  const { vessel_uuid, name, make, model, serial_number, nominal_voltage, capacity, last_capacity, chemistry } = req.body;
+  try {
+    const existing = await pool.query('SELECT uuid FROM batteries WHERE name = $1;', [name]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ error: "Dupplicate: Battery names must be unique." });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO batteries (vessel_uuid, name, make, model, serial_number, nominal_voltage, capacity, last_capacity, chemistry, is_active) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE) RETURNING uuid;`,
+      [vessel_uuid, name, make, model, serial_number, parseFloat(nominal_voltage), parseFloat(capacity), parseFloat(last_capacity), chemistry]
+    );
+
+    await auditLog(pool, vessel_uuid, req.user.uuid, 'Battery::Create', `Operator: [${req.user.handle}] registered battery: [${name}].`);
+    res.json({ success: true, uuid: result.rows[0].uuid });
+  } catch (err) {
+    res.status(500).json({ error: `Database transaction failed. Error: [${err.message}]` });
+  }
+});
+
+// Update a battery record
+app.post('/api/batteries/:uuid/update', authenticateToken, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  const { name, make, model, serial_number, nominal_voltage, capacity, last_capacity, chemistry, is_active } = req.body;
+  
+  try {
+    const batteryCheck = await pool.query('SELECT vessel_uuid, name FROM batteries WHERE uuid = $1;', [targetUuid]);
+    if (batteryCheck.rows.length === 0) return res.status(404).json({ error: "Update Failed: Battery not found." });
+    
+    await pool.query(
+      `UPDATE batteries SET name = $1, make = $2, model = $3, serial_number = $4, nominal_voltage = $5, capacity = $6, last_capacity = $7, chemistry = $8, is_active = $9 WHERE uuid = $10;`,
+      [name, make, model, serial_number, parseFloat(nominal_voltage), parseFloat(capacity), parseFloat(last_capacity), chemistry, is_active, targetUuid]
+    );
+    
+    await auditLog(pool, batteryCheck.rows[0].vessel_uuid, req.user.uuid, 'Battery::Update', `Operator: [${req.user.handle}] updated the battery: [${name}].`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: `Battery Update Failed. Error: ${err.message}` });
+  }
+});
+
+// Deactivate a battery
+app.post('/api/batteries/:uuid/delete', authenticateToken, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  try {
+    const batteryCheck = await pool.query('SELECT vessel_uuid, name FROM batteries WHERE uuid = $1;', [targetUuid]);
+    if (batteryCheck.rows.length === 0) return res.status(404).json({ error: "Deactivation Failed: Battery not found." });
+    
+    await pool.query('UPDATE batteries SET is_active = FALSE WHERE uuid = $1;', [targetUuid]);
+    
+    await auditLog(pool, batteryCheck.rows[0].vessel_uuid, req.user.uuid, 'Battery::Deactivation', `Operator: [${req.user.handle}] deactivated battery: [${batteryCheck.rows[0].name}].`);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: `Battery Deactivation Failed: ${err.message}` });
+  }
+});
+
+/* *********************************************************************************************************/
 /* File Management Endpoints                                                                               */
 /* *********************************************************************************************************/
 
