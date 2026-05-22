@@ -22,11 +22,19 @@ async fn main() -> Result<(), sqlx::Error> {
     // Database connection string.
     let db_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be defined in the .env file.");
+
     // NMEA2000 (CAN bus) network interface. Note that though it's usually 
     // can0, be do not default to it. If this is missing, the .env needs 
     // review by the user.
     let n2k_device = env::var("N2K_DEV")
         .expect("N2K_DEV must be defined in the .env file. Hint: Usualled 'can0'.");
+
+    // Make sure we have a UUID for the vessel (we'll validate it after the DB
+    // comes up)
+    let vessel_uuid = env::var("VESSEL_UUID")
+        .expect("VESSEL_UUID must be set to the host vessel's 'vessel_uuid'.");
+    
+    // TODO: Verify the vessel_uuid is a valid UUID..
 
     println!("Accessing central database... ");
 
@@ -44,8 +52,12 @@ async fn main() -> Result<(), sqlx::Error> {
     };
     println!("Access granted.");
 
+    // TODO: Verify that the vessel_uuid maps to a vessel and that it is active.
+
     // Connect to the NMEA2000 network interface
     println!("Binding to the NMEA2000 hardware interface: [{}]... ", n2k_device);
+
+    // TODO: Verify the interface is UP.
 
     // Open the socket asynchronously
     let mut socket = match CanSocket::open(&n2k_device) {
@@ -58,7 +70,7 @@ async fn main() -> Result<(), sqlx::Error> {
     println!("Success. Ready to process NMEA2000 PGNs.");
 
     // Enter the infinite listener loop.
-    while let Some(Ok(frame)) = socket.next().await {
+    while let Some(result) = socket.next().await {
         match result {
             Ok(frame) => {
                 // Make sure this is an NMEA2000 extended 29-bit CAN frame
@@ -91,9 +103,6 @@ async fn main() -> Result<(), sqlx::Error> {
                 std::process::exit(1);
             }
         }
-        // DEBUG: Stream the PGNs to STDOUT
-        //println!("PGN Frame: [{:?}]", frame);
-
     }
 
     Ok(())

@@ -171,6 +171,79 @@ CREATE TRIGGER trigger_users
     AFTER INSERT OR UPDATE ON users
     FOR EACH ROW EXECUTE PROCEDURE history_users();
 
+-- Alarms: These are various criticality alarms to show on the FUI. 
+CREATE TABLE alarms (
+        uuid             uuid           default uuidv7()    not null,
+        vessel_uuid      uuid                               not null,
+        user_uuid        uuid,                                        -- This tracks the user that set, cleared or otherwise altered the alarm.
+        title            text                               not null, -- Short title / name for the alarm. ie: "BILGE HIGH WATER", "TRACTION PACK x LOW", etc
+        description      text                               not null, -- Free-form description of the alarm.
+        level            smallint       default 1           not null, -- This is the alert level. The higher the number, the more urgent the alarm. 1 = Minor / maintenance, 2 = Urgent but not critical, 3 = Critical / time sensitive, 4 = LIFE CRTIICAL (use very sparingly, must be extremely urgent)
+        is_active        boolean        default TRUE        not null, -- Setting this to FALSE marks the alarm as cleared.
+        modified_date    timestamptz    default now()       not null, 
+
+        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY(user_uuid) REFERENCES users(uuid),
+        PRIMARY KEY(uuid)
+);
+ALTER TABLE alarms OWNER TO admin;
+
+CREATE TABLE history.alarms (
+        history_id       bigint GENERATED ALWAYS AS IDENTITY,
+        action_type      text,
+        uuid             uuid,
+        vessel_uuid      uuid,
+        user_uuid        uuid,
+        title            text,
+        description      text,
+        level            smallint,
+        is_active        boolean, 
+        modified_date    timestamptz
+);
+ALTER TABLE history.alarms OWNER TO admin;
+
+-- This VIEW makes it quite to show on the UI which alarms are active
+CREATE OR REPLACE VIEW current_alarms AS 
+  SELECT title, description, level 
+  FROM alarms 
+  WHERE is_active = TRUE;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE TRIGGER update_alarms_modtime
+    BEFORE UPDATE ON alarms
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+
+CREATE OR REPLACE FUNCTION history_alarms() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.alarms (
+        action_type, 
+        uuid, 
+        vessel_uuid, 
+        user_uuid,
+        title,
+        description,
+        level,
+        is_active, 
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.user_uuid,
+        NEW.title,
+        NEW.description,
+        NEW.level,
+        NEW.is_active, 
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_alarms() OWNER TO admin;
+
+CREATE TRIGGER trigger_alarms
+    AFTER INSERT OR UPDATE ON alarms
+    FOR EACH ROW EXECUTE PROCEDURE history_alarms();
+
 -- Crew (separate from users, this does not allow them to use the UI!). 
 CREATE TABLE crew (
         uuid             uuid           default uuidv7()    not null,
@@ -188,6 +261,69 @@ CREATE TABLE crew (
         PRIMARY KEY(uuid)
 );
 ALTER TABLE crew OWNER TO admin;
+
+CREATE TABLE history.crew (
+        history_id       bigint GENERATED ALWAYS AS IDENTITY,
+        action_type      text,
+        uuid             uuid,
+        vessel_uuid      uuid,
+        user_uuid        uuid,
+        name             text,
+        position         text,
+        contact_info     text,
+        disembarked      timestamptz,
+        is_active        boolean, 
+        modified_date    timestamptz
+);
+ALTER TABLE history.crew OWNER TO admin;
+
+-- This VIEW makes it quite to show on the UI who is actively onboard.
+CREATE OR REPLACE VIEW current_crew_onboard AS 
+  SELECT name, position, contact_info 
+  FROM crew 
+  WHERE disembarked IS NULL AND is_active = TRUE;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE TRIGGER update_crew_modtime
+    BEFORE UPDATE ON crew
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+
+CREATE OR REPLACE FUNCTION history_crew() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.crew (
+        action_type, 
+        uuid, 
+        vessel_uuid, 
+        user_uuid,
+        name,
+        position,
+        contact_info,
+        disembarked,
+        is_active, 
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.user_uuid,
+        NEW.name,
+        NEW.position,
+        NEW.contact_info,
+        NEW.disembarked,
+        NEW.is_active, 
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_crew() OWNER TO admin;
+
+CREATE TRIGGER trigger_crew
+    AFTER INSERT OR UPDATE ON crew
+    FOR EACH ROW EXECUTE PROCEDURE history_crew();
+
+
+
+
 
 CREATE TABLE history.crew (
         history_id       bigint GENERATED ALWAYS AS IDENTITY,
