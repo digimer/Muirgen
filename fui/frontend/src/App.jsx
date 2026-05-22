@@ -183,9 +183,8 @@ const App = () => {
   // Get the list of batteries.
   const fetchBatteryData = useCallback(async () => {
     try {
-      const vesselUuid = vessel?.uuid || vessel?.vesselUuid;
-      if (vesselUuid) {
-        const res = await apiFetch(`/api/batteries/${vesselUuid}/list`);
+      if (vessel?.uuid) {
+        const res = await apiFetch(`/api/batteries/${vessel.uuid}/list`);
         if (res.ok) {
           const data = await res.json();
           setAllBatteries(data);
@@ -406,13 +405,13 @@ const App = () => {
                 {/* The main / initial page. For now, it's a simple data box */}
                 {currentView?.id === 'VSM' && vessel && (
                   <>
-                    <h3 className="step-title">◫ Vessel Status Monitor // {vessel.vesselName || 'Loading...'}</h3>
-                    <p>Flag Nation: {vessel.vesselFlagNation || 'Loading...'}</p>
-                    <p>Home Port: {vessel.vesselPortOfRegistry || 'Loading...'}</p>
-                    <p>Build Details: {vessel.vesselBuildDetails || 'Loading...'}</p>
-                    <p>Official Number: {vessel.vesselOfficialNumber || 'Loading...'}</p>
-                    <p>Hull ID Number: {vessel.vesselHullIdentificationNumber || 'Loading...'}</p>
-                    <p>Database UUID: {vessel.vesselUuid || 'Loading...'}</p>
+                    <h3 className="step-title">◫ Vessel Status Monitor // {vessel.name || 'Loading...'}</h3>
+                    <p>Flag Nation: {vessel.flag_nation || 'Loading...'}</p>
+                    <p>Home Port: {vessel.port_of_registry || 'Loading...'}</p>
+                    <p>Build Details: {vessel.build_details || 'Loading...'}</p>
+                    <p>Official Number: {vessel.official_number || 'Loading...'}</p>
+                    <p>Hull ID Number: {vessel.hull_id_number || 'Loading...'}</p>
+                    <p>Database UUID: {vessel.uuid || 'Loading...'}</p>
                   </>
                 )}
                 

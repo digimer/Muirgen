@@ -2,14 +2,14 @@ import { useState } from 'react';
         
 const VesselSetup = ({ onComplete }) => {
   const [formData, setFormData] = useState({
-    vesselName: '', 
-    vesselOfficialNumber: '', 
-    vesselFlagNation: '',
-    vesselPortOfRegistry: '',
-    vesselBuildDetails: '',
-    vesselHullIdentificationNumber: '', 
-    vesselKeelOffset: 0, 
-    vesselWaterlineOffset: 0
+    name: '', 
+    official_number: '', 
+    flag_nation: '',
+    port_of_registry: '',
+    build_details: '',
+    hull_id_number: '', 
+    keel_offset_cm: 0, 
+    waterline_offset_cm: 0
   });
   
   const [status, setStatus] = useState({ type: '', message: '' });
@@ -47,14 +47,14 @@ const VesselSetup = ({ onComplete }) => {
   
   // Enable the submit button when all fields have data.
   const isFormValid = 
-    (formData.vesselName?.trim?.()                     ?? '') !== '' && 
-    (formData.vesselOfficialNumber?.trim?.()           ?? '') !== '' && 
-    (formData.vesselFlagNation?.trim?.()               ?? '') !== '' && 
-    (formData.vesselPortOfRegistry?.trim?.()           ?? '') !== '' && 
-    (formData.vesselBuildDetails?.trim?.()             ?? '') !== '' && 
-    (formData.vesselHullIdentificationNumber?.trim?.() ?? '') !== '' && 
-    formData.vesselKeelOffset                                 !== 0  && 
-    formData.vesselWaterlineOffset                            !== 0;
+    (formData.name?.trim?.()             ?? '') !== '' && 
+    (formData.official_number?.trim?.()  ?? '') !== '' && 
+    (formData.flag_nation?.trim?.()      ?? '') !== '' && 
+    (formData.port_of_registry?.trim?.() ?? '') !== '' && 
+    (formData.build_details?.trim?.()    ?? '') !== '' && 
+    (formData.hull_id_number?.trim?.()   ?? '') !== '' && 
+    formData.keel_offset_cm                     !== 0  && 
+    formData.waterline_offset_cm                !== 0;
  
   return (
     <>
@@ -76,124 +76,124 @@ const VesselSetup = ({ onComplete }) => {
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselName">
+            <label htmlFor="name">
               <span className="label-text">Vessel Name</span>
             </label>
           </div>
           <input type="text"
-            id="vesselName"
+            id="name"
             autoComplete="off"
-            value={formData.vesselName} 
-            onChange={e => setFormData({...formData, vesselName: e.target.value})} 
+            value={formData.name} 
+            onChange={e => setFormData({...formData, name: e.target.value})} 
             required 
           />
         </div>
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselOfficialNumber">
+            <label htmlFor="official_number">
               <span className="label-text">Official Number</span>
             </label>
           </div>
           <input type="text" 
-            id="vesselOfficialNumber"
+            id="official_number"
             autoComplete="off"
-            value={formData.vesselOfficialNumber} 
-            onChange={e => setFormData({...formData, vesselOfficialNumber: e.target.value})} 
+            value={formData.official_number} 
+            onChange={e => setFormData({...formData, official_number: e.target.value})} 
             required 
           />
         </div>
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselFlagNation">
+            <label htmlFor="flag_nation">
               <span className="label-text">Flag Nation</span>
             </label>
           </div>
           <input type="text" 
-            id="vesselFlagNation"
+            id="flag_nation"
             autoComplete="off"
-            value={formData.vesselFlagNation} 
-            onChange={e => setFormData({...formData, vesselFlagNation: e.target.value})} 
+            value={formData.flag_nation} 
+            onChange={e => setFormData({...formData, flag_nation: e.target.value})} 
             required 
           />
         </div>
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselPortOfRegistry">
+            <label htmlFor="port_of_registry">
               <span className="label-text">Port of Registry</span>
             </label>
           </div>
           <input type="text" 
-            id="vesselPortOfRegistry"
+            id="port_of_registry"
             autoComplete="off"
-            value={formData.vesselPortOfRegistry} 
-            onChange={e => setFormData({...formData, vesselPortOfRegistry: e.target.value})} 
+            value={formData.port_of_registry} 
+            onChange={e => setFormData({...formData, port_of_registry: e.target.value})} 
             required 
           />
         </div>
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselBuildDetails">
+            <label htmlFor="build_details">
               <span className="label-text">Build Details</span>
             </label>
           </div>
           <input type="text" 
-            id="vesselBuildDetails"
+            id="build_details"
             autoComplete="off"
-            value={formData.vesselBuildDetails} 
-            onChange={e => setFormData({...formData, vesselBuildDetails: e.target.value})} 
+            value={formData.build_details} 
+            onChange={e => setFormData({...formData, build_details: e.target.value})} 
             required 
           />
         </div>
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselHullIdentificationNumber">
+            <label htmlFor="hull_id_number">
               <span className="label-text">Hull ID Number</span>
             </label>
           </div>
           <input type="text" 
-            id="vesselHullIdentificationNumber"
+            id="hull_id_number"
             autoComplete="off"
-            value={formData.vesselHullIdentificationNumber} 
-            onChange={e => setFormData({...formData, vesselHullIdentificationNumber: e.target.value})} 
+            value={formData.hull_id_number} 
+            onChange={e => setFormData({...formData, hull_id_number: e.target.value})} 
             required 
           />
         </div>
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselKeelOffset">
+            <label htmlFor="keel_offset_cm">
               <span className="label-text">Keel Offset (cm)</span>
             </label>
           </div>
           <input type="number" 
-            id="vesselKeelOffset"
+            id="keel_offset_cm"
             autoComplete="off"
             step="1" 
             inputMode="decimal"
-            value={formData.vesselKeelOffset} 
-            onChange={e => setFormData({ ...formData, vesselKeelOffset: parseInt(e.target.value) || 0 })} 
+            value={formData.keel_offset_cm} 
+            onChange={e => setFormData({ ...formData, keel_offset_cm: parseInt(e.target.value) || 0 })} 
             required 
           />
         </div>
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="vesselWaterlineOffset">
+            <label htmlFor="waterline_offset_cm">
               <span className="label-text">Waterline Offset (cm)</span>
             </label>
           </div>
           <input type="number" 
-            id="vesselWaterlineOffset"
+            id="waterline_offset_cm"
             autoComplete="off"
             step="1" 
             inputMode="decimal"
-            value={formData.vesselWaterlineOffset} 
-            onChange={e => setFormData({ ...formData, vesselWaterlineOffset: parseInt(e.target.value) || 0 })} 
+            value={formData.waterline_offset_cm} 
+            onChange={e => setFormData({ ...formData, waterline_offset_cm: parseInt(e.target.value) || 0 })} 
             required 
           />
         </div>

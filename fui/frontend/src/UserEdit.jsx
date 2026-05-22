@@ -12,10 +12,10 @@ import EntityNotes from './EntityNotes.jsx';
 const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, activeVessel, vessels, jumpToNoteId }) => {
   const { triggerHddLed }       = useSystemStatus();
   const [formData, setFormData] = useState({
-    userHandle:     user?.handle      || '',
-    userName:       user?.name        || '',
-    userIsAdmin:    user?.is_admin    || false,
-    userVesselUuid: user?.vessel_uuid || activeVessel?.uuid || 'Unassigned' 
+    handle:       user?.handle      || '',
+    name:         user?.name        || '',
+    is_admin:     user?.is_admin    || false,
+    vesssel_uuid: user?.vessel_uuid || activeVessel?.uuid || 'Unassigned' 
   });
   const [passwordData, setPasswordData] = useState({
     newPassword: '',
@@ -29,7 +29,7 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
 
   // Determine permissions context
   const activeSessionUuid = localStorage.getItem('muirgen_user_uuid');
-  const isSelf = user?.uuid === activeSessionUuid;
+  const isSelf            = user?.uuid === activeSessionUuid;
   
   // Intercept the tab routing if we are deep-linking to a note. We only want this to run once when the
   // component initially mounts!
@@ -63,7 +63,7 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
     try {
       const requestBody = {
         ...formData,
-        userIsActive: true
+        is_active: true
       };
 
       // Password handling
@@ -77,8 +77,8 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
            setError('Security: Access Codes do not match');
            return;
         }
-        requestBody.userPassword        = passwordData.newPassword;
-        requestBody.userPasswordConfirm = passwordData.currentPasswordConfirm;
+        requestBody.password        = passwordData.newPassword;
+        requestBody.password_confirm = passwordData.currentPasswordConfirm;
       } else {
         // Existing User: Did they attempt to type a new password?
         if (passwordData.newPassword) {
@@ -92,8 +92,8 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
             return;
           }
           // Attach the payload strings needed by the backend
-          requestBody.userPassword        = passwordData.newPassword;
-          requestBody.userCurrentPassword = passwordData.existingPasswordVerification;
+          requestBody.password         = passwordData.newPassword;
+          requestBody.current_password = passwordData.existingPasswordVerification;
         }
       }
 
@@ -153,8 +153,8 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
 
   // Prevent an SysOp from locking themselves out. Another SysOp needs to exist and demote a user to enable 
   // this. 
-  const isFormValid     = (formData.userHandle?.trim?.() ?? '') !== '' && (formData.userName?.trim?.() ?? '') !== '';
-  const isLastActive    = formData.userIsAdmin && activeCount <= 1;
+  const isFormValid     = (formData.handle?.trim?.() ?? '') !== '' && (formData.name?.trim?.() ?? '') !== '';
+  const isLastActive    = formData.is_admin && activeCount <= 1;
   const isLockoutActive = user?.is_active && (isLastActive || isSelf);
   let lockoutMessage    = null;
   if (isLockoutActive) {
@@ -206,27 +206,27 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
             <div className="field-group">
               <div className="setup-field-header">
                 <span className="cursor-prompt">◺</span>
-                <label htmlFor="userHandle"><span className="label-text">Handle</span></label>
+                <label htmlFor="handle"><span className="label-text">Handle</span></label>
               </div>
-              <input type="text" id="userHandle" value={formData.userHandle} onChange={(e) => setFormData({ ...formData, userHandle: e.target.value })} required />
+              <input type="text" id="handle" value={formData.handle} onChange={(e) => setFormData({ ...formData, handle: e.target.value })} required />
             </div>
             <div className="field-group">
               <div className="setup-field-header">
                 <span className="cursor-prompt">◺</span>
-                <label htmlFor="userName"><span className="label-text">Operator Name</span></label>
+                <label htmlFor="name"><span className="label-text">Operator Name</span></label>
               </div>
-              <input type="text" id="userName" value={formData.userName} onChange={(e) => setFormData({ ...formData, userName: e.target.value })} required />
+              <input type="text" id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
             </div>
             <div className="field-group">
               <div className="setup-field-header">
                 <span className="cursor-prompt">◺</span>
-                <label htmlFor="userVesselUuid"><span className="label-text">Assigned Vessel</span></label>
+                <label htmlFor="vesssel_uuid"><span className="label-text">Assigned Vessel</span></label>
               </div>
               {vessels && vessels.length > 1 ? (
                 <select 
-                  id="userVesselUuid" 
-                  value={formData.userVesselUuid} 
-                  onChange={(e) => setFormData({ ...formData, userVesselUuid: e.target.value })}
+                  id="vesssel_uuid" 
+                  value={formData.vesssel_uuid} 
+                  onChange={(e) => setFormData({ ...formData, vesssel_uuid: e.target.value })}
                   className="setup-input-select"
                 >
                   {vessels.map(v => (
@@ -235,7 +235,7 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
                 </select>
               ) : (
                 <>
-                  <input type="text" id="userVesselUuid" value={formData.userVesselUuid} disabled className="disabled-input" />
+                  <input type="text" id="vesssel_uuid" value={formData.vesssel_uuid} disabled className="disabled-input" />
                   <span className="soft-text operator-subtitles">Single Vessel; Auto-Assigned</span>
                 </>
               )}
@@ -251,7 +251,7 @@ const UserEdit = ({ user, onCancel, onComplete, onSaveSuccess, activeCount, acti
               <div style={{ marginTop: '8px' }}>
                 <label className="checkbox-container">
                   <span className="label-text strong-text">Grant SysOp</span>
-                  <input type="checkbox" checked={formData.userIsAdmin} onChange={(e) => setFormData({ ...formData, userIsAdmin: e.target.checked })} disabled={isSelf} />
+                  <input type="checkbox" checked={formData.is_admin} onChange={(e) => setFormData({ ...formData, is_admin: e.target.checked })} disabled={isSelf} />
                   <span className="retro-checkmark"></span>
                 </label>
               </div>

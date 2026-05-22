@@ -79,42 +79,42 @@ const upload = multer({
 
 // Check if the user is logged in.
 app.post('/api/auth/login', async (req, res) => {
-  const { userHandle, userPassword } = req.body;
+  const { handle, password } = req.body;
   
   try {
     // Get details about the logging in user for the audit log
     const result = await pool.query(
       'SELECT uuid, vessel_uuid, name, password_hash, is_admin FROM users WHERE is_active = TRUE AND handle = $1;', 
-      [userHandle]
+      [handle]
     );
     
     // Is the handle valid?
     if (result.rows.length === 0) {
       // Nope.
-      await auditLog(pool, null, null, 'Login::Failure', `An attempt to login as: [${userHandle}] was made, which is not a valid operator.`);
+      await auditLog(pool, null, null, 'Login::Failure', `An attempt to login as: [${handle}] was made, which is not a valid operator.`);
       return res.status(401).json({ error: "Security: Invalid Operator" });
     }
     
     const user = result.rows[0];
-    const match = await bcrypt.compare(userPassword, user.password_hash);
+    const match = await bcrypt.compare(password, user.password_hash);
     
     if (match) {
       // Create the password / token.
       const token = jwt.sign(
         { 
           uuid: user.uuid, 
-          handle: userHandle, 
+          handle: handle, 
           is_admin: user.is_admin, 
           vessel_uuid: user.vessel_uuid
         }, 
         process.env.JWT_SECRET || 'this_is_bad_fallback_key', 
         { expiresIn: '30d' } // This is more to keep sessions active than for security
       );
-      await auditLog(pool, user.vessel_uuid, user.uuid, 'Login::Success', `The operator: [${userHandle}] has successfully logged in.`);
+      await auditLog(pool, user.vessel_uuid, user.uuid, 'Login::Success', `The operator: [${handle}] has successfully logged in.`);
       res.json({ success: true, token });
     } else {
       // Bad password.
-      await auditLog(pool, null, null, 'Login::Failure', `Security: Invalid access code used for the operator: [${userHandle}]!`);
+      await auditLog(pool, null, null, 'Login::Failure', `Security: Invalid access code used for the operator: [${handle}]!`);
       res.status(401).json({ error: "Access Denied" });
     }
   } catch (err) {
@@ -142,13 +142,13 @@ app.post('/api/auth/logout', authenticateToken, async (req, res) => {
 // Check system requirements and sync active session data.
 app.get('/api/auth/session-sync', async (req, res) => {
   try {
-    const userRes = await pool.query('SELECT uuid FROM users WHERE is_active = TRUE LIMIT 1;');
+    const userRes   = await pool.query('SELECT uuid FROM users WHERE is_active = TRUE LIMIT 1;');
     const vesselRes = await pool.query('SELECT uuid FROM vessels WHERE is_active = TRUE LIMIT 1;');
     
     // Check for a passport in the headers.
     const authHeader = req.headers.authorization;
-    let loggedIn = false;
-    let userRecord = null;
+    let loggedIn     = false;
+    let userRecord   = null;
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
@@ -192,8 +192,8 @@ app.get('/api/auth/session-sync', async (req, res) => {
 // List all batteries for the active vessel
 app.get('/api/batteries/:vessel_uuid/list', authenticateToken, async (req, res) => {
   try {
-    const vesselUuid = req.params.vessel_uuid;
-    const result     = await pool.query('SELECT * FROM batteries WHERE vessel_uuid = $1 ORDER BY name ASC;', [vesselUuid]);
+    const vessel_uuid = req.params.vessel_uuid;
+    const result      = await pool.query('SELECT * FROM batteries WHERE vessel_uuid = $1 ORDER BY name ASC;', [vessel_uuid]);
     res.json(result.rows);
   }
   catch (err) {
@@ -353,11 +353,11 @@ app.get('/api/files/:uuid/list', authenticateToken, async (req, res) => {
 // Update metadata for a given file (e.g. flagging an image as an "avatar")
 app.post('/api/files/:uuid/metadata', authenticateToken, async (req, res) => {
   try {
-    const fileUuid       = req.params.uuid;
-    const { metadata }   = req.body; // Expects a generic JSON object
-    const userUuid       = req.user.uuid;
-    const userVesselUuid = req.user.vessel_uuid;
-    const userHandle     = req.user.handle;
+    const fileUuid     = req.params.uuid;
+    const { metadata } = req.body; // Expects a generic JSON object
+    const userUuid     = req.user.uuid;
+    const vessel_uuid  = req.user.vessel_uuid;
+    const handle       = req.user.handle;
 
     if (!metadata || typeof metadata !== 'object') {
       return res.status(400).json({ error: 'Error: Valid JSON metadata object required' });
@@ -398,7 +398,7 @@ app.post('/api/files/:uuid/metadata', authenticateToken, async (req, res) => {
     );
 
     // Log the metadata change
-    await auditLog(pool, userVesselUuid, userUuid, 'File::Metadata', `Operator: [${userHandle}] updated metadata for file: [${targetFile.file_name}].`);
+    await auditLog(pool, vessel_uuid, userUuid, 'File::Metadata', `Operator: [${handle}] updated metadata for file: [${targetFile.file_name}].`);
 
     res.json({ success: true, metadata: result.rows[0].metadata });
   } catch(err) {
@@ -612,14 +612,14 @@ app.post('/api/notes/create', authenticateToken, async (req, res) => {
 // Delete (deactivate) a note
 app.post('/api/notes/:uuid/deactivate', authenticateToken, async (req, res) => {
   try {
-    const userUuid       = req.user.uuid;
-    const noteUuid       = req.params.uuid; 
-    const userVesselUuid = req.user.vessel_uuid;
-    const userHandle     = req.user.handle;
+    const userUuid    = req.user.uuid;
+    const noteUuid    = req.params.uuid; 
+    const vessel_uuid = req.user.vessel_uuid;
+    const handle      = req.user.handle;
     
     // Log the deactivation. Generally notes shouldn't be deactivated, but that doesn't mean it's a sign of
     // anyhting nefarious. Though unlikely, it could be, so log it.
-    await auditLog(pool, userVesselUuid, userUuid, 'Note::Deactivation', `Operator: [${userHandle}] deactivated the note/log entry: [${noteUuid}].`);
+    await auditLog(pool, vessel_uuid, userUuid, 'Note::Deactivation', `Operator: [${handle}] deactivated the note/log entry: [${noteUuid}].`);
 
     // Mark the note as deactivated. 
     const result = await pool.query('UPDATE notes SET is_active = FALSE WHERE uuid = $1 RETURNING *;', [noteUuid]);
@@ -669,14 +669,14 @@ app.get('/api/notes/:uuid/list', authenticateToken, async (req, res) => {
 // Undelete (reeactivate) a note.
 app.post('/api/notes/:uuid/reactivate', authenticateToken, async (req, res) => {
   try {
-    const userUuid       = req.user.uuid;
-    const noteUuid       = req.params.uuid; 
-    const userVesselUuid = req.user.vessel_uuid;
-    const userHandle     = req.user.handle;
+    const userUuid    = req.user.uuid;
+    const noteUuid    = req.params.uuid; 
+    const vessel_uuid = req.user.vessel_uuid;
+    const handle      = req.user.handle;
     
     // Log the reactivation. This is likely a user simply undeleting an accidentally deleted note. Though 
     // unlikely, it could be someone snooping, so log it.
-    await auditLog(pool, userVesselUuid, userUuid, 'Note::Reactivation', `Operator: [${userHandle}] reactivated the note/log entry: [${noteUuid}].`);
+    await auditLog(pool, vessel_uuid, userUuid, 'Note::Reactivation', `Operator: [${handle}] reactivated the note/log entry: [${noteUuid}].`);
 
     // Mark the note as deactivated. 
     const result = await pool.query('UPDATE notes SET is_active = TRUE WHERE uuid = $1 RETURNING *;', [noteUuid]);
@@ -693,15 +693,15 @@ app.post('/api/notes/:uuid/reactivate', authenticateToken, async (req, res) => {
 // Update an existing note.
 app.post('/api/notes/:uuid/update', authenticateToken, async (req, res) => {
   try {
-    const userUuid       = req.user.uuid;
-    const noteUuid       = req.params.uuid; 
-    const userVesselUuid = req.user.vessel_uuid;
-    const userHandle     = req.user.handle;
+    const userUuid    = req.user.uuid;
+    const noteUuid    = req.params.uuid; 
+    const vessel_uuid = req.user.vessel_uuid;
+    const handle      = req.user.handle;
     const { category, note_name, note_body, is_pinned, access_level } = req.body;
     
     // Log the update. It's generally not a concern, but in the unlikely chance a user tries to manipulate a 
     // record (ie: to mask incrimidating evidence), we audit the change.
-    await auditLog(pool, userVesselUuid, userUuid, 'Note::Update', `Operator: [${userHandle}] updated the note/log entry: [${noteUuid}].`);
+    await auditLog(pool, vessel_uuid, userUuid, 'Note::Update', `Operator: [${handle}] updated the note/log entry: [${noteUuid}].`);
 
     const result = await pool.query(
       `UPDATE notes SET 
@@ -753,30 +753,30 @@ app.get('/api/system/time', async (req, res) => {
 
 // Handle saving users with bcryptjs
 app.post('/api/users/create', authenticateToken, requireAdmin, async (req, res) => {
-  const { userHandle, userName, userPassword, userPasswordConfirm, userIsAdmin, userVesselUuid } = req.body;
+  const { handle, name, password, password_confirm, is_admin, vessel_uuid } = req.body;
   try {
     // Is the access code and verify code the same?
-    if (userPassword !== userPasswordConfirm) {
+    if (password !== password_confirm) {
       return res.status(400).json({ error: 'The access code verification did not match the access code entered.' });
     }
     
     // Prevent duplicate handles.
-    const existing = await pool.query('SELECT uuid FROM users WHERE handle = $1;', [userHandle]);
+    const existing = await pool.query('SELECT uuid FROM users WHERE handle = $1;', [handle]);
     if (existing.rows.length > 0) {
       return res.status(400).json({ error: "Conflict: User handle already in use!" });
     }
     
     // Hash the password.
-    const hashedPassword = await bcrypt.hash(userPassword, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
     
     // Record the new user.
     const newUser = await pool.query(
       'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, $4, $5, TRUE);',
-      [userHandle, userName, hashedPassword, userIsAdmin, userVesselUuid]
+      [handle, name, hashedPassword, is_admin, vessel_uuid]
     );
     
     // Log who created it and then we're done.
-    await auditLog(pool, userVesselUuid, req.user.uuid, 'User::Create', `Operator: [${req.user.handle}] registered the new user: [${userHandle}].`);
+    await auditLog(pool, vessel_uuid, req.user.uuid, 'User::Create', `Operator: [${req.user.handle}] registered the new user: [${handle}].`);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -806,20 +806,20 @@ app.post('/api/users/sysop-init', async (req, res) => {
       return res.status(403).json({ error: "Security: System Already Initialised! What are you doing here? Shoo" });
     }
     
-    const { userHandle, userName, userPassword, userPasswordConfirm, userVesselUuid } = req.body;
-    if (userPassword !== userPasswordConfirm) {
+    const { handle, name, password, password_confirm, vessel_uuid } = req.body;
+    if (password !== password_confirm) {
       return res.status(400).json({ error: 'The access code verification did not match the access code entered.' });
     }
     
     // Record the primary SysOp.
-    const hashedPassword = await bcrypt.hash(userPassword, 12);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const result = await pool.query(
       'INSERT INTO users (handle, name, password_hash, is_admin, vessel_uuid, is_active) VALUES ($1, $2, $3, TRUE, $4, TRUE) RETURNING uuid;', 
-      [userHandle, userName, hashedPassword, userVesselUuid]
+      [handle, name, hashedPassword, vessel_uuid]
     );
     
     // First entry in the audit log.
-    await auditLog(pool, userVesselUuid, result.rows[0].uuid, 'User::Bootstrap', `System Initialised. Primary SysOp is: [${userHandle}]`);
+    await auditLog(pool, vessel_uuid, result.rows[0].uuid, 'User::Bootstrap', `System Initialised. Primary SysOp is: [${handle}]`);
     res.json({ success: true });
   } catch (err) {
     console.error('Master registration failed! Error: ', err.message);
@@ -829,15 +829,15 @@ app.post('/api/users/sysop-init', async (req, res) => {
 
 // Delete (well, deactivate) a user
 app.post('/api/users/:uuid/delete', authenticateToken, requireAdmin, async (req, res) => {
-  const targetUuid = req.params.uuid; // The passed in UUID
-  const requesterUuid = req.user.uuid;
+  const targetUuid           = req.params.uuid; // The passed in UUID
+  const requesterUuid        = req.user.uuid;
   const requesterVesselUuid = req.user.vessel_uuid;
-  const requesterHandle = req.user.handle;
+  const requesterHandle      = req.user.handle;
   
   try {
     // TODO: Replace this with a central auditing function later.
     // Get the user's handle for the audit log;
-    const userLookup = await pool.query('SELECT handle FROM users WHERE uuid = $1;', [targetUuid]);
+    const userLookup   = await pool.query('SELECT handle FROM users WHERE uuid = $1;', [targetUuid]);
     const targetHandle = userLookup.rows[0]?.handle || 'Unknown';
     
     // Log the delete
@@ -857,20 +857,20 @@ app.post('/api/users/:uuid/delete', authenticateToken, requireAdmin, async (req,
 // Update existing users
 app.post('/api/users/:uuid/update', authenticateToken, requireAdmin, async (req, res) => {
   // The user_uuid of the user being edited
-  const targetUuid = req.params.uuid;
+  const targetUuid           = req.params.uuid;
   // This comes the JWT middleware (muirgen token) and is the user_uuid of the user doing the update.
-  const requesterUuid       = req.user?.uuid;
-  const requesterHandle     = req.user?.handle;
+  const requesterUuid        = req.user?.uuid;
+  const requesterHandle      = req.user?.handle;
   const requesterVesselUuid = req.user?.vessel_uuid;
   
   const { 
-    userHandle, 
-    userPassword,
-    userCurrentPassword, 
-    userName, 
-    userIsAdmin, 
-    userIsActive, 
-    userVesselUuid
+    handle, 
+    password,
+    current_password, 
+    name, 
+    is_admin, 
+    is_active, 
+    vessel_uuid
   } = req.body;
   
   try {
@@ -879,32 +879,32 @@ app.post('/api/users/:uuid/update', authenticateToken, requireAdmin, async (req,
     const user = result.rows[0];
     
     // If the editing user is editing themselves AND changing their password, verify the current password.
-    if (targetUuid === requesterUuid && userPassword) {
-      const isValid = await bcrypt.compare(userCurrentPassword, user.password_hash);
+    if (targetUuid === requesterUuid && password) {
+      const isValid = await bcrypt.compare(current_password, user.password_hash);
       if (!isValid) {
         return res.status(401).json({ error: "Security Violation: Current Access Code not Correct." });
       }
     }
     
     // Update the record
-    if (userPassword) {
+    if (password) {
       // Update with the password set.
-      const encryptedPassword = await bcrypt.hash(userPassword, 12);
+      const encryptedPassword = await bcrypt.hash(password, 12);
       await pool.query(
         'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4, password_hash = $5, vessel_uuid = $6 WHERE uuid = $7;',
-        [userName, userHandle, userIsAdmin, userIsActive, encryptedPassword, userVesselUuid, req.params.uuid]
+        [name, handle, is_admin, is_active, encryptedPassword, vessel_uuid, req.params.uuid]
       );
       // Create an audit log for this update.
-      await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the password /record for user: [${userHandle}].`);
+      await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the password /record for user: [${handle}].`);
       res.json({ success: true })
     } else {
       // Update without the password column.
       await pool.query(
         'UPDATE users SET name = $1, handle = $2, is_admin = $3, is_active = $4, vessel_uuid = $5 WHERE uuid = $6;',
-        [userName, userHandle, userIsAdmin, userIsActive, userVesselUuid, req.params.uuid]
+        [name, handle, is_admin, is_active, vessel_uuid, req.params.uuid]
       );
       // Create an audit log for this update.
-      await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the record for user: [${userHandle}].`);
+      await auditLog(pool, requesterVesselUuid, requesterUuid, 'User::Update', `Operator: [${requesterHandle}] update the record for user: [${handle}].`);
       res.json({ success: true })
     }
   } catch (err) {
@@ -960,18 +960,18 @@ app.post('/api/vessels/create', async (req,res) => {
     
     // Now save.
     const { 
-      vesselName, 
-      vesselFlagNation,
-      vesselPortOfRegistry, 
-      vesselBuildDetails, 
-      vesselOfficialNumber, 
-      vesselHullIdentificationNumber, 
-      vesselKeelOffset, 
-      vesselWaterlineOffset } = req.body;
+      name, 
+      flag_nation,
+      port_of_registry, 
+      build_details, 
+      official_number, 
+      hull_id_number, 
+      keel_offset_cm, 
+      waterline_offset_cm } = req.body;
     try {
       await pool.query(
           `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
-          [vesselName, vesselFlagNation, vesselPortOfRegistry, vesselBuildDetails, vesselOfficialNumber, vesselHullIdentificationNumber, vesselKeelOffset, vesselWaterlineOffset]
+          [name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm]
       );
     } catch (err) {
       console.error('SQL INSERT Error:', err.message); 
@@ -981,7 +981,7 @@ app.post('/api/vessels/create', async (req,res) => {
     if (!isInitialSetup) {
       // We can log additional vessels, as there must be a user by that point. We can not log the very first
       // vessel though, as it is added before any user exists.
-      await auditLog(pool, requester.vessel_uuid, requester.uuid, 'Create::Vessel', `Vessel [${vesselName}] registered by [${requester.handle}].`);
+      await auditLog(pool, requester.vessel_uuid, requester.uuid, 'Create::Vessel', `Vessel [${name}] registered by [${requester.handle}].`);
     }
     res.json({ success: true });
   } catch (err) {
@@ -993,28 +993,17 @@ app.post('/api/vessels/create', async (req,res) => {
 // Get details for the logged-in user's vessel_uuid
 app.get('/api/vessels/current', authenticateToken, async (req, res) => {
   try {
-    const vesselUuid = req.user.vessel_uuid;
-    const result = await pool.query(
+    const vessel_uuid = req.user.vessel_uuid;
+    const result      = await pool.query(
       'SELECT uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm FROM vessels WHERE is_active = TRUE AND uuid = $1;',
-      [vesselUuid]
+      [vessel_uuid]
     );
     if (result.rows.length === 0) {
       
       return res.status(404).json({ error: "Vessel not found or has been deactived!" });
     }
     const vessel = result.rows[0];
-    res.json({
-      vesselUuid: vessel.uuid, 
-      vesselName: vessel.name, 
-      vesselFlagNation: vessel.flag_nation,
-      vesselPortOfRegistry: vessel.port_of_registry,
-      vesselBuildDetails: vessel.build_details,
-      vesselOfficialNumber: vessel.official_number,
-      vesselHullIdentificationNumber: vessel.hull_id_number, 
-      vesselKeelOffset: vessel.keel_offset_cm, 
-      vesselWaterlineOffset: vessel.waterline_offset_cm, 
-      setupRequired: false
-    });
+    res.json({ ...vessel, setupRequired: false });
   } catch (err) {
     console.error('Error in /api/vessels/current:', err.message); 
     res.status(500).json({ error: 'Database Offline' });
@@ -1034,33 +1023,33 @@ app.get('/api/vessels/list-all', authenticateToken, requireAdmin, async (req, re
 // Register a new vessel
 app.post('/api/vessels/register', authenticateToken, async (req, res) => {
   const { 
-    vesselName, 
-    vesselFlagNation, 
-    vesselPortOfRegistry, 
-    vesselBuildDetails, 
-    vesselOfficialNumber, 
-    vesselHullIdentificationNumber, 
-    vesselKeelOffset, 
-    vesselWaterlineOffset
+    name, 
+    flag_nation, 
+    port_of_registry, 
+    build_details, 
+    official_number, 
+    hull_id_number, 
+    keel_offset_cm, 
+    waterline_offset_cm
   } = req.body;
   try {
     const result = await pool.query(
       `INSERT INTO vessels (name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm) 
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING uuid;`,
       [
-        vesselName, 
-        vesselFlagNation, 
-        vesselPortOfRegistry, 
-        vesselBuildDetails, 
-        vesselOfficialNumber, 
-        vesselHullIdentificationNumber, 
-        vesselKeelOffset, 
-        vesselWaterlineOffset
+        name, 
+        flag_nation, 
+        port_of_registry, 
+        build_details, 
+        official_number, 
+        hull_id_number, 
+        keel_offset_cm, 
+        waterline_offset_cm
       ]
     );
     
     // Log the addition of the new vessel
-    await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${vesselName}], HID: [${vesselHullIdentificationNumber}] registered.`);
+    await auditLog(pool, result.rows[0].uuid, req.user.uuid, 'Vessel::Register', `New vessel: [${name}], HID: [${hull_id_number}] registered.`);
     
     res.json({ success: true, uuid: result.rows[0].uuid });
   } catch (err) {
@@ -1093,11 +1082,11 @@ app.post('/api/vessels/:uuid/deactivate', authenticateToken, requireAdmin, async
     
     // Still alive? Then we're ready. Get the vessel name for the audit log
     const vesselLookup = await pool.query('SELECT name FROM vessels WHERE uuid = $1;', [targetUuid])
-    const vesselName = vesselLookup.rows[0]?.name || 'Unknown vessel';
+    const name = vesselLookup.rows[0]?.name || 'Unknown vessel';
     await pool.query('UPDATE vessels SET is_active = FALSE WHERE uuid = $1;', [targetUuid]);
     
     // Log it
-    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Deactivate', `Operator: [${req.user.handle}] deactivated the vessel: [${vesselName}].`);
+    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Deactivate', `Operator: [${req.user.handle}] deactivated the vessel: [${name}].`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: `Vessel deactivation failed. Error: ${err.message}` });
@@ -1121,23 +1110,23 @@ app.post('/api/vessels/:uuid/reactivate', authenticateToken, requireAdmin, async
 app.post('/api/vessels/:uuid/update', authenticateToken, requireAdmin, async (req, res) => {
   const targetUuid = req.params.uuid;
   const {
-    vesselName, 
-    vesselFlagNation, 
-    vesselPortOfRegistry, 
-    vesselBuildDetails, 
-    vesselOfficialNumber, 
-    vesselHullIdentificationNumber, 
-    vesselKeelOffset, 
-    vesselWaterlineOffset
+    name, 
+    flag_nation, 
+    port_of_registry, 
+    build_details, 
+    official_number, 
+    hull_id_number, 
+    keel_offset_cm, 
+    waterline_offset_cm
   } = req.body;
   
   try {
     await pool.query(
       'UPDATE vessels SET name = $1, flag_nation = $2, port_of_registry = $3, build_details = $4, official_number = $5, hull_id_number = $6, keel_offset_cm = $7, waterline_offset_cm = $8 WHERE uuid = $9;', 
-      [vesselName, vesselFlagNation, vesselPortOfRegistry, vesselBuildDetails, vesselOfficialNumber, vesselHullIdentificationNumber, vesselKeelOffset, vesselWaterlineOffset, targetUuid]
+      [name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm, targetUuid]
     );
     
-    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Update', `Operator: [${req.user.handle}] updated the vessel records for: [${vesselName}].`);
+    await auditLog(pool, targetUuid, req.user.uuid, 'Vessel::Update', `Operator: [${req.user.handle}] updated the vessel records for: [${name}].`);
     res.json({ success: true});
   } catch (err) {
     console.error('Vessel update failed! Error: ', err.message);

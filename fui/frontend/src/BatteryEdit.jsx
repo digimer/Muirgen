@@ -52,7 +52,7 @@ const BatteryEdit = ({ battery, activeVessel, vessels, onCancel, onComplete, onS
     try {
       const requestBody = { 
         ...formData, 
-        vessel_uuid: formData.vessel_uuid || activeVessel?.uuid || activeVessel?.vesselUuid, 
+        vessel_uuid: formData.vessel_uuid || activeVessel?.uuid, 
         is_active: true 
       };
       const url = battery?.uuid ? `/api/batteries/${battery.uuid}/update` : '/api/batteries/create';
@@ -210,7 +210,7 @@ const BatteryEdit = ({ battery, activeVessel, vessels, onCancel, onComplete, onS
               </div>
               {vessels && vessels.length > 1 ? (
                 <select 
-                  value={formData.vessel_uuid || activeVessel?.uuid || activeVessel?.vesselUuid || ''} 
+                  value={formData.vessel_uuid || activeVessel?.uuid || ''} 
                   onChange={(e) => setFormData({ ...formData, vessel_uuid: e.target.value })}
                   className="setup-input-select"
                 >
@@ -220,7 +220,7 @@ const BatteryEdit = ({ battery, activeVessel, vessels, onCancel, onComplete, onS
                 </select>
               ) : (
                 <>
-                  <input type="text" value={activeVessel?.name || activeVessel?.vesselName || 'Loading...'} disabled className="disabled-input" />
+                  <input type="text" value={activeVessel?.name || 'Loading...'} disabled className="disabled-input" />
                   <span className="soft-text operator-subtitles">Single Vessel; Auto-Assigned</span>
                 </>
               )}

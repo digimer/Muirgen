@@ -5,8 +5,8 @@ import { useState } from 'react';
 
 const Login = ({ onLoginSuccess }) => {
   const [formData, setFormData] = useState({
-    userHandle: '', 
-    userPassword: ''
+    handle: '', 
+    password: ''
   });
   
   const [status, setStatus] = useState({ type: '', message: '' });
@@ -41,8 +41,8 @@ const Login = ({ onLoginSuccess }) => {
   
   // Enable the submit button when all fields have data.
   const isFormValid = 
-    (formData.userHandle?.trim?.()   ?? '') !== '' && 
-    (formData.userPassword?.trim?.() ?? '') !== '';
+    (formData.handle?.trim?.()   ?? '') !== '' && 
+    (formData.password?.trim?.() ?? '') !== '';
   
   return (
     <>
@@ -56,31 +56,31 @@ const Login = ({ onLoginSuccess }) => {
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="userHandle">
+            <label htmlFor="handle">
               <span className="label-text">Handle</span>
             </label>
           </div>
           <input type="text" 
-            id="userHandle"
+            id="handle"
             required 
             autoFocus 
-            value={formData.userHandle}
-            onChange={e => setFormData({...formData, userHandle: e.target.value})}
+            value={formData.handle}
+            onChange={e => setFormData({...formData, handle: e.target.value})}
           />
         </div>
 
         <div className="field-group">
            <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="userPassword">
+            <label htmlFor="password">
               <span className="label-text">Access Code</span>
             </label>
           </div>
           <input type="password" 
-            id="userPassword"
+            id="password"
             required 
-            value={formData.userPassword}
-            onChange={e => setFormData({...formData, userPassword: e.target.value})}
+            value={formData.password}
+            onChange={e => setFormData({...formData, password: e.target.value})}
           />
         </div>
         

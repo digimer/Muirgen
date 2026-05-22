@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react';
 const UserSetup = ({ onComplete }) => {
   const [shakeField, setShakeField] = useState(null);
   const [formData, setFormData] = useState({
-    userHandle: '',
-    userName: '',
-    userPassword: '',
-    userPasswordConfirm: '',
-    userIsAdmin: false,
-    userVesselUuid: ''
+    handle: '',
+    name: '',
+    password: '',
+    password_confirm: '',
+    is_admin: false,
+    vesssel_uuid: ''
   });
   
   const [status, setStatus] = useState({ type: '', message: '' });
@@ -17,15 +17,15 @@ const UserSetup = ({ onComplete }) => {
     setStatus({ type: '', message: '' });
     
     // Password validation
-    if (formData.userPassword !== formData.userPasswordConfirm) {
+    if (formData.password !== formData.password_confirm) {
       setStatus({ type: 'error', message: "Security: Access Code Mismatch" });
-      setShakeField('userPasswordConfirm');
+      setShakeField('password_confirm');
       setTimeout(() => setShakeField(null), 1000);
       
       return;
     }
     
-    if(!formData.userVesselUuid) {
+    if(!formData.vesssel_uuid) {
       // trigger the pulse
       setShakeField('vessel');
       setStatus({ type: 'error', message: "Vessel Assignment Required!" });
@@ -42,11 +42,11 @@ const UserSetup = ({ onComplete }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userHandle: formData.userHandle, 
-          userName: formData.userName, 
-          userPassword: formData.userPassword, 
-          userPasswordConfirm: formData.userPasswordConfirm, 
-          userVesselUuid: formData.userVesselUuid
+          handle: formData.handle, 
+          name: formData.name, 
+          password: formData.password, 
+          password_confirm: formData.password_confirm, 
+          vesssel_uuid: formData.vesssel_uuid
         })
       });
       
@@ -74,7 +74,7 @@ const UserSetup = ({ onComplete }) => {
       .then(data => {
         if (data.userRequired) {
           setIsFirstUser(true);
-          setFormData(prev => ({ ...prev, userIsAdmin: true}));
+          setFormData(prev => ({ ...prev, is_admin: true}));
         }
       });
   }, []);
@@ -93,18 +93,18 @@ const UserSetup = ({ onComplete }) => {
           const singleUuid = data[0].uuid;
           setSelectedVessel(singleUuid);
           // Store the UUID for the form to use
-          setFormData(prev => ({ ...prev, userVesselUuid: singleUuid }));
+          setFormData(prev => ({ ...prev, vesssel_uuid: singleUuid }));
         }
       })
   }, []);
   
   // Enable the submit button when all fields have data.
   const isFormValid = 
-    (formData.userHandle?.trim?.()          ?? '') !== '' && 
-    (formData.userName?.trim?.()            ?? '') !== '' && 
-    (formData.userPassword?.trim?.()        ?? '') !== '' && 
-    (formData.userPasswordConfirm?.trim?.() ?? '') !== '' && 
-    (formData.userVesselUuid?.trim?.()      ?? '') !== '';
+    (formData.handle?.trim?.()          ?? '') !== '' && 
+    (formData.name?.trim?.()            ?? '') !== '' && 
+    (formData.password?.trim?.()        ?? '') !== '' && 
+    (formData.password_confirm?.trim?.() ?? '') !== '' && 
+    (formData.vesssel_uuid?.trim?.()      ?? '') !== '';
 
   return (
     <>
@@ -124,70 +124,70 @@ const UserSetup = ({ onComplete }) => {
         </div>
       )}
       
-      {/* "Operator Handle (username) field */}
+      {/* "Operator Handle (name) field */}
       <form onSubmit={handleSubmit} className="setup-form setup-mode">
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="userHandle">
+            <label htmlFor="handle">
               <span className="label-text">Operator Handle</span>
             </label>
           </div>
           <input type="text" 
-            id="userHandle"
+            id="handle"
             required 
             autoComplete="off"
-            value={formData.userHandle} 
-            onChange={e => setFormData({...formData, userHandle: e.target.value})} 
+            value={formData.handle} 
+            onChange={e => setFormData({...formData, handle: e.target.value})} 
           />
         </div>
         {/* Full (real) name of the user */}
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="userName">
+            <label htmlFor="name">
               <span className="label-text">Full Name</span>
             </label>
           </div>
           <input type="text" 
-            id="userName"
+            id="name"
             required 
             autoComplete="off"
-            value={formData.userName} 
-            onChange={e => setFormData({...formData, userName: e.target.value})} 
+            value={formData.name} 
+            onChange={e => setFormData({...formData, name: e.target.value})} 
           />
         </div>
         {/* "Access Code" (password) field */}
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="userPassword">
+            <label htmlFor="password">
               <span className="label-text">Access Code</span>
             </label>
           </div>
           <input type="password" 
-            id="userPassword"
+            id="password"
             required 
             autoComplete="off"
-            value={formData.userPassword} 
-            onChange={e => setFormData({...formData, userPassword: e.target.value})} 
+            value={formData.password} 
+            onChange={e => setFormData({...formData, password: e.target.value})} 
           />
         </div>
         {/* Access code verification field */}
         <div className="field-group">
           <div className="setup-field-header">
             <span className="cursor-prompt">◺</span>
-            <label htmlFor="userPasswordConfirm">
+            <label htmlFor="password_confirm">
               <span className="label-text">Repeat AC</span>
             </label>
           </div>
           <input type="password" 
-            id="userPasswordConfirm"
-            className={shakeField === 'userPasswordConfirm' ? 'field-error-shake' : ''}
+            id="password_confirm"
+            className={shakeField === 'password_confirm' ? 'field-error-shake' : ''}
             required 
             autoComplete="off"
-            value={formData.userPasswordConfirm} 
-            onChange={e => setFormData({...formData, userPasswordConfirm: e.target.value})} 
+            value={formData.password_confirm} 
+            onChange={e => setFormData({...formData, password_confirm: e.target.value})} 
           />
         </div>
         {/* Vessel selection (either displayed if only one, or select box if 2+ */}
@@ -211,7 +211,7 @@ const UserSetup = ({ onComplete }) => {
               value={selectedVessel} 
               onChange={(e) => {
                 setSelectedVessel(e.target.value);
-                setFormData({...formData, userVesselUuid: e.target.value});
+                setFormData({...formData, vesssel_uuid: e.target.value});
               }}
             >
               <option value="" disabled>▻ Vessel Assignment</option>
@@ -239,9 +239,9 @@ const UserSetup = ({ onComplete }) => {
               </div>
             </div>
             <input type="checkbox" 
-              checked={formData.userIsAdmin} 
+              checked={formData.is_admin} 
               disabled={isFirstUser} // Disabled if this is the first user
-              onChange={e => setFormData({...formData, userIsAdmin: e.target.checked})} />
+              onChange={e => setFormData({...formData, is_admin: e.target.checked})} />
             <span className="retro-checkmark"></span>
           </label>
         </div>
