@@ -1,0 +1,12 @@
+[Unit]
+Description=NMEA2000 CAN Bus Initialization of can0 Interface
+After=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/ip link set can0 up type can bitrate 250000
+ExecStop=/sbin/ip link set can0 down
+
+[Install]
+WantedBy=multi-user.target
