@@ -1,0 +1,52 @@
+# General Notes
+Using 'rustup' instead if rpms via dnf to get access to latest toolchains and cross-compiled simplicity.
+
+## Environment Setup
+OS: AlmaLinux 10 on an raspberry pi 4 with the Copperhill PICAN-M HAT
+
+### Almalinux 10 base OS setup
+Dependencies to install;
+
+ dnf groupinstall development
+ dnf install pkgconf openssl-devel
+
+## Rust general notes
+Create an unprivileged user. These notes assume 'digimer'
+
+### Directory structure
+/home/digimer/.rustup       # - Metadata
+/home/digimer/.cargo        # - cargo (extension/library) home directory
+/home/digimer/.cargo/bin    # - cargo binaries
+
+### Rust install
+
+ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+Accept the defaults;
+====
+  default host triple: aarch64-unknown-linux-gnu
+  default toolchain: stable (default)
+  profile: default
+  modify PATH variable: yes
+====
+
+# Project Notes
+
+## Setup the project (muirgen_n2kd)
+
+As 'digimer':
+
+ cd ~
+ if [ ! -d ~/daemons ]; then mkdir daemons; fi
+ cd ~/daemons
+ cargo new muirgen-n2kd
+ cd ~/daemons/muirgen-n2kd
+
+The main config for the program is in Cargo.toml (define dependencies here, for example). The program's root is in the 'src' sub directory.
+
+ cd ~/daemons/muirgen-n2kd/src
+
+There is a sample program called 'main.rs' that you can compile and run;
+
+  cargo run
+
+This will compile and run the program. The compiled output is stored under '~/daemons/muirgen-n2kd/target/debug/'.
