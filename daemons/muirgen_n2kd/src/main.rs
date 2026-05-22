@@ -1,4 +1,5 @@
 use futures_util::StreamExt;
+use socketcan::EmbeddedFrame;
 use socketcan::tokio::CanSocket;
 use sqlx::postgres::PgPoolOptions;
 use std::env;
@@ -50,7 +51,31 @@ async fn main() -> Result<(), sqlx::Error> {
     // Enter the infinite listener loop.
     while let Some(Ok(frame)) = socket.next().await {
         // DEBUG: Stream the PGNs to STDOUT
-        println!("PGN Frame: [{:?}]", frame);
+        //println!("PGN Frame: [{:?}]", frame);
+
+        // Make sure this is an NMEA2000 extended 29-bit CAN frame
+        if let socketcan::Id::Extended(ext_id) = frame.id() {
+            // Get the 29-bit integer
+            let id_val = ext_id.as_raw();
+
+            // Extract the J1939 fields using bitwise shifts
+            let pdu_format     = (id_val >> 16) & 0xFF;
+            let pdu_specific   = (id_val >> 8)  & 0xFF;
+            let data_page      = (id_val >> 24) & 0x01;
+            let source_address = id_val & 0xFF;
+
+            // Calculate the PGN
+            let pgn = if pdu_format < 240 {
+                (data_page << 16) | (pdu_format << 8)
+            } else {
+                (data_page << 16) | (pdu_format << 8) | pdu_specific
+            };
+
+            // Pull out the simple GPS coordinates
+            if pgn == 129025 {
+                println!("Device: [{}] sent GPS coordinates: [{:?}]", source_address, frame.data());
+            }
+        }
     }
 
     Ok(())

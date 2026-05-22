@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+deku = "0.17"
 dotenvy = "0.15"
 futures-util = "0.3"
 socketcan = { version = "3", features = ["tokio"] }
