@@ -11,12 +11,12 @@ Dependencies to install;
  dnf install pkgconf openssl-devel
 
 ## Rust general notes
-Create an unprivileged user. These notes assume 'digimer'
+Create an unprivileged user. These notes assume 'admin'
 
 ### Directory structure
-/home/digimer/.rustup       # - Metadata
-/home/digimer/.cargo        # - cargo (extension/library) home directory
-/home/digimer/.cargo/bin    # - cargo binaries
+/home/admin/.rustup       # - Metadata
+/home/admin/.cargo        # - cargo (extension/library) home directory
+/home/admin/.cargo/bin    # - cargo binaries
 
 ### Rust install
 
@@ -33,7 +33,7 @@ Accept the defaults;
 
 ## Setup the project (muirgen_n2kd)
 
-As 'digimer':
+As 'admin':
 
  cd ~
  if [ ! -d ~/daemons ]; then mkdir daemons; fi
@@ -50,3 +50,7 @@ There is a sample program called 'main.rs' that you can compile and run;
   cargo run
 
 This will compile and run the program. The compiled output is stored under '~/daemons/muirgen-n2kd/target/debug/'.
+
+## Application notes
+
+Update the ~/daemons/muirgen_n2kd/.env to have the proper DB connection details and authentication.
