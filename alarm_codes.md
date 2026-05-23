@@ -41,5 +41,6 @@ NMEA2000 related alarms
 ## N2K 
 
 N2K-000000 - RESERVED
-N2K-000001 - NMEA2000 network device DOWN. Hint: check .env's 'N2K_DEVICE' variable, the can0-n2k systemd service, or the can0/N2K_DEVICE interface.
-N2K-000002 - PGN packets no longer arriving. Hint: Cable or bus failure?
+N2K-000001 - NMEA2000 network device GONE. Hint: check .env's 'N2K_DEVICE' variable, or the physical can0/N2K_DEVICE interface.
+N2K-000002 - NMEA2000 network device DOWN. Hint: Is the can0-n2k systemd service started?
+N2K-000003 - PGN packets no longer arriving. Hint: Cable or bus failure?
