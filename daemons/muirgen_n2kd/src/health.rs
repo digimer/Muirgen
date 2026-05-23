@@ -11,6 +11,7 @@ pub async fn run_n2k_watchdog(
     db_tx: mpsc::Sender<DbMessage>, 
     vessel_uuid: uuid::Uuid,
     n2k_device: String,
+    device_id: String,
 ) {
     println!("Health: NMEA2000 Watchdog thread started.");
 
@@ -41,7 +42,7 @@ pub async fn run_n2k_watchdog(
                 // N2K-000001 in main.rs should handle.
                 true
             }
-        }
+        };
 
         // Is the interface down?
         if interface_is_down {
@@ -49,6 +50,7 @@ pub async fn run_n2k_watchdog(
             if !alarm_n2k_000002_active {
                 let _ = db_tx.send(DbMessage::SetAlarm {
                     vessel_uuid,
+                    set_by: format!("{}:{}", device_id, n2k_device),
                     code: "N2K-000002".to_string(),
                     title: "NMEA2000 Interface DOWN".to_string(),
                     description: format!("The NMEA2000 device: [{}] exists, but it is DOWN. Hint: Is the 'can0-n2k' service up? Try 'ip link set {} up'.", n2k_device, n2k_device),
@@ -61,6 +63,7 @@ pub async fn run_n2k_watchdog(
             if alarm_n2k_000002_active {
                 let _ = db_tx.send(DbMessage::ClearAlarm {
                     vessel_uuid, 
+                    set_by: format!("{}:{}", device_id, n2k_device),
                     code: "N2K-000002".to_string(),
                 }).await;
                 alarm_n2k_000002_active = false;
@@ -76,6 +79,7 @@ pub async fn run_n2k_watchdog(
                 // Yes, set the alarm.
                 let _ = db_tx.send(DbMessage::SetAlarm {
                     vessel_uuid,
+                    set_by: format!("{}:{}", device_id, n2k_device),
                     code: "N2K-000003".to_string(),
                     title: "N2K Data Flow Lost".to_string(),
                     description: format!("N2K_DEV device: [{}] is UP, but PGN packet flow has stopped (no packets in >10 seconds). Hint: Check NMEA2000 cable, backbone or power tap.", n2k_device),
@@ -91,6 +95,7 @@ pub async fn run_n2k_watchdog(
                 // Yes, clear the alarm
                 let _ = db_tx.send(DbMessage::ClearAlarm {
                     vessel_uuid, 
+                    set_by: format!("{}:{}", device_id, n2k_device),
                     code: "N2K-000003".to_string(),
                 }).await;
 

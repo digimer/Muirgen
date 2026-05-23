@@ -4,6 +4,10 @@ Alarm code format is: "XXX-yyyyyy". See "Alarm Prefixes" for defined options. Th
 
 To avoid collisions, please create a PR to add new codes. 
 
+# Repo and PRs
+
+https://github.com/digimer/Muirgen
+
 # Alarm Levels
 
 Alarm levels are set to a numeric value between 1 and 4. The higher the number, the more severe the alarm. Be mindful of alarm fatigue when choosing higher alarm levels. 

@@ -8,7 +8,7 @@ pub fn route_pgns(pgn: u32, source: u32, data: &[u8]) {
         130311 => {
             match Pgn130311::from_bytes((data, 0)) {
                 Ok((_rest, parsed)) => {
-                    println!("PGN: 130311, Device: [{}], packet: [{:?}]", source, parsed);
+                    println!("PGN: 130311, Device: [{}], packet: [{}]", source, parsed);
                 }
                 Err(parse_err) => {
                     eprintln!("PGN 1303100 Parser Failure! Error: [{:?}]", parse_err);

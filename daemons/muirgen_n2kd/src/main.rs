@@ -40,6 +40,10 @@ async fn main() -> Result<(), sqlx::Error> {
     let env_vessel_uuid = env::var("VESSEL_UUID")
         .expect("VESSEL_UUID must be set to the host vessel's 'vessel_uuid'.");
     
+    // Get the unique DEV_ID we'll use to identify ourself in the database.
+    let device_id = env::var("DEV_ID")
+        .expect("DEV_ID must be set to a unique identification string for this device.");
+    
     // Verify the vessel_uuid is a valid UUID.
     let vessel_uuid = uuid::Uuid::parse_str(&env_vessel_uuid).expect("Invalid UUID");
 
@@ -77,6 +81,7 @@ async fn main() -> Result<(), sqlx::Error> {
         db_tx.clone(),
         vessel_uuid, 
         n2k_device.clone(),
+        device_id.clone(),
     ));
 
     // Track the alarm state for the N2K_DEVICE. Cleared intially
@@ -93,6 +98,7 @@ async fn main() -> Result<(), sqlx::Error> {
                     // Alarm was active, clear it.
                     let _ = db_tx.send(db::DbMessage::ClearAlarm {
                         vessel_uuid, 
+                        set_by: format!("{}:{}", device_id, n2k_device),
                         code: "N2K-000001".to_string(),
                     }).await;
                     alarm_n2k_000001_active = false;
@@ -106,6 +112,7 @@ async fn main() -> Result<(), sqlx::Error> {
                 if !alarm_n2k_000001_active {
                     let _ = db_tx.send(db::DbMessage::SetAlarm {
                         vessel_uuid,
+                        set_by: format!("{}:{}", device_id, n2k_device),
                         code: "N2K-000001".to_string(),
                         title: "NMEA2000 Interface Down".to_string(),
                         description: format!("The NMEA2000 device: [{}] failed to open. Error: [{}]. Hint: check can0_n2k service status or N2K_DEVICE status in ip.", n2k_device, bind_err), 

@@ -210,6 +210,7 @@ CREATE OR REPLACE TRIGGER trigger_users_update
 CREATE TABLE alarms (
         uuid             uuid           default uuidv7()    not null,
         vessel_uuid      uuid                               not null,
+        set_by           text                               not null, -- This is a string that indicates what or who set the alarm. This acts to allow the same alarm to exist multiple times on the same vessel, assuming different sources
         user_uuid        uuid,                                        -- This tracks the user that set, cleared or otherwise altered the alarm.
         code             text                               not null, -- A unique code that identifies the alarm independent of human language
         title            text                               not null, -- Short title / name for the alarm. ie: "BILGE HIGH WATER", "TRACTION PACK x LOW", etc
@@ -229,6 +230,7 @@ CREATE TABLE history.alarms (
         action_type      text,
         uuid             uuid,
         vessel_uuid      uuid,
+        set_by           text, 
         user_uuid        uuid,
         code             text,
         title            text,
@@ -240,11 +242,11 @@ CREATE TABLE history.alarms (
 ALTER TABLE history.alarms OWNER TO admin;
 
 -- Enforce unique alarms per-vessel.
-CREATE UNIQUE INDEX unique_vessel_alarm_code ON alarms (vessel_uuid, code);
+CREATE UNIQUE INDEX unique_vessel_alarm_code ON alarms (vessel_uuid, set_by, code);
 
 -- This VIEW makes it quite to show on the UI which alarms are active
 CREATE OR REPLACE VIEW current_alarms AS 
-  SELECT code, title, description, level 
+  SELECT vessel_uuid, set_by, code, title, description, level 
   FROM alarms 
   WHERE is_active = TRUE;
 
@@ -260,6 +262,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        set_by, 
         user_uuid,
         code,
         title,
@@ -271,6 +274,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.set_by, 
         NEW.user_uuid,
         NEW.code,
         NEW.title,
@@ -904,44 +908,167 @@ CREATE OR REPLACE TRIGGER trigger_ship_logs_update
     )
     EXECUTE PROCEDURE history_ship_logs();
 
--- VHF Radios
-CREATE TABLE radios (
-        uuid             uuid           default uuidv7()    not null,
-        vessel_uuid      uuid                               not null,
-        make             text                               not null, -- The make/brand of the radio
-        model            text                               not null, -- The model of the radio
-        mmsi             text                               not null, -- The MMSI number 
-        serial_number    text                               not null, -- The serial number of the radio
-        tx_power         text                               not null, -- The transmit power, in watts
-        has_dsc          boolean                            not null, -- Set to true if the radio is equipped with digital selective calling
-        has_gps          boolean                            not null, -- Set to true if the radio is equipped with GPS
-        has_ais_rx       boolean                            not null, -- Set to true if the radio is equipped with AIS. If this radio is also a transmitter, create a second entry in the ais_transponders table.
-        is_portable      boolean                            not null, -- Set the true if the radio is a portable / hand-held radio
-        is_active        boolean        default true        not null, -- Set to false if the radio is lost, destroyed or replaced.
-        modified_date    timestamptz    default now()       not null,
+-- NMEA2000 devices as reported on the N2K bus. Could be duplicates of n2k_devices 
+-- and other table-specific devices.
+CREATE TABLE n2k_devices (
+        uuid                 uuid           default uuidv7()    not null,
+        vessel_uuid          uuid                               not null,
+        replaces_by          uuid,                                        -- If the device has been replaced, this is the 'uuid' of the n2k_devices -> uuid that replaced it. This is used to link histories. 
+        device_name          bigint                             not null, -- The 64-bit ISO Address Claim NAME (Natural Key)
+        source_address       smallint                           not null, -- The dynamic 8-bit network ID (0 to 252)
+        manufacturer_code    integer                            not null, -- 11-bit integer; TODO: Create a YAML or JSON file that translates this to company names in the UI. 
+        device_class         integer                            not null, -- This and 'device function' combine to indicate the device's function; Class 60/Function 130 = Temperature Sensor; Class 60/Function 140 = GPS)
+        device_function      integer                            not null, -- see above
+        device_instance      integer                            not null, -- User-configurable ID to differentiate duplicate devices on the same bus.
+        model_id             text,                                        -- From PGN 126996
+        software_version     text,                                        -- From PGN 126996
+        serial_code          text,                                        -- From PGN 126996
+        is_active            boolean        default true        not null, -- Set to false if the device is lost, destroyed or replaced.
+        last_seen            timestamptz    default now()       not null, -- Last time the daemon saw this device (coarse resolution, updated daily)
+        modified_date        timestamptz    default now()       not null,
 
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (replaces_by) REFERENCES n2k_devices(uuid), 
+        PRIMARY KEY (uuid), 
+        UNIQUE (vessel_uuid, device_name)
+);
+ALTER TABLE n2k_devices OWNER TO admin;
+
+CREATE TABLE history.n2k_devices (
+        history_id           bigint GENERATED ALWAYS AS IDENTITY,
+        action_type          text,
+        uuid                 uuid,
+        vessel_uuid          uuid,
+        replaces_by          uuid,
+        device_name          bigint,
+        source_address       smallint,
+        manufacturer_code    integer,
+        device_class         integer,
+        device_function      integer,
+        device_instance      integer,
+        model_id             text,
+        software_version     text,
+        serial_code          text,
+        is_active            boolean,
+        last_seen            timestamptz,
+        modified_date        timestamptz
+);
+ALTER TABLE history.n2k_devices OWNER TO admin;
+
+-- Update the modified_date automatically on UPDATEs
+CREATE OR REPLACE TRIGGER update_n2k_devices_modtime
+    BEFORE UPDATE ON n2k_devices
+    FOR EACH ROW
+    EXECUTE PROCEDURE update_modified_date_column();
+
+CREATE OR REPLACE FUNCTION history_n2k_devices() RETURNS trigger AS $$
+BEGIN
+    INSERT INTO history.n2k_devices (
+        action_type, 
+        uuid, 
+        vessel_uuid, 
+        replaces_by,
+        device_name,
+        source_address,
+        manufacturer_code,
+        device_class,
+        device_function,
+        device_instance,
+        model_id,
+        software_version,
+        serial_code,
+        is_active,
+        last_seen,
+        modified_date)
+    VALUES (
+        TG_OP, 
+        NEW.uuid, 
+        NEW.vessel_uuid, 
+        NEW.replaces_by,
+        NEW.device_name,
+        NEW.source_address,
+        NEW.manufacturer_code,
+        NEW.device_class,
+        NEW.device_function,
+        NEW.device_instance,
+        NEW.model_id,
+        NEW.software_version,
+        NEW.serial_code,
+        NEW.is_active,
+        NEW.last_seen,
+        NEW.modified_date);
+    RETURN NULL;
+END; $$ LANGUAGE plpgsql;
+ALTER FUNCTION history_n2k_devices() OWNER TO admin;
+
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_n2k_devices_insert
+    AFTER INSERT ON n2k_devices
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_n2k_devices();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_n2k_devices_update
+    AFTER UPDATE ON n2k_devices
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid       IS DISTINCT FROM NEW.vessel_uuid       OR 
+        OLD.replaces_by       IS DISTINCT FROM NEW.replaces_by       OR 
+        OLD.device_name       IS DISTINCT FROM NEW.device_name       OR 
+        OLD.source_address    IS DISTINCT FROM NEW.source_address    OR 
+        OLD.manufacturer_code IS DISTINCT FROM NEW.manufacturer_code OR 
+        OLD.device_class      IS DISTINCT FROM NEW.device_class      OR 
+        OLD.device_function   IS DISTINCT FROM NEW.device_function   OR 
+        OLD.device_instance   IS DISTINCT FROM NEW.device_instance   OR 
+        OLD.model_id          IS DISTINCT FROM NEW.model_id          OR 
+        OLD.software_version  IS DISTINCT FROM NEW.software_version  OR 
+        OLD.serial_code       IS DISTINCT FROM NEW.serial_code       OR 
+        OLD.is_active         IS DISTINCT FROM NEW.is_active         OR 
+        OLD.last_seen         IS DISTINCT FROM NEW.last_seen
+    )
+    EXECUTE PROCEDURE history_n2k_devices();
+
+-- VHF Radios
+CREATE TABLE radios (
+        uuid               uuid           default uuidv7()    not null,
+        vessel_uuid        uuid                               not null,
+        n2k_device_uuid    uuid,                                        -- Links to the n2k_devices -> uuid
+        make               text                               not null, -- The make/brand of the radio
+        model              text                               not null, -- The model of the radio
+        mmsi               text                               not null, -- The MMSI number 
+        serial_number      text                               not null, -- The serial number of the radio
+        tx_power           text                               not null, -- The transmit power, in watts
+        has_dsc            boolean                            not null, -- Set to true if the radio is equipped with digital selective calling
+        has_gps            boolean                            not null, -- Set to true if the radio is equipped with GPS
+        has_ais_rx         boolean                            not null, -- Set to true if the radio is equipped with AIS. If this radio is also a transmitter, create a second entry in the ais_transponders table.
+        is_portable        boolean                            not null, -- Set the true if the radio is a portable / hand-held radio
+        is_active          boolean        default true        not null, -- Set to false if the radio is lost, destroyed or replaced.
+        modified_date      timestamptz    default now()       not null,
+
+        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (n2k_device_uuid) REFERENCES n2k_devices(uuid), 
         PRIMARY KEY (uuid),
         CONSTRAINT radio_mmsi CHECK (mmsi ~ '^[0-9]{9}$')
 );
 ALTER TABLE radios OWNER TO admin;
 
 CREATE TABLE history.radios (
-        history_id       bigint GENERATED ALWAYS AS IDENTITY,
-        action_type      text,
-        uuid             uuid,
-        vessel_uuid      uuid,
-        make             text,
-        model            text,
-        mmsi             text,
-        serial_number    text,
-        tx_power         text,
-        has_dsc          boolean,
-        has_gps          boolean,
-        has_ais_rx       boolean,
-        is_portable      boolean,
-        is_active        boolean, 
-        modified_date    timestamptz
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        action_type        text,
+        uuid               uuid,
+        vessel_uuid        uuid,
+        n2k_device_uuid    uuid,
+        make               text,
+        model              text,
+        mmsi               text,
+        serial_number      text,
+        tx_power           text,
+        has_dsc            boolean,
+        has_gps            boolean,
+        has_ais_rx         boolean,
+        is_portable        boolean,
+        is_active          boolean, 
+        modified_date      timestamptz
 );
 ALTER TABLE history.radios OWNER TO admin;
 
@@ -957,6 +1084,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        n2k_device_uuid,
         make,
         model,
         mmsi,
@@ -972,6 +1100,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.n2k_device_uuid,
         NEW.make,
         NEW.model,
         NEW.mmsi,
@@ -998,17 +1127,18 @@ CREATE OR REPLACE TRIGGER trigger_radios_update
     AFTER UPDATE ON radios
     FOR EACH ROW
     WHEN (
-        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
-        OLD.make          IS DISTINCT FROM NEW.make          OR 
-        OLD.model         IS DISTINCT FROM NEW.model         OR 
-        OLD.mmsi          IS DISTINCT FROM NEW.mmsi          OR 
-        OLD.serial_number IS DISTINCT FROM NEW.serial_number OR 
-        OLD.tx_power      IS DISTINCT FROM NEW.tx_power      OR 
-        OLD.has_dsc       IS DISTINCT FROM NEW.has_dsc       OR 
-        OLD.has_gps       IS DISTINCT FROM NEW.has_gps       OR 
-        OLD.has_ais_rx    IS DISTINCT FROM NEW.has_ais_rx    OR 
-        OLD.is_portable   IS DISTINCT FROM NEW.is_portable   OR 
-        OLD.is_active     IS DISTINCT FROM NEW.is_active
+        OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        NEW.n2k_device_uuid IS DISTINCT FROM NEW.n2k_device_uuid OR 
+        OLD.make            IS DISTINCT FROM NEW.make          OR 
+        OLD.model           IS DISTINCT FROM NEW.model         OR 
+        OLD.mmsi            IS DISTINCT FROM NEW.mmsi          OR 
+        OLD.serial_number   IS DISTINCT FROM NEW.serial_number OR 
+        OLD.tx_power        IS DISTINCT FROM NEW.tx_power      OR 
+        OLD.has_dsc         IS DISTINCT FROM NEW.has_dsc       OR 
+        OLD.has_gps         IS DISTINCT FROM NEW.has_gps       OR 
+        OLD.has_ais_rx      IS DISTINCT FROM NEW.has_ais_rx    OR 
+        OLD.is_portable     IS DISTINCT FROM NEW.is_portable   OR 
+        OLD.is_active       IS DISTINCT FROM NEW.is_active
     )
     EXECUTE PROCEDURE history_radios();
 
@@ -1016,6 +1146,7 @@ CREATE OR REPLACE TRIGGER trigger_radios_update
 CREATE TABLE ais_transponders (
         uuid                 uuid           default uuidv7()    not null,
         vessel_uuid          uuid                               not null,
+        n2k_device_uuid      uuid,                                        -- Links to the n2k_devices -> uuid
         make                 text                               not null, -- The make/brand of the radio
         model                text                               not null, -- The model of the radio
         mmsi                 text                               not null, -- This will match the fixed radio's MMSI generally (in Canada at least)
@@ -1032,6 +1163,7 @@ CREATE TABLE ais_transponders (
         modified_date        timestamptz    default now()       not null,
 
         FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (n2k_device_uuid) REFERENCES n2k_devices(uuid), 
         PRIMARY KEY (uuid), 
         CONSTRAINT ais_transponder_mmsi CHECK (mmsi ~ '^[0-9]{9}$')
 );
@@ -1042,6 +1174,7 @@ CREATE TABLE history.ais_transponders (
         action_type          text,
         uuid                 uuid,
         vessel_uuid          uuid,
+        n2k_device_uuid      uuid,
         make                 text,
         model                text,
         mmsi                 text,
@@ -1071,6 +1204,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        n2k_device_uuid, 
         make,
         model,
         mmsi,
@@ -1089,6 +1223,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.n2k_device_uuid, 
         NEW.make,
         NEW.model,
         NEW.mmsi,
@@ -1119,6 +1254,7 @@ CREATE OR REPLACE TRIGGER trigger_ais_transponders_update
     FOR EACH ROW
     WHEN (
         OLD.vessel_uuid       IS DISTINCT FROM NEW.vessel_uuid       OR 
+        OLD.n2k_device_uuid   IS DISTINCT FROM NEW.n2k_device_uuid   OR 
         OLD.make              IS DISTINCT FROM NEW.make              OR 
         OLD.model             IS DISTINCT FROM NEW.model             OR 
         OLD.mmsi              IS DISTINCT FROM NEW.mmsi              OR 
@@ -1215,31 +1351,34 @@ CREATE OR REPLACE TRIGGER trigger_audit_logs_update
 --       We'll use a special config that links the other configs associated with a given controller. A parent
 --       config, as it were.
 CREATE TABLE motor_controllers (
-        uuid             uuid           default uuidv7()    not null,
-        vessel_uuid      uuid                               not null,
-        make             text                               not null, -- The controller brand (ie: Kelly Controls)
-        model            text                               not null, -- The specific model number (ie: 'KLS 72100NC')
-        serial_number    text                               not null, -- The SN, needed to identify when two of the same model are in use
-        network_id       text,                                        -- Optional additional identifier, can be an a hex ID, MAC address, etc.
-        is_active        boolean        default true        not null, -- Set to false if the motor controller fails or is replaced.
-        modified_date    timestamptz    default now()       not null,
+        uuid               uuid           default uuidv7()    not null,
+        vessel_uuid        uuid                               not null,
+        n2k_device_uuid    uuid,                                        -- Links to the n2k_devices -> uuid
+        make               text                               not null, -- The controller brand (ie: Kelly Controls)
+        model              text                               not null, -- The specific model number (ie: 'KLS 72100NC')
+        serial_number      text                               not null, -- The SN, needed to identify when two of the same model are in use
+        network_id         text,                                        -- Optional additional identifier, can be an a hex ID, MAC address, etc.
+        is_active          boolean        default true        not null, -- Set to false if the motor controller fails or is replaced.
+        modified_date      timestamptz    default now()       not null,
 
-        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
-        PRIMARY KEY(uuid)
+        FOREIGN KEY (vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (n2k_device_uuid) REFERENCES n2k_devices(uuid), 
+        PRIMARY KEY (uuid)
 );
 ALTER TABLE motor_controllers OWNER TO admin;
 
 CREATE TABLE history.motor_controllers (
-        history_id       bigint GENERATED ALWAYS AS IDENTITY,
-        action_type      text,
-        uuid             uuid,
-        vessel_uuid      uuid,
-        make             text, 
-        model            text, 
-        serial_number    text,
-        network_id       text, 
-        is_active        boolean, 
-        modified_date    timestamptz
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        action_type        text,
+        uuid               uuid,
+        vessel_uuid        uuid,
+        n2k_device_uuid    uuid,
+        make               text, 
+        model              text, 
+        serial_number      text,
+        network_id         text, 
+        is_active          boolean, 
+        modified_date      timestamptz
 );
 ALTER TABLE history.motor_controllers OWNER TO admin;
 
@@ -1255,6 +1394,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        n2k_device_uuid, 
         make, 
         model, 
         serial_number, 
@@ -1265,6 +1405,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.n2k_device_uuid, 
         NEW.make, 
         NEW.model, 
         NEW.serial_number, 
@@ -1286,12 +1427,13 @@ CREATE OR REPLACE TRIGGER trigger_motor_controllers_update
     AFTER UPDATE ON motor_controllers
     FOR EACH ROW
     WHEN (
-        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
-        OLD.make          IS DISTINCT FROM NEW.make          OR 
-        OLD.model         IS DISTINCT FROM NEW.model         OR 
-        OLD.serial_number IS DISTINCT FROM NEW.serial_number OR 
-        OLD.network_id    IS DISTINCT FROM NEW.network_id    OR 
-        OLD.is_active     IS DISTINCT FROM NEW.is_active
+        OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        OLD.n2k_device_uuid IS DISTINCT FROM NEW.n2k_device_uuid OR 
+        OLD.make            IS DISTINCT FROM NEW.make            OR 
+        OLD.model           IS DISTINCT FROM NEW.model           OR 
+        OLD.serial_number   IS DISTINCT FROM NEW.serial_number   OR 
+        OLD.network_id      IS DISTINCT FROM NEW.network_id      OR 
+        OLD.is_active       IS DISTINCT FROM NEW.is_active
     )
     EXECUTE PROCEDURE history_motor_controllers();
 
@@ -1407,6 +1549,7 @@ CREATE OR REPLACE TRIGGER trigger_motors_update
 CREATE TABLE batteries (
         uuid               uuid           default uuidv7()    not null,
         vessel_uuid        uuid                               not null,
+        n2k_device_uuid    uuid,                                        -- Links to the n2k_devices -> uuid
         name               text                               not null, -- This is a text label that describes the pack. It must be unique (ie: 'Propulsion bank, top row, aft' or '51.2v Pack D')
         make               text                               not null, -- The BMS or premade Battery make
         model              text                               not null, -- The BMS or premade Battery model
@@ -1420,8 +1563,9 @@ CREATE TABLE batteries (
         modified_date      timestamptz    default now()       not null,
         
         CONSTRAINT unique_battery_name UNIQUE(name),
-        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
-        PRIMARY KEY(uuid)
+        FOREIGN KEY (vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (n2k_device_uuid) REFERENCES n2k_devices(uuid), 
+        PRIMARY KEY (uuid)
 );
 ALTER TABLE batteries OWNER TO admin;
 
@@ -1430,6 +1574,7 @@ CREATE TABLE history.batteries (
         action_type        text,
         uuid               uuid,
         vessel_uuid        uuid,
+        n2k_device_uuid    uuid, 
         name               text, 
         make               text, 
         model              text, 
@@ -1456,6 +1601,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        n2k_device_uuid, 
         name, 
         make, 
         model, 
@@ -1471,6 +1617,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.n2k_device_uuid, 
         NEW.name, 
         NEW.make, 
         NEW.model, 
@@ -1498,6 +1645,7 @@ CREATE OR REPLACE TRIGGER trigger_batteries_update
     FOR EACH ROW
     WHEN (
         OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        OLD.n2k_device_uuid IS DISTINCT FROM NEW.n2k_device_uuid OR 
         OLD.name            IS DISTINCT FROM NEW.name            OR 
         OLD.make            IS DISTINCT FROM NEW.make            OR 
         OLD.model           IS DISTINCT FROM NEW.model           OR 
@@ -1515,14 +1663,16 @@ CREATE OR REPLACE TRIGGER trigger_batteries_update
 CREATE TABLE tanks (
         uuid               uuid           default uuidv7()    not null,
         vessel_uuid        uuid                               not null,
+        n2k_device_uuid    uuid,                                        -- Links to the n2k_devices -> uuid
         liquid_type        text                               not null, -- This will be 'water', 'diesel', etc.
         capacity           real                               not null, -- Capacity in liters
         location           text                               not null, -- Textual description of the tank location, (ie: 'Port Settee')
         extended_data      jsonb,
         modified_date      timestamptz    default now()       not null,
 
-        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
-        PRIMARY KEY(uuid)
+        FOREIGN KEY (vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (n2k_device_uuid) REFERENCES n2k_devices(uuid), 
+        PRIMARY KEY (uuid)
 );
 ALTER TABLE tanks OWNER TO admin;
 
@@ -1531,6 +1681,7 @@ CREATE TABLE history.tanks (
         action_type        text,
         uuid               uuid,
         vessel_uuid        uuid,
+        n2k_device_uuid    uuid,
         liquid_type        text, 
         capacity           real, 
         location           text, 
@@ -1551,6 +1702,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        n2k_device_uuid,
         liquid_type, 
         capacity, 
         location, 
@@ -1560,6 +1712,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.n2k_device_uuid, 
         NEW.liquid_type, 
         NEW.capacity, 
         NEW.location, 
@@ -1580,11 +1733,12 @@ CREATE OR REPLACE TRIGGER trigger_tanks_update
     AFTER UPDATE ON tanks
     FOR EACH ROW
     WHEN (
-        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
-        OLD.liquid_type   IS DISTINCT FROM NEW.liquid_type   OR 
-        OLD.capacity      IS DISTINCT FROM NEW.capacity      OR 
-        OLD.location      IS DISTINCT FROM NEW.location      OR 
-        OLD.extended_data IS DISTINCT FROM NEW.extended_data
+        OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        OLD.n2k_device_uuid IS DISTINCT FROM NEW.n2k_device_uuid OR 
+        OLD.liquid_type     IS DISTINCT FROM NEW.liquid_type     OR 
+        OLD.capacity        IS DISTINCT FROM NEW.capacity        OR 
+        OLD.location        IS DISTINCT FROM NEW.location        OR 
+        OLD.extended_data   IS DISTINCT FROM NEW.extended_data
     )
     EXECUTE PROCEDURE history_tanks();
 
@@ -1767,41 +1921,44 @@ ALTER INDEX index_ais_targets_latest OWNER TO admin;
 -- we're going to lean into the extended_data to store a given device's detailed capabilities in there. This
 -- is to avoid having countless tables for the various types of power equipment on boats.
 CREATE TABLE power_devices (
-        uuid             uuid           default uuidv7()    not null,
-        vessel_uuid      uuid                               not null,
-        name             text           unique              not null, -- This is a free-form name for the device (ie: 'MPPT #1', 'Backup DC/DC Converter', Whatever makes sense of the user.)
-        make             text                               not null, -- The brand; Victron, Mastervolt, Renogy, etc
-        model            text                               not null, -- The model number of the device (ie: 'Multiplus-II 48|5000')
-        serial_number    text,                                        -- This is not-null to support DIY devices.
-        type             text                               not null, -- This indicates the class of device ('inverter', 'charger', 'dc/dc converter', 'alternator', etc)
-        is_charger       boolean        default false       not null, -- Set to true if the device can charge batteris, details in extended_data. This is true for boost/buck converters with built in charge profiles, but not if they only output fixed voltage
-        is_inverter      boolean        default false       not null, -- Set to true if the device can generate AC from DC, details in extended_data
-        is_converter     boolean        default false       not null, -- Set to true if the device converts power (Boost/Buck converters)
-        is_source        boolean        default false       not null, -- Set to true if the device acts as a power source 
-        extended_data    jsonb,                                       -- This can contain additional information specific to the component or component type
-        modified_date    timestamptz    default now()    not null,
+        uuid               uuid           default uuidv7()    not null,
+        vessel_uuid        uuid                               not null,
+        n2k_device_uuid    uuid,                                        -- Links to the n2k_devices -> uuid
+        name               text           unique              not null, -- This is a free-form name for the device (ie: 'MPPT #1', 'Backup DC/DC Converter', Whatever makes sense of the user.)
+        make               text                               not null, -- The brand; Victron, Mastervolt, Renogy, etc
+        model              text                               not null, -- The model number of the device (ie: 'Multiplus-II 48|5000')
+        serial_number      text,                                        -- This is not-null to support DIY devices.
+        type               text                               not null, -- This indicates the class of device ('inverter', 'charger', 'dc/dc converter', 'alternator', etc)
+        is_charger         boolean        default false       not null, -- Set to true if the device can charge batteris, details in extended_data. This is true for boost/buck converters with built in charge profiles, but not if they only output fixed voltage
+        is_inverter        boolean        default false       not null, -- Set to true if the device can generate AC from DC, details in extended_data
+        is_converter       boolean        default false       not null, -- Set to true if the device converts power (Boost/Buck converters)
+        is_source          boolean        default false       not null, -- Set to true if the device acts as a power source 
+        extended_data      jsonb,                                       -- This can contain additional information specific to the component or component type
+        modified_date      timestamptz    default now()    not null,
 
-        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid),
-        PRIMARY KEY(uuid)
+        FOREIGN KEY (vessel_uuid) REFERENCES vessels(uuid),
+        FOREIGN KEY (n2k_device_uuid) REFERENCES n2k_devices(uuid), 
+        PRIMARY KEY (uuid)
 );
 ALTER TABLE power_devices OWNER TO admin;
 
 CREATE TABLE history.power_devices (
-        history_id       bigint GENERATED ALWAYS AS IDENTITY,
-        action_type      text,
-        uuid             uuid,
-        vessel_uuid      uuid,
-        name             text,
-        make             text,
-        model            text, 
-        serial_number    text,
-        type             text, 
-        is_charger       boolean, 
-        is_inverter      boolean, 
-        is_converter     boolean, 
-        is_source        boolean, 
-        extended_data    jsonb,
-        modified_date    timestamptz    default now()    not null
+        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        action_type        text,
+        uuid               uuid,
+        vessel_uuid        uuid,
+        n2k_device_uuid    uuid,
+        name               text,
+        make               text,
+        model              text, 
+        serial_number      text,
+        type               text, 
+        is_charger         boolean, 
+        is_inverter        boolean, 
+        is_converter       boolean, 
+        is_source          boolean, 
+        extended_data      jsonb,
+        modified_date      timestamptz    default now()    not null
 );
 ALTER TABLE history.power_devices OWNER TO admin;
 
@@ -1817,6 +1974,7 @@ BEGIN
         action_type, 
         uuid, 
         vessel_uuid, 
+        n2k_device_uuid, 
         name,
         make,
         model, 
@@ -1831,6 +1989,7 @@ BEGIN
         TG_OP, 
         NEW.uuid, 
         NEW.vessel_uuid, 
+        NEW.n2k_device_uuid, 
         NEW.name,
         NEW.make,
         NEW.model, 
@@ -1856,17 +2015,18 @@ CREATE OR REPLACE TRIGGER trigger_power_devices_update
     AFTER UPDATE ON power_devices
     FOR EACH ROW
     WHEN (
-        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
-        OLD.name          IS DISTINCT FROM NEW.name          OR 
-        OLD.make          IS DISTINCT FROM NEW.make          OR 
-        OLD.model         IS DISTINCT FROM NEW.model         OR 
-        OLD.serial_number IS DISTINCT FROM NEW.serial_number OR 
-        OLD.type          IS DISTINCT FROM NEW.type          OR 
-        OLD.is_charger    IS DISTINCT FROM NEW.is_charger    OR 
-        OLD.is_inverter   IS DISTINCT FROM NEW.is_inverter   OR 
-        OLD.is_converter  IS DISTINCT FROM NEW.is_converter  OR 
-        OLD.is_source     IS DISTINCT FROM NEW.is_source     OR 
-        OLD.extended_data IS DISTINCT FROM NEW.extended_data
+        OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        OLD.n2k_device_uuid IS DISTINCT FROM NEW.n2k_device_uuid OR 
+        OLD.name            IS DISTINCT FROM NEW.name            OR 
+        OLD.make            IS DISTINCT FROM NEW.make            OR 
+        OLD.model           IS DISTINCT FROM NEW.model           OR 
+        OLD.serial_number   IS DISTINCT FROM NEW.serial_number   OR 
+        OLD.type            IS DISTINCT FROM NEW.type            OR 
+        OLD.is_charger      IS DISTINCT FROM NEW.is_charger      OR 
+        OLD.is_inverter     IS DISTINCT FROM NEW.is_inverter     OR 
+        OLD.is_converter    IS DISTINCT FROM NEW.is_converter    OR 
+        OLD.is_source       IS DISTINCT FROM NEW.is_source       OR 
+        OLD.extended_data   IS DISTINCT FROM NEW.extended_data
     )
     EXECUTE PROCEDURE history_power_devices();
 
@@ -1967,7 +2127,7 @@ ALTER VIEW current_motion_data OWNER TO admin;
 CREATE TABLE temperature_data (
         vessel_uuid      uuid           not null,
         sensor_source    text           not null, -- Either '<table>:<uuid>' or a string consistent with the source (ie: '<device>:<serial_number>'
-        sensor_value     real           not null, -- Celcius (converted from Kelvin, -273.15)
+        sensor_value     real           not null, -- In Kelvin
         time             timestamptz    not null,
 
         PRIMARY KEY(time, vessel_uuid, sensor_source),
@@ -2176,7 +2336,7 @@ CREATE TABLE weather_data (
         location             geography(point, 4326)                        not null, -- GPS coordinates when the weather was read.
         pressure             real                                          not null, -- In hpa, 0.1 hpa resolution
         station_height       real                                          not null, -- In meters, height above the water line
-        air_temp             real                                          not null, -- In C, 0.1 degree
+        air_temp             real                                          not null, -- In Kelvin, 0.1 degree
         relative_humidity    real                                          not null, -- 0.1% resolution
         dew_point            real                                          not null, -- In C
         heat_index           real                                          not null, -- "Feels like" humidex

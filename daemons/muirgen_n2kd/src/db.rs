@@ -6,6 +6,7 @@ use sqlx::PgPool;
 pub enum DbMessage {
     SetAlarm {
         vessel_uuid: uuid::Uuid,
+        set_by: String,
         code: String, 
         title: String,
         description: String,
@@ -13,6 +14,7 @@ pub enum DbMessage {
     },
     ClearAlarm {
         vessel_uuid: uuid::Uuid,
+        set_by: String,
         code: String,
     }
 }
@@ -27,12 +29,12 @@ pub async fn run_db_thread(
     // Listen for messages to arrive on the MPSC channel indefinitely.
     while let Some(msg) = receiver.recv().await {
         match msg {
-            DbMessage::SetAlarm { vessel_uuid, code, title, description, level } => {
+            DbMessage::SetAlarm { vessel_uuid, set_by, code, title, description, level } => {
                 let result = sqlx::query!(
                     r#"
-                    INSERT INTO alarms (vessel_uuid, code, title, description, level, is_active)
-                    VALUES ($1, $2, $3, $4, $5, TRUE)
-                    ON CONFLICT (vessel_uuid, code)
+                    INSERT INTO alarms (vessel_uuid, set_by, code, title, description, level, is_active)
+                    VALUES ($1, $2, $3, $4, $5, $6, TRUE)
+                    ON CONFLICT (vessel_uuid, set_by, code)
                     DO UPDATE SET
                         is_active = TRUE,
                         title = EXCLUDED.title, 
@@ -45,25 +47,25 @@ pub async fn run_db_thread(
                 .await;
 
                 if let Err(db_err) = result {
-                    eprintln!("Alarm Set Failed! [{}:{}] -> [{}] failed! Error: [{:?}]", code, title, description, db_err);
+                    eprintln!("Alarm Set Failed! [{}:{}], [{}] -> [{}] failed! Error: [{:?}]", set_by, code, title, description, db_err);
                 } else {
-                    println!("Alarm Set: [{}:{}] -> [{}]", code, title, description);
+                    println!("Alarm Set: [{}:{}], [{}] -> [{}]", set_by, code, title, description);
                 }
             }
-            DbMessage::ClearAlarm { vessel_uuid, code } => {
+            DbMessage::ClearAlarm { vessel_uuid, set_by, code } => {
                 let result = sqlx::query!(
                     r#"
-                    UPDATE alarms SET is_active = FALSE WHERE vessel_uuid = $1 AND code = $2 AND is_active = TRUE
+                    UPDATE alarms SET is_active = FALSE WHERE vessel_uuid = $1 AND set_by = $2 AND code = $3 AND is_active = TRUE
                     "#,
-                    vessel_uuid, code
+                    vessel_uuid, set_by, code
                 )
                 .execute(&pool)
                 .await;
                 
                 if let Err(db_err) = result {
-                    eprintln!("Alarm Clear failed! Code: [{}]. Error: [{:?}]", code, db_err);
+                    eprintln!("Alarm Clear failed! Code: [{}:{}]. Error: [{:?}]", set_by, code, db_err);
                 } else {
-                    println!("Alarm Cleared. Code: [{}]", code);
+                    println!("Alarm Cleared. Code: [{}:{}]", set_by, code);
                 }
             }
         }
