@@ -44,8 +44,8 @@ pub async fn run_db_thread(
                 .execute(&pool)
                 .await;
 
-                if let Err(e) = result {
-                    eprintln!("Alarm Set Failed! [{}:{}] -> [{}] failed! Error: [{:?}]", code, title, description, e);
+                if let Err(db_err) = result {
+                    eprintln!("Alarm Set Failed! [{}:{}] -> [{}] failed! Error: [{:?}]", code, title, description, db_err);
                 } else {
                     println!("Alarm Set: [{}:{}] -> [{}]", code, title, description);
                 }
@@ -60,8 +60,8 @@ pub async fn run_db_thread(
                 .execute(&pool)
                 .await;
                 
-                if let Err(e) = result {
-                    eprintln!("Alarm Clear failed! Code: [{}]. Error: [{:?}]", code, e);
+                if let Err(db_err) = result {
+                    eprintln!("Alarm Clear failed! Code: [{}]. Error: [{:?}]", code, db_err);
                 } else {
                     println!("Alarm Cleared. Code: [{}]", code);
                 }

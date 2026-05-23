@@ -50,9 +50,9 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(&db_url)
         .await
     {
-        Ok(p) => p, 
-        Err(e) => {
-            eprintln!("Access Failure! Error: [{}]", e);
+        Ok(connected_pool) => connected_pool, 
+        Err(pg_error) => {
+            eprintln!("Access Failure! Error: [{}]", pg_error);
             std::process::exit(1);
         }
     };
@@ -79,28 +79,43 @@ async fn main() -> Result<(), sqlx::Error> {
         n2k_device.clone(),
     ));
 
+    // Track the alarm state for the N2K_DEVICE. Cleared intially
+    let mut alarm_n2k_000001_active = false;
+
     // Self-healing network loop
     println!("Binding to the NMEA2000 hardware interface: [{}]... ", n2k_device);
     loop {
         // Open the socket asynchronously
         let mut socket = match CanSocket::open(&n2k_device) {
-            Ok(s) => {
+            Ok(connected_socket) => {
                 // Connected successfully, clear any N2K down alarm, if present
-                let _ = db_tx.send(db::DbMessage::ClearAlarm {
-                    vessel_uuid, 
-                    code: "N2K-000001".to_string(),
-                }).await;
-                s
+                if alarm_n2k_000001_active {
+                    // Alarm was active, clear it.
+                    let _ = db_tx.send(db::DbMessage::ClearAlarm {
+                        vessel_uuid, 
+                        code: "N2K-000001".to_string(),
+                    }).await;
+                    alarm_n2k_000001_active = false;
+                }
+
+                // Return the socket
+                connected_socket
             },
-            Err(e) => {
-                let _ = db_tx.send(db::DbMessage::SetAlarm {
-                    vessel_uuid,
-                    code: "N2K-000001".to_string(),
-                    title: "NMEA2000 Interface Down".to_string(),
-                    description: format!("The NMEA2000 device: [{}] failed to open. Error: [{}]. Hint: check can0_n2k service status or N2K_DEVICE status in ip.", n2k_device, e), 
-                    level: 2, 
-                }).await;
-                eprintln!("N2K_DEVICE binding Failed! Error: [{}]. Trying again in 5 seconds.", e);
+            Err(bind_err) => {
+                // Failed, set the alarm if this is the first time.
+                if !alarm_n2k_000001_active {
+                    let _ = db_tx.send(db::DbMessage::SetAlarm {
+                        vessel_uuid,
+                        code: "N2K-000001".to_string(),
+                        title: "NMEA2000 Interface Down".to_string(),
+                        description: format!("The NMEA2000 device: [{}] failed to open. Error: [{}]. Hint: check can0_n2k service status or N2K_DEVICE status in ip.", n2k_device, bind_err), 
+                        level: 2, 
+                    }).await;
+
+                    // Set the alarm state
+                    alarm_n2k_000001_active = true;
+                }
+                eprintln!("N2K_DEVICE binding Failed! Error: [{}]. Trying again in 5 seconds.", bind_err);
                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 continue;
             }
@@ -139,9 +154,9 @@ async fn main() -> Result<(), sqlx::Error> {
                         router::route_pgns(pgn, source_address as u32, frame.data());
                     }
                 },
-                Err(e) => {
+                Err(frame_err) => {
                     // The N2K_DEV is or has gone down or vanished.
-                    eprintln!("ALARM: The NMEA2000 interface: [{}] is down! Reason: {}", n2k_device, e);
+                    eprintln!("ALARM: The NMEA2000 interface: [{}] is down! Reason: {}", n2k_device, frame_err);
 
                     // Break this loop and return until the N2K_DEVICE interface 
                     // returns.

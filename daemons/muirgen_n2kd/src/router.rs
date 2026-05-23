@@ -10,8 +10,8 @@ pub fn route_pgns(pgn: u32, source: u32, data: &[u8]) {
                 Ok((_rest, parsed)) => {
                     println!("PGN: 130311, Device: [{}], packet: [{:?}]", source, parsed);
                 }
-                Err(e) => {
-                    eprintln!("PGN 1303100 Parser Failure! Error: [{:?}]", e);
+                Err(parse_err) => {
+                    eprintln!("PGN 1303100 Parser Failure! Error: [{:?}]", parse_err);
                 }
             }
         }
