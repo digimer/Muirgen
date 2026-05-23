@@ -176,6 +176,7 @@ CREATE TABLE alarms (
         uuid             uuid           default uuidv7()    not null,
         vessel_uuid      uuid                               not null,
         user_uuid        uuid,                                        -- This tracks the user that set, cleared or otherwise altered the alarm.
+        code             text                               not null, -- A unique code that identifies the alarm independent of human language
         title            text                               not null, -- Short title / name for the alarm. ie: "BILGE HIGH WATER", "TRACTION PACK x LOW", etc
         description      text                               not null, -- Free-form description of the alarm.
         level            smallint       default 1           not null, -- This is the alert level. The higher the number, the more urgent the alarm. 1 = Minor / maintenance, 2 = Urgent but not critical, 3 = Critical / time sensitive, 4 = LIFE CRTIICAL (use very sparingly, must be extremely urgent)
@@ -194,6 +195,7 @@ CREATE TABLE history.alarms (
         uuid             uuid,
         vessel_uuid      uuid,
         user_uuid        uuid,
+        code             text,
         title            text,
         description      text,
         level            smallint,
@@ -204,7 +206,7 @@ ALTER TABLE history.alarms OWNER TO admin;
 
 -- This VIEW makes it quite to show on the UI which alarms are active
 CREATE OR REPLACE VIEW current_alarms AS 
-  SELECT title, description, level 
+  SELECT code, title, description, level 
   FROM alarms 
   WHERE is_active = TRUE;
 
@@ -221,6 +223,7 @@ BEGIN
         uuid, 
         vessel_uuid, 
         user_uuid,
+        code,
         title,
         description,
         level,
@@ -231,6 +234,7 @@ BEGIN
         NEW.uuid, 
         NEW.vessel_uuid, 
         NEW.user_uuid,
+        NEW.code,
         NEW.title,
         NEW.description,
         NEW.level,
