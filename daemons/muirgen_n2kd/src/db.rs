@@ -32,6 +32,12 @@ pub async fn run_db_thread(
                     r#"
                     INSERT INTO alarms (vessel_uuid, code, title, description, level, is_active)
                     VALUES ($1, $2, $3, $4, $5, TRUE)
+                    ON CONFLICT (vessel_uuid, code)
+                    DO UPDATE SET
+                        is_active = TRUE,
+                        title = EXCLUDED.title, 
+                        description = EXCLUDED.description, 
+                        level = EXCLUDED.level
                     "#,
                     vessel_uuid, code, title, description, level
                 )

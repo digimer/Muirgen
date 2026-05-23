@@ -64,7 +64,7 @@ CREATE TABLE history.vessels (
 ALTER TABLE history.vessels OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_vessels_modtime
+CREATE OR REPLACE TRIGGER update_vessels_modtime
     BEFORE UPDATE ON vessels
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -101,9 +101,28 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_vessels() OWNER TO admin;
 
-CREATE TRIGGER trigger_vessels
-    AFTER INSERT OR UPDATE ON vessels
-    FOR EACH ROW EXECUTE PROCEDURE history_vessels();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_vessels_insert
+    AFTER INSERT ON vessels
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_vessels();
+
+-- Trigger on UPDATEs with substantive changes. 
+CREATE OR REPLACE TRIGGER trigger_vessels_update
+    AFTER UPDATE ON vessels
+    FOR EACH ROW
+    WHEN (
+        OLD.name                IS DISTINCT FROM NEW.name                OR 
+        OLD.flag_nation         IS DISTINCT FROM NEW.flag_nation         OR 
+        OLD.port_of_registry    IS DISTINCT FROM NEW.port_of_registry    OR 
+        OLD.build_details       IS DISTINCT FROM NEW.build_details       OR 
+        OLD.official_number     IS DISTINCT FROM NEW.official_number     OR 
+        OLD.hull_id_number      IS DISTINCT FROM NEW.hull_id_number      OR 
+        OLD.keel_offset_cm      IS DISTINCT FROM NEW.keel_offset_cm      OR 
+        OLD.waterline_offset_cm IS DISTINCT FROM NEW.waterline_offset_cm OR 
+        OLD.is_active           IS DISTINCT FROM NEW.is_active
+     )
+    EXECUTE PROCEDURE history_vessels();
 
 -- User accounts
 CREATE TABLE users (
@@ -136,7 +155,7 @@ CREATE TABLE history.users (
 ALTER TABLE history.users OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_users_modtime
+CREATE OR REPLACE TRIGGER update_users_modtime
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -167,9 +186,25 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_users() OWNER TO admin;
 
-CREATE TRIGGER trigger_users
-    AFTER INSERT OR UPDATE ON users
-    FOR EACH ROW EXECUTE PROCEDURE history_users();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_users_insert
+    AFTER INSERT ON users
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_users();
+
+-- Trigger on UPDATEs with substantive changes. 
+CREATE OR REPLACE TRIGGER trigger_users_update
+    AFTER UPDATE ON users
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
+        OLD.handle        IS DISTINCT FROM NEW.handle        OR 
+        OLD.name          IS DISTINCT FROM NEW.name          OR 
+        OLD.password_hash IS DISTINCT FROM NEW.password_hash OR 
+        OLD.is_admin      IS DISTINCT FROM NEW.is_admin      OR 
+        OLD.is_active     IS DISTINCT FROM NEW.is_active
+     )
+    EXECUTE PROCEDURE history_users();
 
 -- Alarms: These are various criticality alarms to show on the FUI. 
 CREATE TABLE alarms (
@@ -204,6 +239,9 @@ CREATE TABLE history.alarms (
 );
 ALTER TABLE history.alarms OWNER TO admin;
 
+-- Enforce unique alarms per-vessel.
+CREATE UNIQUE INDEX unique_vessel_alarm_code ON alarms (vessel_uuid, code);
+
 -- This VIEW makes it quite to show on the UI which alarms are active
 CREATE OR REPLACE VIEW current_alarms AS 
   SELECT code, title, description, level 
@@ -211,7 +249,7 @@ CREATE OR REPLACE VIEW current_alarms AS
   WHERE is_active = TRUE;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_alarms_modtime
+CREATE OR REPLACE TRIGGER update_alarms_modtime
     BEFORE UPDATE ON alarms
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -244,9 +282,23 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_alarms() OWNER TO admin;
 
-CREATE TRIGGER trigger_alarms
-    AFTER INSERT OR UPDATE ON alarms
-    FOR EACH ROW EXECUTE PROCEDURE history_alarms();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_alarms_insert
+    AFTER INSERT ON alarms
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_alarms();
+
+-- Trigger on UPDATEs with substantive changes. 
+CREATE OR REPLACE TRIGGER trigger_alarms_update
+    AFTER UPDATE ON alarms
+    FOR EACH ROW
+    WHEN (
+        OLD.is_active   IS DISTINCT FROM NEW.is_active OR
+        OLD.level       IS DISTINCT FROM NEW.level     OR
+        OLD.title       IS DISTINCT FROM NEW.title     OR
+        OLD.description IS DISTINCT FROM NEW.description
+    )
+    EXECUTE PROCEDURE history_alarms();
 
 -- Crew (separate from users, this does not allow them to use the UI!). 
 CREATE TABLE crew (
@@ -288,7 +340,7 @@ CREATE OR REPLACE VIEW current_crew_onboard AS
   WHERE disembarked IS NULL AND is_active = TRUE;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_crew_modtime
+CREATE OR REPLACE TRIGGER update_crew_modtime
     BEFORE UPDATE ON crew
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -320,73 +372,27 @@ BEGIN
     RETURN NULL;
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_crew() OWNER TO admin;
+    
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_crew_insert
+    AFTER INSERT ON crew
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_crew();
 
-CREATE TRIGGER trigger_crew
-    AFTER INSERT OR UPDATE ON crew
-    FOR EACH ROW EXECUTE PROCEDURE history_crew();
-
-
-
-
-
-CREATE TABLE history.crew (
-        history_id       bigint GENERATED ALWAYS AS IDENTITY,
-        action_type      text,
-        uuid             uuid,
-        vessel_uuid      uuid,
-        user_uuid        uuid,
-        name             text,
-        position         text,
-        contact_info     text,
-        disembarked      timestamptz,
-        is_active        boolean, 
-        modified_date    timestamptz
-);
-ALTER TABLE history.crew OWNER TO admin;
-
--- This VIEW makes it quite to show on the UI who is actively onboard.
-CREATE OR REPLACE VIEW current_crew_onboard AS 
-  SELECT name, position, contact_info 
-  FROM crew 
-  WHERE disembarked IS NULL AND is_active = TRUE;
-
--- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_crew_modtime
-    BEFORE UPDATE ON crew
+-- Trigger on UPDATEs with substantive changes. 
+CREATE OR REPLACE TRIGGER trigger_crew_update
+    AFTER UPDATE ON crew
     FOR EACH ROW
-    EXECUTE PROCEDURE update_modified_date_column();
-
-CREATE OR REPLACE FUNCTION history_crew() RETURNS trigger AS $$
-BEGIN
-    INSERT INTO history.crew (
-        action_type, 
-        uuid, 
-        vessel_uuid, 
-        user_uuid,
-        name,
-        position,
-        contact_info,
-        disembarked,
-        is_active, 
-        modified_date)
-    VALUES (
-        TG_OP, 
-        NEW.uuid, 
-        NEW.vessel_uuid, 
-        NEW.user_uuid,
-        NEW.name,
-        NEW.position,
-        NEW.contact_info,
-        NEW.disembarked,
-        NEW.is_active, 
-        NEW.modified_date);
-    RETURN NULL;
-END; $$ LANGUAGE plpgsql;
-ALTER FUNCTION history_crew() OWNER TO admin;
-
-CREATE TRIGGER trigger_crew
-    AFTER INSERT OR UPDATE ON crew
-    FOR EACH ROW EXECUTE PROCEDURE history_crew();
+    WHEN (
+        OLD.vessel_uuid  IS DISTINCT FROM NEW.vessel_uuid  OR 
+        OLD.user_uuid    IS DISTINCT FROM NEW.user_uuid    OR 
+        OLD.name         IS DISTINCT FROM NEW.name         OR 
+        OLD.position     IS DISTINCT FROM NEW.position     OR 
+        OLD.contact_info IS DISTINCT FROM NEW.contact_info OR 
+        OLD.disembarked  IS DISTINCT FROM NEW.disembarked  OR 
+        OLD.is_active    IS DISTINCT FROM NEW.is_active
+     )
+    EXECUTE PROCEDURE history_crew();
     
 -- Config values, generic for future use
 CREATE TABLE configs (
@@ -418,7 +424,7 @@ CREATE TABLE history.configs (
 ALTER TABLE history.configs OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_configs_modtime
+CREATE OR REPLACE TRIGGER update_configs_modtime
     BEFORE UPDATE ON configs
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -449,9 +455,25 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_configs() OWNER TO admin;
 
-CREATE TRIGGER trigger_configs
-    AFTER INSERT OR UPDATE ON configs
-    FOR EACH ROW EXECUTE PROCEDURE history_configs();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_configs_insert
+    AFTER INSERT ON configs
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_configs();
+
+-- Trigger on UPDATEs with substantive changes. 
+CREATE OR REPLACE TRIGGER trigger_configs_update
+    AFTER UPDATE ON configs
+    FOR EACH ROW
+    WHEN (
+        OLD.reference_table IS DISTINCT FROM NEW.reference_table OR 
+        OLD.reference_id    IS DISTINCT FROM NEW.reference_id    OR 
+        OLD.variable_name   IS DISTINCT FROM NEW.variable_name   OR 
+        OLD.variable_value  IS DISTINCT FROM NEW.variable_value  OR 
+        OLD.description     IS DISTINCT FROM NEW.description     OR 
+        OLD.is_active       IS DISTINCT FROM NEW.is_active
+     )
+    EXECUTE PROCEDURE history_configs();
 
 -- Notes (or logs) that can be attached to anything.
 CREATE TABLE notes (
@@ -490,7 +512,7 @@ CREATE TABLE history.notes (
 ALTER TABLE history.notes OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_notes_modtime
+CREATE OR REPLACE TRIGGER update_notes_modtime
     BEFORE UPDATE ON notes
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -525,9 +547,27 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_notes() OWNER TO admin;
 
-CREATE TRIGGER trigger_notes
-    AFTER INSERT OR UPDATE ON notes
-    FOR EACH ROW EXECUTE PROCEDURE history_notes();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_notes_insert
+    AFTER INSERT ON notes
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_notes();
+
+-- Trigger on UPDATEs with substantive changes. 
+CREATE OR REPLACE TRIGGER trigger_notes_update
+    AFTER UPDATE ON notes
+    FOR EACH ROW
+    WHEN (
+        OLD.reference_table IS DISTINCT FROM NEW.reference_table OR 
+        OLD.reference_id    IS DISTINCT FROM NEW.reference_id    OR 
+        OLD.user_uuid       IS DISTINCT FROM NEW.user_uuid       OR 
+        OLD.access_level    IS DISTINCT FROM NEW.access_level    OR 
+        OLD.category        IS DISTINCT FROM NEW.category        OR 
+        OLD.note_name       IS DISTINCT FROM NEW.note_name       OR 
+        OLD.note_body       IS DISTINCT FROM NEW.note_body       OR 
+        OLD.is_active       IS DISTINCT FROM NEW.is_active
+     )
+    EXECUTE PROCEDURE history_notes();
     
 -- This stores images and other files that will be linked to various things.
 CREATE TABLE files (
@@ -564,7 +604,7 @@ CREATE TABLE history.files (
 ALTER TABLE history.files OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_files_modtime
+CREATE OR REPLACE TRIGGER update_files_modtime
     BEFORE UPDATE ON files
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -599,9 +639,27 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_files() OWNER TO admin;
 
-CREATE TRIGGER trigger_files
-    AFTER INSERT OR UPDATE ON files
-    FOR EACH ROW EXECUTE PROCEDURE history_files();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_files_insert
+    AFTER INSERT ON files
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_files();
+
+-- Trigger on UPDATEs with substantive changes. 
+CREATE OR REPLACE TRIGGER trigger_files_update
+    AFTER UPDATE ON files
+    FOR EACH ROW
+    WHEN (
+        OLD.user_uuid       IS DISTINCT FROM NEW.user_uuid       OR 
+        OLD.reference_table IS DISTINCT FROM NEW.reference_table OR 
+        OLD.reference_id    IS DISTINCT FROM NEW.reference_id    OR 
+        OLD.file_directory  IS DISTINCT FROM NEW.file_directory  OR 
+        OLD.file_name       IS DISTINCT FROM NEW.file_name       OR 
+        OLD.file_type       IS DISTINCT FROM NEW.file_type       OR 
+        OLD.metadata        IS DISTINCT FROM NEW.metadata        OR 
+        OLD.is_active       IS DISTINCT FROM NEW.is_active
+     )
+    EXECUTE PROCEDURE history_files();
 
 -- This will store 3D models for various devices and items on the boat, to be used in visually indication
 -- state information in the UT.
@@ -659,7 +717,7 @@ CREATE TABLE history.component_geometries (
 ALTER TABLE history.component_geometries OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_component_geometries_modtime
+CREATE OR REPLACE TRIGGER update_component_geometries_modtime
     BEFORE UPDATE ON component_geometries
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -712,9 +770,36 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_component_geometries() OWNER TO admin;
 
-CREATE TRIGGER trigger_component_geometries
-    AFTER INSERT OR UPDATE ON component_geometries
-    FOR EACH ROW EXECUTE PROCEDURE history_component_geometries();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_component_geometries_insert
+    AFTER INSERT ON component_geometries
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_component_geometries();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_component_geometries_update
+    AFTER UPDATE ON component_geometries
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        OLD.user_uuid       IS DISTINCT FROM NEW.user_uuid       OR 
+        OLD.model_file_uuid IS DISTINCT FROM NEW.model_file_uuid OR 
+        OLD.reference_table IS DISTINCT FROM NEW.reference_table OR 
+        OLD.reference_id    IS DISTINCT FROM NEW.reference_id    OR 
+        OLD.component_type  IS DISTINCT FROM NEW.component_type  OR 
+        OLD.position_x      IS DISTINCT FROM NEW.position_x      OR 
+        OLD.position_y      IS DISTINCT FROM NEW.position_y      OR 
+        OLD.position_z      IS DISTINCT FROM NEW.position_z      OR 
+        OLD.scale_x         IS DISTINCT FROM NEW.scale_x         OR 
+        OLD.scale_y         IS DISTINCT FROM NEW.scale_y         OR 
+        OLD.scale_z         IS DISTINCT FROM NEW.scale_z         OR 
+        OLD.rotation_x      IS DISTINCT FROM NEW.rotation_x      OR 
+        OLD.rotation_y      IS DISTINCT FROM NEW.rotation_y      OR 
+        OLD.rotation_z      IS DISTINCT FROM NEW.rotation_z      OR 
+        OLD.extended_data   IS DISTINCT FROM NEW.extended_data   OR 
+        OLD.is_active       IS DISTINCT FROM NEW.is_active 
+    )
+    EXECUTE PROCEDURE history_component_geometries();
 
 -- Manually entered logs of weather, travel, etc. They can be edited, but not deleted. Using 'is_active' 
 -- doesn't make sense here, as only the user who created the log entry, or an administrator can view them 
@@ -759,7 +844,7 @@ CREATE INDEX index_ship_logs_location ON ship_logs USING GIST (location);
 ALTER INDEX index_ship_logs_location OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_ship_logs_modtime
+CREATE OR REPLACE TRIGGER update_ship_logs_modtime
     BEFORE UPDATE ON ship_logs
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -796,9 +881,28 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_ship_logs() OWNER TO admin;
 
-CREATE TRIGGER trigger_ship_logs
-    AFTER INSERT OR UPDATE ON ship_logs
-    FOR EACH ROW EXECUTE PROCEDURE history_ship_logs();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_ship_logs_insert
+    AFTER INSERT ON ship_logs
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_ship_logs();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_ship_logs_update
+    AFTER UPDATE ON ship_logs
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid      IS DISTINCT FROM NEW.vessel_uuid      OR 
+        OLD.user_uuid        IS DISTINCT FROM NEW.user_uuid        OR 
+        OLD.weather_snapshot IS DISTINCT FROM NEW.weather_snapshot OR 
+        OLD.vessel_snapshot  IS DISTINCT FROM NEW.vessel_snapshot  OR 
+        OLD.location         IS DISTINCT FROM NEW.location         OR 
+        OLD.vessel_status    IS DISTINCT FROM NEW.vessel_status    OR 
+        OLD.sail_plan        IS DISTINCT FROM NEW.sail_plan        OR 
+        OLD.sea_state        IS DISTINCT FROM NEW.sea_state        OR 
+        OLD.narrative        IS DISTINCT FROM NEW.narrative
+    )
+    EXECUTE PROCEDURE history_ship_logs();
 
 -- VHF Radios
 CREATE TABLE radios (
@@ -842,7 +946,7 @@ CREATE TABLE history.radios (
 ALTER TABLE history.radios OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_radios_modtime
+CREATE OR REPLACE TRIGGER update_radios_modtime
     BEFORE UPDATE ON radios
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -883,9 +987,30 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_radios() OWNER TO admin;
 
-CREATE TRIGGER trigger_radios
-    AFTER INSERT OR UPDATE ON radios
-    FOR EACH ROW EXECUTE PROCEDURE history_radios();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_radios_insert
+    AFTER INSERT ON radios
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_radios();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_radios_update
+    AFTER UPDATE ON radios
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
+        OLD.make          IS DISTINCT FROM NEW.make          OR 
+        OLD.model         IS DISTINCT FROM NEW.model         OR 
+        OLD.mmsi          IS DISTINCT FROM NEW.mmsi          OR 
+        OLD.serial_number IS DISTINCT FROM NEW.serial_number OR 
+        OLD.tx_power      IS DISTINCT FROM NEW.tx_power      OR 
+        OLD.has_dsc       IS DISTINCT FROM NEW.has_dsc       OR 
+        OLD.has_gps       IS DISTINCT FROM NEW.has_gps       OR 
+        OLD.has_ais_rx    IS DISTINCT FROM NEW.has_ais_rx    OR 
+        OLD.is_portable   IS DISTINCT FROM NEW.is_portable   OR 
+        OLD.is_active     IS DISTINCT FROM NEW.is_active
+    )
+    EXECUTE PROCEDURE history_radios();
 
 -- AIS Transponders
 CREATE TABLE ais_transponders (
@@ -935,7 +1060,7 @@ CREATE TABLE history.ais_transponders (
 ALTER TABLE history.ais_transponders OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_ais_transponders_modtime
+CREATE OR REPLACE TRIGGER update_ais_transponders_modtime
     BEFORE UPDATE ON ais_transponders
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -982,9 +1107,33 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_ais_transponders() OWNER TO admin;
 
-CREATE TRIGGER trigger_ais_transponders
-    AFTER INSERT OR UPDATE ON ais_transponders
-    FOR EACH ROW EXECUTE PROCEDURE history_ais_transponders();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_ais_transponders_insert
+    AFTER INSERT ON ais_transponders
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_ais_transponders();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_ais_transponders_update
+    AFTER UPDATE ON ais_transponders
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid       IS DISTINCT FROM NEW.vessel_uuid       OR 
+        OLD.make              IS DISTINCT FROM NEW.make              OR 
+        OLD.model             IS DISTINCT FROM NEW.model             OR 
+        OLD.mmsi              IS DISTINCT FROM NEW.mmsi              OR 
+        OLD.serial_number     IS DISTINCT FROM NEW.serial_number     OR 
+        OLD.ais_class         IS DISTINCT FROM NEW.ais_class         OR 
+        OLD.transmit_power    IS DISTINCT FROM NEW.transmit_power    OR 
+        OLD.wifi_mac_address  IS DISTINCT FROM NEW.wifi_mac_address  OR 
+        OLD.bluetooth_address IS DISTINCT FROM NEW.bluetooth_address OR 
+        OLD.vhf_splitter      IS DISTINCT FROM NEW.vhf_splitter      OR 
+        OLD.external_gps      IS DISTINCT FROM NEW.external_gps      OR 
+        OLD.silent_mode       IS DISTINCT FROM NEW.silent_mode       OR 
+        OLD.last_health_check IS DISTINCT FROM NEW.last_health_check OR 
+        OLD.is_active         IS DISTINCT FROM NEW.is_active
+    )
+    EXECUTE PROCEDURE history_ais_transponders();
 
 -- This records events worthy of being audited.
 CREATE TABLE audit_logs (
@@ -1014,7 +1163,7 @@ CREATE TABLE history.audit_logs (
 ALTER TABLE history.audit_logs OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_audit_logs_modtime
+CREATE OR REPLACE TRIGGER update_audit_logs_modtime
     BEFORE UPDATE ON audit_logs
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1041,11 +1190,24 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_audit_logs() OWNER TO admin;
 
-CREATE TRIGGER trigger_users
-    AFTER INSERT OR UPDATE ON audit_logs
-    FOR EACH ROW EXECUTE PROCEDURE history_audit_logs();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_audit_logs_insert
+    AFTER INSERT ON audit_logs
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_audit_logs();
 
-    
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_audit_logs_update
+    AFTER UPDATE ON audit_logs
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid IS DISTINCT FROM NEW.vessel_uuid OR 
+        OLD.user_uuid   IS DISTINCT FROM NEW.user_uuid   OR 
+        OLD.task        IS DISTINCT FROM NEW.task        OR 
+        OLD.details     IS DISTINCT FROM NEW.details
+    )
+    EXECUTE PROCEDURE history_audit_logs();
+
 -- Motor Controllers. These are the source of much of our data, so this table will be "parent" to the 
 -- 'motors' table.
 -- NOTE: Controllers can have a wide array of config options, like max current uncooled, max current cooled, 
@@ -1082,7 +1244,7 @@ CREATE TABLE history.motor_controllers (
 ALTER TABLE history.motor_controllers OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_motor_controllers_modtime
+CREATE OR REPLACE TRIGGER update_motor_controllers_modtime
     BEFORE UPDATE ON motor_controllers
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1113,9 +1275,25 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_motor_controllers() OWNER TO admin;
 
-CREATE TRIGGER trigger_motor_controllers
-    AFTER INSERT OR UPDATE ON motor_controllers
-    FOR EACH ROW EXECUTE PROCEDURE history_motor_controllers();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_motor_controllers_insert
+    AFTER INSERT ON motor_controllers
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_motor_controllers();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_motor_controllers_update
+    AFTER UPDATE ON motor_controllers
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
+        OLD.make          IS DISTINCT FROM NEW.make          OR 
+        OLD.model         IS DISTINCT FROM NEW.model         OR 
+        OLD.serial_number IS DISTINCT FROM NEW.serial_number OR 
+        OLD.network_id    IS DISTINCT FROM NEW.network_id    OR 
+        OLD.is_active     IS DISTINCT FROM NEW.is_active
+    )
+    EXECUTE PROCEDURE history_motor_controllers();
 
 -- Motors. This will act as the parent to motor_data, temperature, and other time-series data streams.
 -- NOTE: If calculating the historic prop RPM, make sure that the motor_data columns reference the 
@@ -1160,7 +1338,7 @@ CREATE TABLE history.motors (
 ALTER TABLE history.motors OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_motors_modtime
+CREATE OR REPLACE TRIGGER update_motors_modtime
     BEFORE UPDATE ON motors
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1199,9 +1377,29 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_motors() OWNER TO admin;
 
-CREATE TRIGGER trigger_motors
-    AFTER INSERT OR UPDATE ON motors
-    FOR EACH ROW EXECUTE PROCEDURE history_motors();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_motors_insert
+    AFTER INSERT ON motors
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_motors();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_motors_update
+    AFTER UPDATE ON motors
+    FOR EACH ROW
+    WHEN (
+        OLD.motor_controller_uuid IS DISTINCT FROM NEW.motor_controller_uuid OR 
+        OLD.name                  IS DISTINCT FROM NEW.name                  OR 
+        OLD.make                  IS DISTINCT FROM NEW.make                  OR 
+        OLD.model                 IS DISTINCT FROM NEW.model                 OR 
+        OLD.serial_number         IS DISTINCT FROM NEW.serial_number         OR 
+        OLD.gear_ratio            IS DISTINCT FROM NEW.gear_ratio            OR 
+        OLD.pole_pairs            IS DISTINCT FROM NEW.pole_pairs            OR 
+        OLD.motor_type            IS DISTINCT FROM NEW.motor_type            OR 
+        OLD.extended_data         IS DISTINCT FROM NEW.extended_data         OR 
+        OLD.is_active             IS DISTINCT FROM NEW.is_active
+    )
+    EXECUTE PROCEDURE history_motors();
 
 -- These are the batteries on the boat. The data here should come from their BMS. This is a balance between
 -- consumer batteries and DIY batteries. For DIY, the make/model/serial refers to the BMS. This table is not
@@ -1247,7 +1445,7 @@ CREATE TABLE history.batteries (
 ALTER TABLE history.batteries OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_batteries_modtime
+CREATE OR REPLACE TRIGGER update_batteries_modtime
     BEFORE UPDATE ON batteries
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1288,9 +1486,30 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_batteries() OWNER TO admin;
 
-CREATE TRIGGER trigger_batteries
-    AFTER INSERT OR UPDATE ON batteries
-    FOR EACH ROW EXECUTE PROCEDURE history_batteries();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_batteries_insert
+    AFTER INSERT ON batteries
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_batteries();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_batteries_update
+    AFTER UPDATE ON batteries
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        OLD.name            IS DISTINCT FROM NEW.name            OR 
+        OLD.make            IS DISTINCT FROM NEW.make            OR 
+        OLD.model           IS DISTINCT FROM NEW.model           OR 
+        OLD.serial_number   IS DISTINCT FROM NEW.serial_number   OR 
+        OLD.nominal_voltage IS DISTINCT FROM NEW.nominal_voltage OR 
+        OLD.capacity        IS DISTINCT FROM NEW.capacity        OR 
+        OLD.last_capacity   IS DISTINCT FROM NEW.last_capacity   OR 
+        OLD.chemistry       IS DISTINCT FROM NEW.chemistry       OR 
+        OLD.extended_data   IS DISTINCT FROM NEW.extended_data   OR 
+        OLD.is_active       IS DISTINCT FROM NEW.is_active
+    )
+    EXECUTE PROCEDURE history_batteries();
 
 -- These are the liquid tanks on the boat.
 CREATE TABLE tanks (
@@ -1321,7 +1540,7 @@ CREATE TABLE history.tanks (
 ALTER TABLE history.tanks OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_tanks_modtime
+CREATE OR REPLACE TRIGGER update_tanks_modtime
     BEFORE UPDATE ON tanks
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1350,9 +1569,24 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_tanks() OWNER TO admin;
 
-CREATE TRIGGER trigger_tanks
-    AFTER INSERT OR UPDATE ON tanks
-    FOR EACH ROW EXECUTE PROCEDURE history_tanks();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_tanks_insert
+    AFTER INSERT ON tanks
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_tanks();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_tanks_update
+    AFTER UPDATE ON tanks
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
+        OLD.liquid_type   IS DISTINCT FROM NEW.liquid_type   OR 
+        OLD.capacity      IS DISTINCT FROM NEW.capacity      OR 
+        OLD.location      IS DISTINCT FROM NEW.location      OR 
+        OLD.extended_data IS DISTINCT FROM NEW.extended_data
+    )
+    EXECUTE PROCEDURE history_tanks();
 
 -- This is not likely to be recorded to that often, so not creating indexes or views yet.
 CREATE TABLE events (
@@ -1385,7 +1619,7 @@ CREATE TABLE history.events (
 ALTER TABLE history.events OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_events_modtime
+CREATE OR REPLACE TRIGGER update_events_modtime
     BEFORE UPDATE ON events
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1416,9 +1650,25 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_events() OWNER TO admin;
 
-CREATE TRIGGER trigger_events
-    AFTER INSERT OR UPDATE ON events
-    FOR EACH ROW EXECUTE PROCEDURE history_events();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_events_insert
+    AFTER INSERT ON events
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_events();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_events_update
+    AFTER UPDATE ON events
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid     IS DISTINCT FROM NEW.vessel_uuid     OR 
+        OLD.reference_table IS DISTINCT FROM NEW.reference_table OR 
+        OLD.reference_uuid  IS DISTINCT FROM NEW.reference_uuid  OR 
+        OLD.event_source    IS DISTINCT FROM NEW.event_source    OR 
+        OLD.event_type      IS DISTINCT FROM NEW.event_type      OR 
+        OLD.details         IS DISTINCT FROM NEW.details
+    )
+    EXECUTE PROCEDURE history_events();
 
 -- NOTE: https://emsa.europa.eu/cise-documentation/cise-data-model-1.5.3/model/guidelines/687507181.html
 -- Records of AIS targets. This will grow over time, but not enough to justify a hypertable, Even if it did, 
@@ -1454,7 +1704,7 @@ CREATE TABLE history.ais_targets (
 ALTER TABLE history.ais_targets OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_ais_targets_modtime
+CREATE OR REPLACE TRIGGER update_ais_targets_modtime
     BEFORE UPDATE ON ais_targets
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1485,9 +1735,25 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_ais_targets() OWNER TO admin;
 
-CREATE TRIGGER trigger_ais_targets
-    AFTER INSERT OR UPDATE ON ais_targets
-    FOR EACH ROW EXECUTE PROCEDURE history_ais_targets();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_ais_targets_insert
+    AFTER INSERT ON ais_targets
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_ais_targets();
+
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_ais_targets_update
+    AFTER UPDATE ON ais_targets
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid IS DISTINCT FROM NEW.vessel_uuid OR 
+        OLD.imo         IS DISTINCT FROM NEW.imo         OR 
+        OLD.name        IS DISTINCT FROM NEW.name        OR 
+        OLD.length      IS DISTINCT FROM NEW.length      OR 
+        OLD.beam        IS DISTINCT FROM NEW.beam        OR 
+        OLD.vessel_type IS DISTINCT FROM NEW.vessel_type
+    )
+    EXECUTE PROCEDURE history_ais_targets();
 
 -- View to quickly access the most recent cell data.
 CREATE OR REPLACE VIEW current_ais_targets AS SELECT DISTINCT ON (mmsi) * FROM ais_targets ORDER BY mmsi, modified_date DESC;
@@ -1521,7 +1787,9 @@ CREATE TABLE power_devices (
 ALTER TABLE power_devices OWNER TO admin;
 
 CREATE TABLE history.power_devices (
-        history_id         bigint GENERATED ALWAYS AS IDENTITY,
+        history_id       bigint GENERATED ALWAYS AS IDENTITY,
+        action_type      text,
+        uuid             uuid,
         vessel_uuid      uuid,
         name             text,
         make             text,
@@ -1531,13 +1799,14 @@ CREATE TABLE history.power_devices (
         is_charger       boolean, 
         is_inverter      boolean, 
         is_converter     boolean, 
+        is_source        boolean, 
         extended_data    jsonb,
         modified_date    timestamptz    default now()    not null
 );
 ALTER TABLE history.power_devices OWNER TO admin;
 
 -- Update the modified_date automatically on UPDATEs
-CREATE TRIGGER update_power_devices_modtime
+CREATE OR REPLACE TRIGGER update_power_devices_modtime
     BEFORE UPDATE ON power_devices
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_date_column();
@@ -1576,10 +1845,30 @@ BEGIN
 END; $$ LANGUAGE plpgsql;
 ALTER FUNCTION history_power_devices() OWNER TO admin;
 
-CREATE TRIGGER trigger_power_devices
-    AFTER INSERT OR UPDATE ON power_devices
-    FOR EACH ROW EXECUTE PROCEDURE history_power_devices();
+-- Trigger on all INSERTs
+CREATE OR REPLACE TRIGGER trigger_power_devices_insert
+    AFTER INSERT ON power_devices
+    FOR EACH ROW 
+    EXECUTE PROCEDURE history_power_devices();
 
+-- Trigger on UPDATEs with substantive changes
+CREATE OR REPLACE TRIGGER trigger_power_devices_update
+    AFTER UPDATE ON power_devices
+    FOR EACH ROW
+    WHEN (
+        OLD.vessel_uuid   IS DISTINCT FROM NEW.vessel_uuid   OR 
+        OLD.name          IS DISTINCT FROM NEW.name          OR 
+        OLD.make          IS DISTINCT FROM NEW.make          OR 
+        OLD.model         IS DISTINCT FROM NEW.model         OR 
+        OLD.serial_number IS DISTINCT FROM NEW.serial_number OR 
+        OLD.type          IS DISTINCT FROM NEW.type          OR 
+        OLD.is_charger    IS DISTINCT FROM NEW.is_charger    OR 
+        OLD.is_inverter   IS DISTINCT FROM NEW.is_inverter   OR 
+        OLD.is_converter  IS DISTINCT FROM NEW.is_converter  OR 
+        OLD.is_source     IS DISTINCT FROM NEW.is_source     OR 
+        OLD.extended_data IS DISTINCT FROM NEW.extended_data
+    )
+    EXECUTE PROCEDURE history_power_devices();
 
 
 -- ### Below here are (potentially) high rate of change tables. These use hypertables to better handle their
