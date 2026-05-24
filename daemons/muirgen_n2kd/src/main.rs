@@ -176,7 +176,7 @@ async fn main() -> Result<(), sqlx::Error> {
         socket.write_frame(claim_frame).await
             .expect("Comms Failure: Unable to broadcast address claim!");
 
-        // Broadcast GPN 59904 (ISO request) for PGN 60928
+        // Broadcast PGN 59904 (ISO request) for PGN 60928
         // CAN ID = Priority(6) | PGN(59904) | Dest(255 Global) | Source(45)
         println!("Requesting network topology...");
         let req_id_value = (6 << 26) | (59904 << 8) | 255 << 8 | my_address;
@@ -184,11 +184,37 @@ async fn main() -> Result<(), sqlx::Error> {
         // Payload is the requested PGN in little-endian (60928 = 0x00EE00)
         let req_frame    = CanFrame::new(req_id, &[0x00, 0xEE, 0x00]).unwrap();
         socket.write_frame(req_frame).await
-            .expect("FATAL: Unable to broadcast ISO Request");
+            .expect("Comms Failure: Unable to broadcast ISO Request");
         
         // Initialize the Fast Packet engine.
         let mut fp_engine = fast_packet::FastPacketReassembler::new();
 
+        // Broadcast ISO request for PGN 126996 (Product Information). It is in
+        // hex 0x01F014, little endian bytes: [0x14, 0xF0, 0x01]
+        println!("Explicitly requesting product information (PGN 126996)...");
+        let req_prod_frame = CanFrame::new(req_id, &[0x14, 0xF0, 0x01]).unwrap();
+        socket.write_frame(req_prod_frame).await
+            .expect("Comms Failure: Unable to broadcast Product Info request!");
+
+        // Make sure we're in the n2k_devices table.
+        let _ = db_tx.send(db::DbMessage::UpdateN2kDevice {
+            vessel_uuid,
+            device_name: my_name,
+            source_address: my_address as u8,
+            manufacturer_code: manufacturer_code as u16,
+            device_class: device_class as u8,
+            device_function: device_function as u8,
+            device_instance: 0,
+        }).await;
+        
+        let _ = db_tx.send(db::DbMessage::UpdateN2kProductInfo {
+            vessel_uuid,
+            source_address: my_address as u8,
+            model_id: "Muirgen N2K Ingestion Daemon".to_string(),
+            software_version: env!("CARGO_PKG_VERSION").to_string(),
+            serial_code: serial_number.to_string(),
+        }).await;
+        
         // N2K_DEVICE connection up, ready to watch for PGNs. 
         while let Some(result) = socket.next().await {
             match result {

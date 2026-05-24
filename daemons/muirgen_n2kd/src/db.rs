@@ -25,6 +25,13 @@ pub enum DbMessage {
         device_class: u8,
         device_function: u8,
         device_instance: u8,
+    }, 
+    UpdateN2kProductInfo {
+        vessel_uuid: uuid::Uuid,
+        source_address: u8,
+        model_id: String,
+        software_version: String,
+        serial_code: String,
     }
 }
 
@@ -101,6 +108,25 @@ pub async fn run_db_thread(
                     eprintln!("Database Registration Failed! N2K Device [{}]. Error: [{:?}]", device_name, db_err);
                 } else {
                     println!("Database: Registered N2K Device [{}] successfully.", device_name);
+                }
+            }
+            DbMessage::UpdateN2kProductInfo { vessel_uuid, source_address, model_id, software_version, serial_code } => {
+                let source_address_i16 = source_address as i16;
+                let result             = sqlx::query!(
+                    r#"
+                    UPDATE n2k_devices 
+                    SET model_id = $1, software_version = $2, serial_code = $3 
+                    WHERE vessel_uuid = $4 AND source_address = $5
+                    "#,
+                    model_id, software_version, serial_code, vessel_uuid, source_address_i16
+                )
+                .execute(&pool)
+                .await;
+
+                if let Err(db_err) = result {
+                    eprintln!("Database Update Failed! N2K Product info for source [{}]. Error: [{:?}]", source_address, db_err);
+                } else {
+                    println!("Updated Product info for source [{}] successfully.", source_address);
                 }
             }
         }

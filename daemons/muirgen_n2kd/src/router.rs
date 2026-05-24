@@ -49,8 +49,17 @@ pub async fn route_pgns(
             // Feed the CAN frame into the Fast Packet parser. It will return
             // the 134-byte payload when done.
             if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
-                // We pass the reassembled payload (as a slice) into the macro.
-                parse_and_print!(Pgn126996, pgn, source, &reassembled_payload);
+                // Pass the reassembled payload (as a slice) into the macro. 
+                // If successful, update the database.
+                if let Some(parsed) = parse_and_print!(Pgn126996, pgn, source, &reassembled_payload) {
+                    let _ = db_tx.send(DbMessage::UpdateN2kProductInfo {
+                        vessel_uuid,
+                        source_address: source as u8,
+                        model_id: parsed.model_id(),
+                        software_version: parsed.software_version(),
+                        serial_code: parsed.serial_code(),
+                    }).await;
+                }
             }
         }
         // Environmental Parameters (deprecated in N2K)
