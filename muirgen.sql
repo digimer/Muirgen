@@ -2046,7 +2046,15 @@ CREATE TABLE position_data (
     PRIMARY KEY (time, vessel_uuid, sensor_source),
     FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
 );
+ALTER TABLE position_data OWNER TO admin;
 SELECT create_hypertable('position_data', 'time', chunk_time_interval => INTERVAL '1 day');
+ALTER TABLE position_data SET (
+  timescaledb.compress,
+  timescaledb.compress_segmentby = 'vessel_uuid, sensor_source',
+  timescaledb.compress_orderby = 'time DESC'
+);
+SELECT add_retention_policy('position_data', INTERVAL '60 days');
+SELECT add_compression_policy('position_data', INTERVAL '1 day');
 
 -- This records whenever we transmit data over VHF or AIS
 CREATE TABLE vessel_transmissions (
@@ -2078,8 +2086,8 @@ SELECT add_compression_policy('vessel_transmissions', INTERVAL '1 day');
 CREATE TABLE n2k_traffic (
         uuid           uuid           default uuidv7()    not null,
         vessel_uuid    uuid                               not null,
+        device_name    bigint                             not null,
         pgn            integer                            not null,
-        source_id      smallint                           not null,
         priority       smallint                           not null,
         payload        bytea                              not null,
         time           timestamptz    default now()       not null,
@@ -2091,7 +2099,7 @@ ALTER TABLE n2k_traffic OWNER TO admin;
 SELECT create_hypertable('n2k_traffic', 'time', chunk_time_interval => INTERVAL '1 day');
 ALTER TABLE n2k_traffic SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'pgn, source_id',
+  timescaledb.compress_segmentby = 'pgn, device_name',
   timescaledb.compress_orderby = 'time DESC, uuid'
 );
 SELECT add_retention_policy('n2k_traffic', INTERVAL '7 days');

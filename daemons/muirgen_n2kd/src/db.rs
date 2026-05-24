@@ -9,6 +9,29 @@ pub enum DbMessage {
         set_by: String,
         code: String,
     },
+    InsertPositionData {
+        vessel_uuid: uuid::Uuid,
+        device_name: u64,
+        latitude: Option<f64>,
+        longitude: Option<f64>,
+        altitude: Option<f64>,
+        satellites_in_view: Option<u8>,
+        gnss_method: Option<String>,
+    },
+    InsertRawTraffic {
+        vessel_uuid: uuid::Uuid,
+        pgn: u32,
+        device_name: u64,
+        priority: u8,
+        payload: Vec<u8>,
+    },
+    InsertWeatherData {
+        vessel_uuid: uuid::Uuid,
+        device_name: u64,
+        pressure: Option<f64>,
+        air_temp: Option<f64>,
+        humidity: Option<f64>,
+    },
     SetAlarm {
         vessel_uuid: uuid::Uuid,
         set_by: String,
@@ -19,8 +42,8 @@ pub enum DbMessage {
     },
     UpdateN2kDevice {
         vessel_uuid: uuid::Uuid,
-        device_name: u64,
         source_address: u8,
+        device_name: u64,
         manufacturer_code: u16,
         device_class: u8,
         device_function: u8,
@@ -28,7 +51,7 @@ pub enum DbMessage {
     }, 
     UpdateN2kProductInfo {
         vessel_uuid: uuid::Uuid,
-        source_address: u8,
+        device_name: u64,
         model_id: String,
         software_version: String,
         serial_code: String,
@@ -84,6 +107,76 @@ pub async fn run_db_thread(
                     println!("Alarm Cleared. Code: [{}:{}]", set_by, code);
                 }
             }
+            DbMessage::InsertPositionData { vessel_uuid, device_name, latitude, longitude, altitude, satellites_in_view, gnss_method } => {
+                let sensor_source  = format!("n2k:{}", device_name);
+                let satellites_i16 = satellites_in_view.map(|sats| sats as i16);
+                let altitude_f32   = altitude.map(|alt| alt as f32);
+                
+                // We only create a PostGIS point if we actually have both Latitude and Longitude!
+                let result = if let (Some(lat), Some(lon)) = (latitude, longitude) {
+                    sqlx::query!(
+                        r#"
+                        INSERT INTO position_data (vessel_uuid, sensor_source, location, altitude, satellites_in_view, gnss_method)
+                        VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3::float8, $4::float8), 4326), $5, $6, $7)
+                        "#,
+                        vessel_uuid, sensor_source, lon, lat, altitude_f32, satellites_i16, gnss_method
+                    )
+                    .execute(&pool).await
+                } else {
+                    // No GPS fix yet, insert the other GNSS metadata with a NULL location
+                    sqlx::query!(
+                        r#"
+                        INSERT INTO position_data (vessel_uuid, sensor_source, altitude, satellites_in_view, gnss_method)
+                        VALUES ($1, $2, $3, $4, $5)
+                        "#,
+                        vessel_uuid, sensor_source, altitude_f32, satellites_i16, gnss_method
+                    )
+                    .execute(&pool).await
+                };
+
+                if let Err(db_err) = result {
+                    eprintln!("Database: Position data insert failed! Error: [{:?}]", db_err);
+                }
+            }
+            DbMessage::InsertRawTraffic { vessel_uuid, pgn, device_name, priority, payload } => {
+                let device_name_i64 = device_name as i64;
+                let priority_i16    = priority as i16;
+                let pgn_i32         = pgn as i32;
+                
+                let result = sqlx::query!(
+                    r#"
+                    INSERT INTO n2k_traffic (vessel_uuid, pgn, device_name, priority, payload)
+                    VALUES ($1, $2, $3, $4, $5)
+                    "#,
+                    vessel_uuid, pgn_i32, device_name_i64, priority_i16, payload
+                )
+                .execute(&pool)
+                .await;
+
+                if let Err(db_err) = result {
+                    eprintln!("Database: Raw PGN traffic insert failed for PGN: [{}] failed! Error: [{:?}]", pgn, db_err);
+                }
+            }
+            DbMessage::InsertWeatherData { vessel_uuid, device_name, pressure, air_temp, humidity } => {
+                let sensor_source = format!("n2k:{}", device_name);
+                // Convert f64 to f32 to match 'real' in the Postgres schema
+                let pressure_f32  = pressure.map(|prs| prs as f32);
+                let temp_f32      = air_temp.map(|tmp| tmp as f32);
+                let humidity_f32  = humidity.map(|hmd| hmd as f32);
+                
+                let result = sqlx::query!(
+                    r#"
+                    INSERT INTO weather_data (vessel_uuid, sensor_source, pressure, air_temp, relative_humidity)
+                    VALUES ($1, $2, $3, $4, $5)
+                    "#,
+                    vessel_uuid, sensor_source, pressure_f32, temp_f32, humidity_f32
+                )
+                .execute(&pool).await;
+
+                if let Err(db_err) = result {
+                    eprintln!("Database: Weather data insert failed! Error: [{:?}]", db_err);
+                }
+            }
             DbMessage::UpdateN2kDevice { vessel_uuid, device_name, source_address, manufacturer_code, device_class, device_function, device_instance } => {
                 // PostgreSQL natively uses signed integers, so we cast here.
                 let device_name_i64    = device_name as i64;
@@ -110,23 +203,23 @@ pub async fn run_db_thread(
                     println!("Database: Registered N2K Device [{}] successfully.", device_name);
                 }
             }
-            DbMessage::UpdateN2kProductInfo { vessel_uuid, source_address, model_id, software_version, serial_code } => {
-                let source_address_i16 = source_address as i16;
-                let result             = sqlx::query!(
+            DbMessage::UpdateN2kProductInfo { vessel_uuid, device_name, model_id, software_version, serial_code } => {
+                let device_name_i64 = device_name as i64;
+                let result          = sqlx::query!(
                     r#"
                     UPDATE n2k_devices 
                     SET model_id = $1, software_version = $2, serial_code = $3 
-                    WHERE vessel_uuid = $4 AND source_address = $5
+                    WHERE vessel_uuid = $4 AND device_name = $5
                     "#,
-                    model_id, software_version, serial_code, vessel_uuid, source_address_i16
+                    model_id, software_version, serial_code, vessel_uuid, device_name_i64
                 )
                 .execute(&pool)
                 .await;
 
                 if let Err(db_err) = result {
-                    eprintln!("Database Update Failed! N2K Product info for source [{}]. Error: [{:?}]", source_address, db_err);
+                    eprintln!("Database Update Failed! N2K Product info for device name: [{}]. Error: [{:?}]", device_name, db_err);
                 } else {
-                    println!("Updated Product info for source [{}] successfully.", source_address);
+                    println!("Updated Product info for device name: [{}] successfully.", device_name);
                 }
             }
         }

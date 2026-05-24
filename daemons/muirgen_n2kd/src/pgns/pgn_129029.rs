@@ -46,6 +46,19 @@ impl Pgn129029 {
             _ => "Unknown",
         }
     }
+
+    // Helper functions 
+    pub fn latitude(&self) -> Option<f64> {
+        if self.latitude_raw == 0x7FFFFFFFFFFFFFFF { None } else { Some(self.latitude_raw as f64 * 1e-16) }
+    }
+    
+    pub fn longitude(&self) -> Option<f64> {
+        if self.longitude_raw == 0x7FFFFFFFFFFFFFFF { None } else { Some(self.longitude_raw as f64 * 1e-16) }
+    }
+
+    pub fn altitude(&self) -> Option<f64> {
+        if self.altitude_raw == 0x7FFFFFFFFFFFFFFF { None } else { Some(self.altitude_raw as f64 * 1e-6) }
+    }
 }
 
 // Formatted for human readability.

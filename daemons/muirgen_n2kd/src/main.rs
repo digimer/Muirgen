@@ -8,6 +8,7 @@ use socketcan::{CanFrame, Id, ExtendedId};
 use socketcan::EmbeddedFrame;
 use socketcan::tokio::CanSocket;
 use sqlx::postgres::PgPoolOptions;
+use std::collections::HashMap;
 use std::env;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -189,6 +190,9 @@ async fn main() -> Result<(), sqlx::Error> {
         // Initialize the Fast Packet engine.
         let mut fp_engine = fast_packet::FastPacketReassembler::new();
 
+        // Create the (N2K) Address to ISO name map
+        let mut n2k_address_map: HashMap<u8, u64> = HashMap::new();
+
         // Broadcast ISO request for PGN 126996 (Product Information). It is in
         // hex 0x01F014, little endian bytes: [0x14, 0xF0, 0x01]
         println!("Explicitly requesting product information (PGN 126996)...");
@@ -209,8 +213,8 @@ async fn main() -> Result<(), sqlx::Error> {
         
         let _ = db_tx.send(db::DbMessage::UpdateN2kProductInfo {
             vessel_uuid,
-            source_address: my_address as u8,
-            model_id: "Muirgen N2K Ingestion Daemon".to_string(),
+            device_name: my_name,
+            model_id: "Muirgen N2K Ingestion Server m1".to_string(),
             software_version: env!("CARGO_PKG_VERSION").to_string(),
             serial_code: serial_number.to_string(),
         }).await;
@@ -231,6 +235,7 @@ async fn main() -> Result<(), sqlx::Error> {
                         let id_val = ext_id.as_raw();
 
                         // Extract the J1939 fields using bitwise shifts
+                        let priority       = (id_val >> 26) & 0x07;
                         let pdu_format     = (id_val >> 16) & 0xFF;
                         let pdu_specific   = (id_val >> 8)  & 0xFF;
                         let data_page      = (id_val >> 24) & 0x01;
@@ -244,7 +249,16 @@ async fn main() -> Result<(), sqlx::Error> {
                         };
 
                         // Hand off raw PGNs off to the router
-                        router::route_pgns(pgn, source_address as u32, frame.data(), &db_tx, vessel_uuid, &mut fp_engine).await;
+                        router::route_pgns(
+                            pgn, 
+                            source_address as u32, 
+                            priority as u8, 
+                            frame.data(), 
+                            &db_tx, 
+                            vessel_uuid, 
+                            &mut fp_engine, 
+                            &mut n2k_address_map
+                        ).await;
                     }
                 },
                 Err(frame_err) => {
