@@ -1,5 +1,4 @@
-// This is the (deprecated) single frame Environmental Parameters PGN
-
+// Environmental Paramaters (deprecated)
 use deku::prelude::*;
 use std::fmt;
 

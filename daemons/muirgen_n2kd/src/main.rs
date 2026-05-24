@@ -4,6 +4,7 @@
 // 
 
 use futures_util::StreamExt;
+use socketcan::{CanFrame, Id, ExtendedId};
 use socketcan::EmbeddedFrame;
 use socketcan::tokio::CanSocket;
 use sqlx::postgres::PgPoolOptions;
@@ -44,6 +45,42 @@ async fn main() -> Result<(), sqlx::Error> {
     let device_id = env::var("DEV_ID")
         .expect("DEV_ID must be set to a unique identification string for this device.");
     
+    // Pull out the NMEA data needed to build our ID.
+    let manufacturer_code: u64 = env::var("MANUFACTURER_CODE")
+        .expect("MANUFACTURER_CODE must be set to an NMEA manufacturer code (assigned, or unused like 1999)")
+        .parse()
+        .expect("MANUFACTURER_CODE must be a valid number. If unsure, use 1999");
+    let serial_number: u64 = env::var("SERIAL_NUMBER")
+        .expect("SERIAL_NUMBER must be set and it must be unique.")
+        .parse()
+        .expect("SERIAL_NUMBER must be a valid number, and it must be unique.");
+    let device_class: u64 = env::var("DEVICE_CLASS")
+        .expect("DEVICE_CLASS needs to be set. If you're unsure, set to '25' (Inter/Intranet Device).")
+        .parse()
+        .expect("DEVICE_CLASS needs must be a valid number. If unsure, set to '25' (Inter/Intranet Device).");
+    let device_function: u64 = env::var("DEVICE_FUNCTION")
+        .expect("DEVICE_FUNCTION needs to be set. If you're unsure, set to '130' (PC Gateway).")
+        .parse()
+        .expect("DEVICE_FUNCTION must be a number. If you're unsure, set to '130' (PC Gateway).");
+
+    // Assemble the NMEA2000 'name' for this device.
+    let mut my_name: u64 = 0;
+    my_name |= serial_number      & 0x1FFFFF;     // 21 bits
+    my_name |= (manufacturer_code & 0x7FF) << 21; // 11 bits
+    my_name |= (device_function   & 0xFF) << 40;  // 8 bits
+    my_name |= (device_class      & 0x7F) << 49;  // 7 bits
+    my_name |= 1 << 63;                           // Arbitrary Address Capable
+
+    // Pick a default Source Address
+    let my_address = 45;
+    
+    // Pull out the queue depth.
+    let pgn_queue_depth: usize = env::var("PGN_CACHE")
+        .expect("PGN_CACHE must be set. Use '10_000_000' if unsure (1GiB of cached PGNs)")
+        .replace(",", "")
+        .parse()
+        .expect("PGN_CACHE must be a valid integer! Recommended: '10,000,000'.");
+
     // Verify the vessel_uuid is a valid UUID.
     let vessel_uuid = uuid::Uuid::parse_str(&env_vessel_uuid).expect("Invalid UUID");
 
@@ -64,8 +101,8 @@ async fn main() -> Result<(), sqlx::Error> {
 
     // TODO: Verify that the vessel_uuid maps to a vessel and that it is active.
 
-    // Create the MPSC (multi-producer, single consumer) channel to the DB
-    let (db_tx, db_rx) = mpsc::channel::<db::DbMessage>(100);
+    // Create the MPSC (multi-producer, single consumer) channel to the DB. 
+    let (db_tx, db_rx) = mpsc::channel::<db::DbMessage>(pgn_queue_depth);
 
     // Spawn the database writer thread.
     tokio::spawn(db::run_db_thread(pool.clone(), db_rx));
@@ -129,6 +166,25 @@ async fn main() -> Result<(), sqlx::Error> {
         };
         println!("Success. Ready to process NMEA2000 PGNs.");
 
+        // Broadcast PGN 60928 (ISO Address Claim)
+        // CAN ID = Priority(6) | PGN(60928) | Source(45)
+        println!("Broadcasting ISO Address Claim...");
+        let claim_id_value = (6 << 26) | (60928 << 8) | my_address;
+        let claim_id       = Id::Extended(ExtendedId::new(claim_id_value).unwrap());
+        let claim_frame    = CanFrame::new(claim_id, &my_name.to_le_bytes()).unwrap();
+        socket.write_frame(claim_frame).await
+            .expect("Comms Failure: Unable to broadcast address claim!");
+
+        // Broadcast GPN 59904 (ISO request) for PGN 60928
+        // CAN ID = Priority(6) | PGN(59904) | Dest(255 Global) | Source(45)
+        println!("Requesting network topology...");
+        let req_id_value = (6 << 26) | (59904 << 8) | 255 << 8 | my_address;
+        let req_id       = Id::Extended(ExtendedId::new(req_id_value).unwrap());
+        // Payload is the requested PGN in little-endian (60928 = 0x00EE00)
+        let req_frame    = CanFrame::new(req_id, &[0x00, 0xEE, 0x00]).unwrap();
+        socket.write_frame(req_frame).await
+            .expect("FATAL: Unable to broadcast ISO Request");
+        
         // N2K_DEVICE connection up, ready to watch for PGNs. 
         while let Some(result) = socket.next().await {
             match result {
@@ -158,7 +214,7 @@ async fn main() -> Result<(), sqlx::Error> {
                         };
 
                         // Hand off raw PGNs off to the router
-                        router::route_pgns(pgn, source_address as u32, frame.data());
+                        router::route_pgns(pgn, source_address as u32, frame.data(), &db_tx, vessel_uuid).await;
                     }
                 },
                 Err(frame_err) => {

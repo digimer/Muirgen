@@ -4,6 +4,11 @@ use sqlx::PgPool;
 
 // The types of messages we can send to the database thread
 pub enum DbMessage {
+    ClearAlarm {
+        vessel_uuid: uuid::Uuid,
+        set_by: String,
+        code: String,
+    },
     SetAlarm {
         vessel_uuid: uuid::Uuid,
         set_by: String,
@@ -12,10 +17,14 @@ pub enum DbMessage {
         description: String,
         level: i16,
     },
-    ClearAlarm {
+    UpdateN2kDevice {
         vessel_uuid: uuid::Uuid,
-        set_by: String,
-        code: String,
+        device_name: u64,
+        source_address: u8,
+        manufacturer_code: u16,
+        device_class: u8,
+        device_function: u8,
+        device_instance: u8,
     }
 }
 
@@ -41,7 +50,7 @@ pub async fn run_db_thread(
                         description = EXCLUDED.description, 
                         level = EXCLUDED.level
                     "#,
-                    vessel_uuid, code, title, description, level
+                    vessel_uuid, set_by, code, title, description, level
                 )
                 .execute(&pool)
                 .await;
@@ -66,6 +75,32 @@ pub async fn run_db_thread(
                     eprintln!("Alarm Clear failed! Code: [{}:{}]. Error: [{:?}]", set_by, code, db_err);
                 } else {
                     println!("Alarm Cleared. Code: [{}:{}]", set_by, code);
+                }
+            }
+            DbMessage::UpdateN2kDevice { vessel_uuid, device_name, source_address, manufacturer_code, device_class, device_function, device_instance } => {
+                // PostgreSQL natively uses signed integers, so we cast here.
+                let device_name_i64    = device_name as i64;
+                let source_address_i16 = source_address as i16;
+                let mfg_code_i32       = manufacturer_code as i32;
+                let d_class_i32        = device_class as i32;
+                let d_func_i32         = device_function as i32;
+                let d_inst_i32         = device_instance as i32;
+                
+                let result = sqlx::query!(
+                    r#"
+                    INSERT INTO n2k_devices (vessel_uuid, device_name, source_address, manufacturer_code, device_class, device_function, device_instance, last_seen)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+                    ON CONFLICT (vessel_uuid, device_name) DO UPDATE SET source_address = EXCLUDED.source_address, last_seen = now()
+                    "#,
+                    vessel_uuid, device_name_i64, source_address_i16, mfg_code_i32, d_class_i32, d_func_i32, d_inst_i32
+                )
+                .execute(&pool)
+                .await;
+
+                if let Err(db_err) = result {
+                    eprintln!("Database Registration Failed! N2K Device [{}]. Error: [{:?}]", device_name, db_err);
+                } else {
+                    println!("Database: Registered N2K Device [{}] successfully.", device_name);
                 }
             }
         }

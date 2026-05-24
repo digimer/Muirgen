@@ -6,6 +6,8 @@ OS: AlmaLinux 10 on an raspberry pi 4 with the Copperhill PICAN-M HAT
 
 ## PICAN-M HAT Setup
 
+### SPI Setup
+
 To enable the Raspberry Pi's SPI layer, update /boot/config.txt and append under '[all]' the following;
 
  dtparam=spi=on
@@ -13,7 +15,11 @@ To enable the Raspberry Pi's SPI layer, update /boot/config.txt and append under
 
 Reboot after adding these lines.
 
-Verify that there is now a 'can0' device when running 'ip addr list can0'. 
+### Canbus Network Config
+
+Verify that there is now a 'can0' device when running 'ip addr list can0'.
+
+NOTE: If you use (or get) anything other than 'can0', be sure to update N2K_DEV in '.env' and copy/edit the can0-n2k.service to reflect the actual device!
 
  ip addr list can0
  3: can0: <NOARP,ECHO> mtu 16 qdisc noop state DOWN group default qlen 10
@@ -39,6 +45,12 @@ Connect to the N2K bus with a device that is transmitting and verify that the de
   can0  09F80223   [8]  FF FC FF FF FF FF FF FF
   can0  0DF80523   [8]  00 2B FF FF FF FF FF FF
 (Press ctrl + c to end stream)
+
+### Memory Config
+
+This assumes the daemon is running on a dedicated N2K ingestion server / appliance. In particular, a Raspberry Pi 4 with 4+ GiB of RAM.
+
+The default '99-muirgen.conf' (installed in /etc/sysctl.d/) boosts the memory allocation significantly. Review if your hardware differs significantly. 
 
 ### Almalinux 10 base OS setup
 Dependencies to install;
