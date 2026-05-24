@@ -8,7 +8,11 @@ use crate::pgns::pgn_127257::Pgn127257;
 use crate::pgns::pgn_127258::Pgn127258;
 use crate::pgns::pgn_129025::Pgn129025;
 use crate::pgns::pgn_129029::Pgn129029;
+use crate::pgns::pgn_130306::Pgn130306;
 use crate::pgns::pgn_130311::Pgn130311;
+use crate::pgns::pgn_130312::Pgn130312;
+use crate::pgns::pgn_130313::Pgn130313;
+use crate::pgns::pgn_130314::Pgn130314;
 use deku::DekuContainerRead;
 
 // Macro for PGN parsing boilerplate
@@ -179,6 +183,37 @@ pub async fn route_pgns(
                 }
             }
         }
+        // Wind Data
+        130306 => {
+            if let Some(parsed) = parse_and_print!(Pgn130306, pgn, source, data) {
+                let speed     = parsed.wind_speed_mps().map(|spd| spd as f64);
+                let direction = parsed.wind_direction_degrees().map(|dir| dir as f64);
+                
+                let mut true_speed     = None; let mut true_direction = None;
+                let mut ground_speed   = None; let mut ground_direction = None;
+                let mut apparent_speed = None; let mut apparent_direction = None;
+
+                match parsed.reference {
+                    2 => { apparent_speed = speed; apparent_direction = direction; }
+                    // True North or Magnetic North
+                    0 | 1 => { ground_speed = speed; ground_direction = direction; }
+                    // Boat or Water referenced
+                    3 | 4 => { true_speed = speed; true_direction = direction; }
+                    _ => {}
+                }
+
+                let _ = db_tx.send(DbMessage::InsertWindData {
+                    vessel_uuid, 
+                    device_name,
+                    true_speed, 
+                    true_direction,
+                    ground_speed, 
+                    ground_direction,
+                    apparent_speed, 
+                    apparent_direction,
+                }).await;
+            }
+        }
         // Environmental Parameters (deprecated in N2K)
         130311 => {
             // Convert Pascals to hPa
@@ -191,6 +226,53 @@ pub async fn route_pgns(
                     humidity: parsed.humidity_percent().map(|humidity| humidity as f64),
                 }).await;
             }
+        }
+        // Temperature (Source 1 = Outside Air)
+        130312 => {
+            if let Some(parsed) = parse_and_print!(Pgn130312, pgn, source, data) {
+                if parsed.source == 1 {
+                    let _ = db_tx.send(DbMessage::InsertWeatherData {
+                        vessel_uuid, 
+                        device_name,
+                        pressure: None, 
+                        humidity: None,
+                        air_temp: parsed.temperature_kelvin().map(|temp| temp as f64),
+                    }).await;
+                }
+            }
+        }
+        // Humidity (Source 1 = Outside)
+        130313 => {
+            if let Some(parsed) = parse_and_print!(Pgn130313, pgn, source, data) {
+                if parsed.source == 1 {
+                    let _ = db_tx.send(DbMessage::InsertWeatherData {
+                        vessel_uuid, 
+                        device_name,
+                        pressure: None, 
+                        air_temp: None,
+                        humidity: parsed.humidity_percent().map(|hum| hum as f64),
+                    }).await;
+                }
+            }
+        }
+        // Actual Pressure (Source 0 = Atmospheric)
+        130314 => {
+            if let Some(parsed) = parse_and_print!(Pgn130314, pgn, source, data) {
+                if parsed.source == 0 {
+                    let _ = db_tx.send(DbMessage::InsertWeatherData {
+                        vessel_uuid, 
+                        device_name,
+                        air_temp: None, 
+                        humidity: None,
+                        pressure: parsed.pressure_pascals().map(|psr| (psr as f64) / 100.0),
+                    }).await;
+                }
+            }
+        }
+        // Meteorological Station Data (Fast Packet)
+        // This is a legacy PGN that duplicates 130306, 130312, 130313, 130314.
+        130323 => {
+            // Duplicate - Drop and ignore.
         }
 
         // Catch un-parsed PGNs (stored in n2k_traffic)

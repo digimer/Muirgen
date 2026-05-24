@@ -7,9 +7,9 @@ use std::fmt;
 pub struct Pgn127258 {
     pub seq_id: u8,
     #[deku(bits = "4")]
-    pub source: u8,
-    #[deku(bits = "4")]
     pub reserved1: u8,
+    #[deku(bits = "4")]
+    pub source: u8,
     pub date_of_variation: u16,
     pub variation: i16,
     pub reserved2: u16,

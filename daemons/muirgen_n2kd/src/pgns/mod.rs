@@ -6,4 +6,9 @@ pub mod pgn_127257; // Attitude
 pub mod pgn_127258; // Magnetic Variation
 pub mod pgn_129025; // Position, Rapid Update
 pub mod pgn_129029; // GNSS Position Data (Fast Packet)
+pub mod pgn_130306; // Wind Data
 pub mod pgn_130311; // Environmental Paramaters (deprecated)
+pub mod pgn_130312; // Temperature
+pub mod pgn_130313; // Humidity
+pub mod pgn_130314; // Actual Pressure
+// PGN 130323 is ignored (legacy, duplicate of and replaced by 130312, 130313, 130314)

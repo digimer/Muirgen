@@ -9,10 +9,10 @@ pub struct Pgn127250 {
     pub heading: u16,
     pub deviation: i16,
     pub variation: i16,
-    #[deku(bits = "2")]
-    pub reference: u8,
     #[deku(bits = "6")]
     pub reserved: u8,
+    #[deku(bits = "2")]
+    pub reference: u8,
 }
 
 impl Pgn127250 {
@@ -28,7 +28,7 @@ impl Pgn127250 {
 
 impl fmt::Display for Pgn127250 {
     fn fmt(&self, format: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let heading   = self.heading_degrees().map(|data| format!("{:.1}°", data)).unwrap_or_else(|| "N/A".to_string());
+        let heading   = self.heading_degrees().map(|deg| format!("{:.1}°", deg)).unwrap_or_else(|| "N/A".to_string());
         let reference = match self.reference {
             0 => "True",
             1 => "Magnetic",

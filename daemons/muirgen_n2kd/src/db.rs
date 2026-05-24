@@ -41,6 +41,16 @@ pub enum DbMessage {
         air_temp: Option<f64>,
         humidity: Option<f64>,
     },
+    InsertWindData {
+        vessel_uuid: uuid::Uuid,
+        device_name: u64,
+        true_speed: Option<f64>,
+        true_direction: Option<f64>,
+        ground_speed: Option<f64>,
+        ground_direction: Option<f64>,
+        apparent_speed: Option<f64>,
+        apparent_direction: Option<f64>,
+    },
     SetAlarm {
         vessel_uuid: uuid::Uuid,
         set_by: String,
@@ -205,6 +215,28 @@ pub async fn run_db_thread(
 
                 if let Err(db_err) = result {
                     eprintln!("Database: Weather data insert failed! Error: [{:?}]", db_err);
+                }
+            }
+            DbMessage::InsertWindData { vessel_uuid, device_name, true_speed, true_direction, ground_speed, ground_direction, apparent_speed, apparent_direction } => {
+                let sensor_source          = format!("n2k:{}", device_name);
+                let true_speed_f32         = true_speed.map(|vel| vel as f32);
+                let true_direction_f32     = true_direction.map(|vec| vec as f32);
+                let ground_speed_f32       = ground_speed.map(|vel| vel as f32);
+                let ground_direction_f32   = ground_direction.map(|vec| vec as f32);
+                let apparent_speed_f32     = apparent_speed.map(|vel| vel as f32);
+                let apparent_direction_f32 = apparent_direction.map(|vec| vec as f32);
+
+                let result = sqlx::query!(
+                    r#"
+                    INSERT INTO wind_data (vessel_uuid, sensor_source, true_speed, true_direction, ground_speed, ground_direction, apparent_speed, apparent_direction)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    "#,
+                    vessel_uuid, sensor_source, true_speed_f32, true_direction_f32, ground_speed_f32, ground_direction_f32, apparent_speed_f32, apparent_direction_f32
+                )
+                .execute(&pool).await;
+
+                if let Err(db_err) = result {
+                    eprintln!("Database: Wind data insert failed! Error: [{:?}]", db_err);
                 }
             }
             DbMessage::UpdateN2kDevice { vessel_uuid, device_name, source_address, manufacturer_code, device_class, device_function, device_instance } => {
