@@ -2,6 +2,10 @@
 use crate::db::DbMessage;
 use crate::pgns::pgn_60928::Pgn60928;
 use crate::pgns::pgn_126996::Pgn126996;
+use crate::pgns::pgn_127250::Pgn127250;
+use crate::pgns::pgn_127251::Pgn127251;
+use crate::pgns::pgn_127257::Pgn127257;
+use crate::pgns::pgn_127258::Pgn127258;
 use crate::pgns::pgn_129025::Pgn129025;
 use crate::pgns::pgn_129029::Pgn129029;
 use crate::pgns::pgn_130311::Pgn130311;
@@ -83,6 +87,62 @@ pub async fn route_pgns(
                         serial_code: parsed.serial_code(),
                     }).await;
                 }
+            }
+        }
+        // Vessel Heading
+        127250 => {
+            if let Some(parsed) = parse_and_print!(Pgn127250, pgn, source, data) {
+                let _ = db_tx.send(DbMessage::InsertMotionData {
+                    vessel_uuid,
+                    device_name,
+                    pitch: None,
+                    roll: None,
+                    heading_magnetic: parsed.heading_degrees().map(|heading| heading as f64),
+                    magnetic_variation: None,
+                    rate_of_turn: None,
+                }).await;
+            }
+        }
+        // Rate of Turn
+        127251 => {
+            if let Some(parsed) = parse_and_print!(Pgn127251, pgn, source, data) {
+                let _ = db_tx.send(DbMessage::InsertMotionData {
+                    vessel_uuid,
+                    device_name,
+                    pitch: None,
+                    roll: None,
+                    heading_magnetic: None,
+                    magnetic_variation: None,
+                    rate_of_turn: parsed.rate_degrees_per_sec().map(|rot| rot as f64),
+                }).await;
+            }
+        }
+        // Attitude
+        127257 => {
+            if let Some(parsed) = parse_and_print!(Pgn127257, pgn, source, data) {
+                let _ = db_tx.send(DbMessage::InsertMotionData {
+                    vessel_uuid,
+                    device_name,
+                    pitch: parsed.pitch_degrees().map(|pitch| pitch as f64),
+                    roll: parsed.roll_degrees().map(|roll| roll as f64),
+                    heading_magnetic: None,
+                    magnetic_variation: None,
+                    rate_of_turn: None,
+                }).await;
+            }
+        }
+        // Magnetic Variation
+        127258 => {
+            if let Some(parsed) = parse_and_print!(Pgn127258, pgn, source, data) {
+                let _ = db_tx.send(DbMessage::InsertMotionData {
+                    vessel_uuid,
+                    device_name,
+                    pitch: None,
+                    roll: None,
+                    heading_magnetic: None,
+                    magnetic_variation: parsed.variation_degrees().map(|var| var as f64),
+                    rate_of_turn: None,
+                }).await;
             }
         }
         // Position, Rapid Update (10 Hz)

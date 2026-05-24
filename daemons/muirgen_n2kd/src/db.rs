@@ -9,6 +9,15 @@ pub enum DbMessage {
         set_by: String,
         code: String,
     },
+    InsertMotionData {
+        vessel_uuid: uuid::Uuid,
+        device_name: u64,
+        pitch: Option<f64>,
+        roll: Option<f64>,
+        heading_magnetic: Option<f64>,
+        magnetic_variation: Option<f64>,
+        rate_of_turn: Option<f64>,
+    },
     InsertPositionData {
         vessel_uuid: uuid::Uuid,
         device_name: u64,
@@ -105,6 +114,27 @@ pub async fn run_db_thread(
                     eprintln!("Alarm Clear failed! Code: [{}:{}]. Error: [{:?}]", set_by, code, db_err);
                 } else {
                     println!("Alarm Cleared. Code: [{}:{}]", set_by, code);
+                }
+            }
+            DbMessage::InsertMotionData { vessel_uuid, device_name, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn } => {
+                let sensor_source    = format!("n2k:{}", device_name);
+                let pitch_f32        = pitch.map(|pitch| pitch as f32);
+                let roll_f32         = roll.map(|roll| roll as f32);
+                let heading_f32      = heading_magnetic.map(|heading| heading as f32);
+                let variation_f32    = magnetic_variation.map(|var| var as f32);
+                let rate_of_turn_f32 = rate_of_turn.map(|rot| rot as f32);
+
+                let result = sqlx::query!(
+                    r#"
+                    INSERT INTO motion_data (vessel_uuid, sensor_source, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    "#,
+                    vessel_uuid, sensor_source, pitch_f32, roll_f32, heading_f32, variation_f32, rate_of_turn_f32
+                )
+                .execute(&pool).await;
+
+                if let Err(db_err) = result {
+                    eprintln!("Database: Motion data insert failed! Error: [{:?}]", db_err);
                 }
             }
             DbMessage::InsertPositionData { vessel_uuid, device_name, latitude, longitude, altitude, satellites_in_view, gnss_method } => {

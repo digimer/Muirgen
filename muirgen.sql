@@ -2119,6 +2119,7 @@ CREATE TABLE motion_data (
         pitch                 real,                                        -- Processed Orientation (Degrees)
         roll                  real,
         heading_magnetic      real,
+        magnetic_variation    real,                                        -- Magnetic Variation (Degrees)
         rate_of_turn          real,                                        -- Other data from the 200WX
         speed_over_ground     real,
         course_over_ground    real,
