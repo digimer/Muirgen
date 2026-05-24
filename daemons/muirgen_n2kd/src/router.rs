@@ -2,6 +2,8 @@
 use crate::db::DbMessage;
 use crate::pgns::pgn_60928::Pgn60928;
 use crate::pgns::pgn_126996::Pgn126996;
+use crate::pgns::pgn_129025::Pgn129025;
+use crate::pgns::pgn_129029::Pgn129029;
 use crate::pgns::pgn_130311::Pgn130311;
 use deku::DekuContainerRead;  // provides from_bytes()
 
@@ -60,6 +62,17 @@ pub async fn route_pgns(
                         serial_code: parsed.serial_code(),
                     }).await;
                 }
+            }
+        }
+        // Position, Rapid Update (10 Hz)
+        129025 => {
+            parse_and_print!(Pgn129025, pgn, source, data);
+        }
+        // GNSS Position Data (Fast Packet!)
+        129029 => {
+            if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
+                // Pass the reassembled payload to the macro
+                parse_and_print!(Pgn129029, pgn, source, &reassembled_payload);
             }
         }
         // Environmental Parameters (deprecated in N2K)
