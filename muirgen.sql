@@ -2034,6 +2034,20 @@ CREATE OR REPLACE TRIGGER trigger_power_devices_update
 -- ### Below here are (potentially) high rate of change tables. These use hypertables to better handle their
 -- ### large volume of time-series data.
 
+-- GNSS data
+CREATE TABLE position_data (
+    vessel_uuid          uuid                               not null,
+    sensor_source        text                               not null, -- n2k_devices -> uuid if from the NMEA2000 bus, free form string otherwise
+    location             geography(point, 4326)             not null, 
+    altitude             real,                                        -- In meters
+    satellites_in_view   smallint,                                    -- Helps quanitfy accuracy of the location data
+    gnss_method          text,                                        -- 'GNSS Fix', 'DGNSS Fix (WAAS)', etc.
+    time                 timestamptz    default now()       not null,
+    PRIMARY KEY (time, vessel_uuid, sensor_source),
+    FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
+);
+SELECT create_hypertable('position_data', 'time', chunk_time_interval => INTERVAL '1 day');
+
 -- This records whenever we transmit data over VHF or AIS
 CREATE TABLE vessel_transmissions (
         uuid                   uuid           default uuidv7()    not null,
@@ -2236,10 +2250,10 @@ CREATE TABLE depth_data (
         uuid             uuid           default uuidv7()    not null,
         vessel_uuid      uuid                               not null,
         sensor_source    text                               not null, -- ie: 'dst810:<serial_number>'
-        measured         real                               not null, -- Use keel_offset_cm and waterline_offset_cm to display depth below keel and water depth
-        quality          smallint                           not null, -- 0~100 (percent confidence), filter out values below 50.
-        sensor_roll      real                               not null, 
-        sensor_pitch     real                               not null,
+        measured         real,                                        -- Use keel_offset_cm and waterline_offset_cm to display depth below keel and water depth
+        quality          smallint,                                    -- 0~100 (percent confidence), filter out values below 50.
+        sensor_roll      real,
+        sensor_pitch     real,
         time             timestamptz    default now()       not null,
 
         PRIMARY KEY(time, uuid), 
@@ -2293,12 +2307,12 @@ CREATE TABLE wind_data (
         uuid                  uuid           default uuidv7()    not null,
         vessel_uuid           uuid                               not null,
         sensor_source         text                               not null,
-        true_speed            real                               not null, -- Stored as m/s, relative to the speed over water
-        true_direction        real                               not null, -- 0~359 degree from true North, 0.1 degree resolution
-        ground_speed          real                               not null, -- Stored as m/s, relative to the speed over ground
-        ground_direction      real                               not null, -- 0~359 degrees from true North
-        apparent_speed        real                               not null, -- Stored as m/s
-        apparent_direction    real                               not null, -- 0~359 degree from the bow
+        true_speed            real,                                        -- Stored as m/s, relative to the speed over water
+        true_direction        real,                                        -- 0~359 degree from true North, 0.1 degree resolution
+        ground_speed          real,                                        -- Stored as m/s, relative to the speed over ground
+        ground_direction      real,                                        -- 0~359 degrees from true North
+        apparent_speed        real,                                        -- Stored as m/s
+        apparent_direction    real,                                        -- 0~359 degree from the bow
         time                  timestamptz    default now()       not null,
         
         -- Constraints to prevent "impossible" sensor data
@@ -2333,17 +2347,17 @@ CREATE TABLE weather_data (
         uuid                 uuid                      default uuidv7()    not null,
         vessel_uuid          uuid                                          not null,
         sensor_source        text                                          not null, -- Likely to only be '200WX:<serial_number>', but this accounts for further weather sources in the future
-        location             geography(point, 4326)                        not null, -- GPS coordinates when the weather was read.
-        pressure             real                                          not null, -- In hpa, 0.1 hpa resolution
-        station_height       real                                          not null, -- In meters, height above the water line
-        air_temp             real                                          not null, -- In Kelvin, 0.1 degree
-        relative_humidity    real                                          not null, -- 0.1% resolution
-        dew_point            real                                          not null, -- In C
-        heat_index           real                                          not null, -- "Feels like" humidex
-        wind_chill           real                                          not null, -- "Feels like" wind chill
-        station_pitch        real                                          not null, -- +/- 1 degree accuracy
-        station_roll         real                                          not null, -- +/- 1 degree accuracy
-        station_heading      real                                          not null, -- GPS heading
+        location             geography(point, 4326),                                 -- GPS coordinates when the weather was read.
+        pressure             real,                                                   -- In hpa, 0.1 hpa resolution
+        station_height       real,                                                   -- In meters, height above the water line
+        air_temp             real,                                                   -- In Kelvin, 0.1 degree
+        relative_humidity    real,                                                   -- 0.1% resolution
+        dew_point            real,                                                   -- In C
+        heat_index           real,                                                   -- "Feels like" humidex
+        wind_chill           real,                                                   -- "Feels like" wind chill
+        station_pitch        real,                                                   -- +/- 1 degree accuracy
+        station_roll         real,                                                   -- +/- 1 degree accuracy
+        station_heading      real,                                                   -- GPS heading
         time                 timestamptz               default now()       not null,
         
         PRIMARY KEY(time, uuid),
@@ -2547,11 +2561,11 @@ SELECT add_compression_policy('ais_voyage_data', INTERVAL '1 day');
 CREATE TABLE ais_dynamics (
         uuid                  uuid           default uuidv7()    not null,
         ais_target_mmsi       text                               not null,
-        location              geography(point, 4326)             not null,
-        speed_over_ground     real                               not null,
-        course_over_ground    real                               not null,
-        heading               real                               not null,
-        rate_of_turn          real                               not null,
+        location              geography(point, 4326),
+        speed_over_ground     real,
+        course_over_ground    real,
+        heading               real,
+        rate_of_turn          real,
         time                  timestamptz    default now()       not null,
 
         PRIMARY KEY(time, uuid), 
