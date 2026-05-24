@@ -16,6 +16,7 @@ use tokio::sync::mpsc;
 
 // Modules
 mod db;
+mod fast_packet;
 mod health;
 mod pgns;
 mod router;
@@ -185,6 +186,9 @@ async fn main() -> Result<(), sqlx::Error> {
         socket.write_frame(req_frame).await
             .expect("FATAL: Unable to broadcast ISO Request");
         
+        // Initialize the Fast Packet engine.
+        let mut fp_engine = fast_packet::FastPacketReassembler::new();
+
         // N2K_DEVICE connection up, ready to watch for PGNs. 
         while let Some(result) = socket.next().await {
             match result {
@@ -214,7 +218,7 @@ async fn main() -> Result<(), sqlx::Error> {
                         };
 
                         // Hand off raw PGNs off to the router
-                        router::route_pgns(pgn, source_address as u32, frame.data(), &db_tx, vessel_uuid).await;
+                        router::route_pgns(pgn, source_address as u32, frame.data(), &db_tx, vessel_uuid, &mut fp_engine).await;
                     }
                 },
                 Err(frame_err) => {

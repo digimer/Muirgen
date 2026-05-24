@@ -1,6 +1,7 @@
 // Import the PGN parser
 use crate::db::DbMessage;
 use crate::pgns::pgn_60928::Pgn60928;
+use crate::pgns::pgn_126996::Pgn126996;
 use crate::pgns::pgn_130311::Pgn130311;
 use deku::DekuContainerRead;  // provides from_bytes()
 
@@ -25,7 +26,8 @@ pub async fn route_pgns(
     source: u32, 
     data: &[u8],
     db_tx: &tokio::sync::mpsc::Sender<DbMessage>,
-    vessel_uuid: uuid::Uuid
+    vessel_uuid: uuid::Uuid,
+    fp_engine: &mut crate::fast_packet::FastPacketReassembler
 ) {
     match pgn {
         // ISO Address Claim
@@ -40,6 +42,15 @@ pub async fn route_pgns(
                     device_function: parsed.device_function(),
                     device_instance: parsed.device_instance(),
                 }).await;
+            }
+        }
+        // Product Information (Fast Packet)
+        126996 => {
+            // Feed the CAN frame into the Fast Packet parser. It will return
+            // the 134-byte payload when done.
+            if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
+                // We pass the reassembled payload (as a slice) into the macro.
+                parse_and_print!(Pgn126996, pgn, source, &reassembled_payload);
             }
         }
         // Environmental Parameters (deprecated in N2K)
