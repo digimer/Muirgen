@@ -1,6 +1,7 @@
 // Import the PGN parser
 use crate::db::DbMessage;
 use crate::pgns::pgn_60928::Pgn60928;
+use crate::pgns::pgn_126992::Pgn126992;
 use crate::pgns::pgn_126996::Pgn126996;
 use crate::pgns::pgn_127250::Pgn127250;
 use crate::pgns::pgn_127251::Pgn127251;
@@ -17,6 +18,7 @@ use crate::pgns::pgn_130312::Pgn130312;
 use crate::pgns::pgn_130313::Pgn130313;
 use crate::pgns::pgn_130314::Pgn130314;
 use deku::DekuContainerRead;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // Macro for PGN parsing boilerplate
 macro_rules! parse_and_print {
@@ -76,6 +78,20 @@ pub async fn route_pgns(
                     device_function: parsed.device_function(),
                     device_instance: parsed.device_instance(),
                 }).await;
+            }
+        }
+        // System Time
+        126992 => {
+            if let Some(parsed) = parse_and_print!(Pgn126992, pgn, source, data) {
+                if let Some(n2k_unix_timestamp) = parsed.unix_timestamp() {
+                    // Grab the exact system time when we received this PGN
+                    let local_unix_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
+                    
+                    let _ = db_tx.send(DbMessage::UpdateSystemTime {
+                        n2k_unix_timestamp,
+                        local_unix_timestamp,
+                    }).await;
+                }
             }
         }
         // Product Information (Fast Packet)

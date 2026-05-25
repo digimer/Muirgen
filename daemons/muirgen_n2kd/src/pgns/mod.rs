@@ -1,4 +1,5 @@
 pub mod pgn_60928;  // ISO Address Claim
+pub mod pgn_126992; // System Time
 pub mod pgn_126996; // Product Information
 pub mod pgn_127250; // Vessel Heading
 pub mod pgn_127251; // Rate of Turn

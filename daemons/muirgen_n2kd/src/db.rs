@@ -1,6 +1,37 @@
 // Database thread handler
 
 use sqlx::PgPool;
+use tokio::net::UnixDatagram;
+
+// Structs (specifically for chrony)
+#[repr(C)] 
+struct Timeval {
+    tv_sec: i64,
+    tv_usec: i64,
+}
+
+#[repr(C)] 
+struct SockSample {
+    tv: Timeval,
+    offset: f64,
+    pulse: i32,
+    leap: i32,
+    _pad: i32,
+    magic: i32,
+}
+
+impl SockSample {
+    fn as_bytes(&self) -> &[u8] {
+        // Rust requires 'unsafe {}' to tell it we're intentionally directly 
+        // accessing memory pointers.
+        unsafe {
+            std::slice::from_raw_parts(
+                (self as *const SockSample) as *const u8,
+                std::mem::size_of::<SockSample>(),
+            )
+        }
+    }
+}
 
 // The types of messages we can send to the database thread
 pub enum DbMessage {
@@ -85,6 +116,10 @@ pub enum DbMessage {
         model_id: String,
         software_version: String,
         serial_code: String,
+    },
+    UpdateSystemTime {
+        n2k_unix_timestamp: f64,
+        local_unix_timestamp: f64,
     }
 }
 
@@ -94,6 +129,9 @@ pub async fn run_db_thread(
     mut receiver: tokio::sync::mpsc::Receiver<DbMessage>
 ) {
     println!("Database: Writer thread started.");
+
+    // Open an unbound datagram socket for chronyd time sync.
+    let chrony_sock = UnixDatagram::unbound().ok();
 
     // Listen for messages to arrive on the MPSC channel indefinitely.
     while let Some(msg) = receiver.recv().await {
@@ -315,6 +353,28 @@ pub async fn run_db_thread(
                     eprintln!("Database Update Failed! N2K Product info for device name: [{}]. Error: [{:?}]", device_name, db_err);
                 } else {
                     println!("Updated Product info for device name: [{}] successfully.", device_name);
+                }
+            }
+            DbMessage::UpdateSystemTime { n2k_unix_timestamp, local_unix_timestamp } => {
+                // Offset = the difference between true time and local time
+                let offset  = n2k_unix_timestamp - local_unix_timestamp;
+                let tv_sec  = local_unix_timestamp.trunc() as i64;
+                let tv_usec = (local_unix_timestamp.fract() * 1_000_000.0) as i64;
+                
+                let sample = SockSample {
+                    tv: Timeval { tv_sec, tv_usec },
+                    offset,
+                    pulse: 0,
+                    leap: 0,
+                    _pad: 0,
+                    magic: 0x534f434b, // "SOCK"
+                };
+                if let Some(sock) = &chrony_sock {
+                    // Send to chrony via its socket.
+                    match sock.send_to(sample.as_bytes(), "/var/run/chrony/chrony.n2k.sock").await {
+                        Ok(_) => println!("Socket - Sent time sample to chronyd successfully."),
+                        Err(socket_err) => eprintln!("Socket Error! Failed to send to chronyd socket. Error: [{}]", socket_err),
+                    }
                 }
             }
         }
