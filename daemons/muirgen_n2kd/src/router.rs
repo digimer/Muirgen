@@ -226,6 +226,10 @@ pub async fn route_pgns(
                 }
             }
         }
+        // Local Time Offset - Redundant static config, drop it
+        129033 => {}
+        // Datum - Always WGS84, drop it
+        129044 => {}
         // GNSS Dilution of Precision
         129539 => {
             if let Some(parsed) = parse_and_print!(Pgn129539, pgn, source, data) {
@@ -344,6 +348,19 @@ pub async fn route_pgns(
         // This is a legacy PGN that duplicates 130306, 130312, 130313, 130314.
         130323 => {
             // Duplicate - Drop and ignore.
+        }
+        // Manufacturer Proprietary Diagnostics (Fast Packet)
+        // Reassemble the packet, then dump the complete payload to traffic log
+        130945 => {
+            if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
+                let _ = db_tx.send(DbMessage::InsertRawTraffic {
+                    vessel_uuid,
+                    pgn,
+                    device_name,
+                    priority,
+                    payload: reassembled_payload,
+                }).await;
+            }
         }
 
         // Catch un-parsed PGNs (stored in n2k_traffic)
