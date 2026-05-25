@@ -188,6 +188,52 @@ MS Name/IP address         Stratum Poll Reach LastRx Last sample
 
 The `#*` indicates that the GNSS is now the best and chosen time source. Note that the Last Sample could show a higher value while the clock catches up if chronyd had to adjust to the updated time. 
 
+### Enabling the ntpd server
+
+With the n2k-ingest server sync'ing it's time from GNSS / GPS, we can now setup the host as a stratum 1 NTP server for the rest of the machines on the network.
+
+Edit the `/etc/chronyd.conf` file and add the following;
+
+```
+# Allow any device on the vessel's network to query the time. 
+# NOTE: To restrict to a subnet, use: 
+#allow 192.168.1.0/24
+allow all
+
+# If GNSS and Internet are both offline, serve the local hardware clock to 
+# ensure vessel-wide time sync.
+# Announce as Stratum 10 so it is overridden if GNSS/Internet returns
+local stratum 10
+```
+
+Open the `ntp` port in the firewall;
+
+```
+firewall-cmd --add-service=ntp --permanent
+firewall-cmd --reload
+```
+
+Now (re)start the chronyd daemon.
+
+To test that the server is now operating as a time server, from another machine, run:
+
+```
+sudo chronyd -Q 'server n2k-ingest iburst'
+```
+
+Note to change `n2k-ingest` with the IP or hostname of your server.
+
+If you see a reply like:
+
+```
+2026-05-25T21:22:49Z chronyd version 4.8 starting (+CMDMON +REFCLOCK +RTC +PRIVDROP +SCFILTER +SIGND +NTS +SECHASH +IPV6 +DEBUG)
+2026-05-25T21:22:49Z Disabled control of system clock
+2026-05-25T21:22:54Z System clock wrong by 0.000264 seconds (ignored)
+2026-05-25T21:22:54Z chronyd exiting
+```
+
+Your new ntp server is up and running!
+
 # Project Notes
 
 ## Setup the project (muirgen_n2kd)
