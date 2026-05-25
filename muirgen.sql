@@ -2056,6 +2056,30 @@ ALTER TABLE position_data SET (
 SELECT add_retention_policy('position_data', INTERVAL '60 days');
 SELECT add_compression_policy('position_data', INTERVAL '1 day');
 
+-- Tracks detailed satellite locations and signal strength for the Skyview Radar
+CREATE TABLE gnss_skyview (
+        uuid              uuid           default uuidv7()    not null,
+        vessel_uuid       uuid                               not null,
+        sensor_source     text                               not null,
+        horizontal_dop    real,                                        -- Horizontal dilution of precision
+        vertical_dop      real,                                        -- Vertical dilution of precision
+        time_dop          real,                                        -- Time dilution of precision
+        satellites        jsonb,
+        time              timestamptz    default now()       not null,
+        
+        PRIMARY KEY(time, uuid),
+        FOREIGN KEY(vessel_uuid) REFERENCES vessels(uuid)
+);
+ALTER TABLE gnss_skyview OWNER TO admin;
+SELECT create_hypertable('gnss_skyview', 'time', chunk_time_interval => INTERVAL '1 day');
+ALTER TABLE gnss_skyview SET (
+  timescaledb.compress,
+  timescaledb.compress_segmentby = 'vessel_uuid, sensor_source',
+  timescaledb.compress_orderby = 'time DESC, uuid'
+);
+SELECT add_retention_policy('gnss_skyview', INTERVAL '60 days');
+SELECT add_compression_policy('gnss_skyview', INTERVAL '1 day');
+
 -- This records whenever we transmit data over VHF or AIS
 CREATE TABLE vessel_transmissions (
         uuid                   uuid           default uuidv7()    not null,

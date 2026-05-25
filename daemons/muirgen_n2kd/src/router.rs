@@ -7,7 +7,10 @@ use crate::pgns::pgn_127251::Pgn127251;
 use crate::pgns::pgn_127257::Pgn127257;
 use crate::pgns::pgn_127258::Pgn127258;
 use crate::pgns::pgn_129025::Pgn129025;
+use crate::pgns::pgn_129026::Pgn129026;
 use crate::pgns::pgn_129029::Pgn129029;
+use crate::pgns::pgn_129539::Pgn129539;
+use crate::pgns::pgn_129540::Pgn129540;
 use crate::pgns::pgn_130306::Pgn130306;
 use crate::pgns::pgn_130311::Pgn130311;
 use crate::pgns::pgn_130312::Pgn130312;
@@ -104,6 +107,8 @@ pub async fn route_pgns(
                     heading_magnetic: parsed.heading_degrees().map(|heading| heading as f64),
                     magnetic_variation: None,
                     rate_of_turn: None,
+                    course_over_ground: None,
+                    speed_over_ground: None,
                 }).await;
             }
         }
@@ -118,6 +123,8 @@ pub async fn route_pgns(
                     heading_magnetic: None,
                     magnetic_variation: None,
                     rate_of_turn: parsed.rate_degrees_per_sec().map(|rot| rot as f64),
+                    course_over_ground: None,
+                    speed_over_ground: None,
                 }).await;
             }
         }
@@ -132,6 +139,8 @@ pub async fn route_pgns(
                     heading_magnetic: None,
                     magnetic_variation: None,
                     rate_of_turn: None,
+                    course_over_ground: None,
+                    speed_over_ground: None,
                 }).await;
             }
         }
@@ -146,6 +155,8 @@ pub async fn route_pgns(
                     heading_magnetic: None,
                     magnetic_variation: parsed.variation_degrees().map(|var| var as f64),
                     rate_of_turn: None,
+                    course_over_ground: None,
+                    speed_over_ground: None,
                 }).await;
             }
         }
@@ -165,6 +176,22 @@ pub async fn route_pgns(
                 }).await;
             }
         }
+        // Course and Speed over Ground, Rapid Update
+        129026 => {
+            if let Some(parsed) = parse_and_print!(Pgn129026, pgn, source, data) {
+                let _ = db_tx.send(DbMessage::InsertMotionData {
+                    vessel_uuid, 
+                    device_name,
+                    pitch: None, 
+                    roll: None, 
+                    heading_magnetic: None, 
+                    magnetic_variation: None, 
+                    rate_of_turn: None,
+                    course_over_ground: parsed.course_over_ground_degrees().map(|cog| cog as f64),
+                    speed_over_ground: parsed.speed_over_ground_mps().map(|sog| sog as f64),
+                }).await;
+            }
+        }
         // GNSS Position Data (Fast Packet!)
         129029 => {
             if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
@@ -179,6 +206,34 @@ pub async fn route_pgns(
                         altitude: parsed.altitude(), 
                         satellites_in_view: parsed.satellites_in_view(),
                         gnss_method: Some(parsed.gnss_method().to_string()),
+                    }).await;
+                }
+            }
+        }
+        // GNSS Dilution of Precision
+        129539 => {
+            if let Some(parsed) = parse_and_print!(Pgn129539, pgn, source, data) {
+                let _ = db_tx.send(DbMessage::InsertSkyviewData {
+                    vessel_uuid, 
+                    device_name,
+                    horizontal_dop: parsed.get_horizontal_dop().map(|val| val as f64),
+                    vertical_dop: parsed.get_vertical_dop().map(|val| val as f64),
+                    time_dop: parsed.get_time_dop().map(|val| val as f64),
+                    satellites: None,
+                }).await;
+            }
+        }
+        // GNSS Sats in View (Fast Packet)
+        129540 => {
+            if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
+                if let Some(parsed) = parse_and_print!(Pgn129540, pgn, source, &reassembled_payload) {
+                    let _ = db_tx.send(DbMessage::InsertSkyviewData {
+                        vessel_uuid, 
+                        device_name,
+                        horizontal_dop: None, 
+                        vertical_dop: None, 
+                        time_dop: None,
+                        satellites: Some(parsed.to_json()),
                     }).await;
                 }
             }

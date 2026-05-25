@@ -5,7 +5,10 @@ pub mod pgn_127251; // Rate of Turn
 pub mod pgn_127257; // Attitude
 pub mod pgn_127258; // Magnetic Variation
 pub mod pgn_129025; // Position, Rapid Update
+pub mod pgn_129026; // Course and Speed over Ground, Rapid Update
 pub mod pgn_129029; // GNSS Position Data (Fast Packet)
+pub mod pgn_129539; // GNSS Dilution of Precision
+pub mod pgn_129540; // GNSS Sats in View (Fast Packet)
 pub mod pgn_130306; // Wind Data
 pub mod pgn_130311; // Environmental Paramaters (deprecated)
 pub mod pgn_130312; // Temperature

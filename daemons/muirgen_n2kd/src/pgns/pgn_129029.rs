@@ -18,8 +18,9 @@ pub struct Pgn129029 {
     pub integrity: u8,        
     
     pub n_satellites: u8,
-    pub hdop_raw: i16,
-    pub pdop_raw: i16,
+    // Dilution of precision
+    pub horizontal_dop_raw: i16,
+    pub position_dop_raw: i16,
     pub geoidal_separation_raw: i32,
     pub n_reference_stations: u8,
 }

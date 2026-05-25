@@ -17,6 +17,8 @@ pub enum DbMessage {
         heading_magnetic: Option<f64>,
         magnetic_variation: Option<f64>,
         rate_of_turn: Option<f64>,
+        course_over_ground: Option<f64>,
+        speed_over_ground: Option<f64>,
     },
     InsertPositionData {
         vessel_uuid: uuid::Uuid,
@@ -33,6 +35,15 @@ pub enum DbMessage {
         device_name: u64,
         priority: u8,
         payload: Vec<u8>,
+    },
+    InsertSkyviewData {
+        vessel_uuid: uuid::Uuid,
+        device_name: u64,
+        // Dilution of Precision
+        horizontal_dop: Option<f64>,
+        vertical_dop: Option<f64>,
+        time_dop: Option<f64>,
+        satellites: Option<serde_json::Value>,
     },
     InsertWeatherData {
         vessel_uuid: uuid::Uuid,
@@ -126,20 +137,22 @@ pub async fn run_db_thread(
                     println!("Alarm Cleared. Code: [{}:{}]", set_by, code);
                 }
             }
-            DbMessage::InsertMotionData { vessel_uuid, device_name, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn } => {
-                let sensor_source    = format!("n2k:{}", device_name);
-                let pitch_f32        = pitch.map(|pitch| pitch as f32);
-                let roll_f32         = roll.map(|roll| roll as f32);
-                let heading_f32      = heading_magnetic.map(|heading| heading as f32);
-                let variation_f32    = magnetic_variation.map(|var| var as f32);
-                let rate_of_turn_f32 = rate_of_turn.map(|rot| rot as f32);
+            DbMessage::InsertMotionData { vessel_uuid, device_name, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn, speed_over_ground, course_over_ground } => {
+                let sensor_source          = format!("n2k:{}", device_name);
+                let pitch_f32              = pitch.map(|pitch| pitch as f32);
+                let roll_f32               = roll.map(|roll| roll as f32);
+                let heading_f32            = heading_magnetic.map(|heading| heading as f32);
+                let variation_f32          = magnetic_variation.map(|var| var as f32);
+                let rate_of_turn_f32       = rate_of_turn.map(|rot| rot as f32);
+                let speed_over_ground_f32  = speed_over_ground.map(|sog| sog as f32);
+                let course_over_ground_f32 = course_over_ground.map(|cog| cog as f32);
 
                 let result = sqlx::query!(
                     r#"
-                    INSERT INTO motion_data (vessel_uuid, sensor_source, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO motion_data (vessel_uuid, sensor_source, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn, speed_over_ground, course_over_ground)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     "#,
-                    vessel_uuid, sensor_source, pitch_f32, roll_f32, heading_f32, variation_f32, rate_of_turn_f32
+                    vessel_uuid, sensor_source, pitch_f32, roll_f32, heading_f32, variation_f32, rate_of_turn_f32, speed_over_ground_f32, course_over_ground_f32
                 )
                 .execute(&pool).await;
 
@@ -195,6 +208,26 @@ pub async fn run_db_thread(
 
                 if let Err(db_err) = result {
                     eprintln!("Database: Raw PGN traffic insert failed for PGN: [{}] failed! Error: [{:?}]", pgn, db_err);
+                }
+            }
+            DbMessage::InsertSkyviewData { vessel_uuid, device_name, horizontal_dop, vertical_dop, time_dop, satellites } => {
+                let sensor_source      = format!("n2k:{}", device_name);
+                // Dilution of Precision
+                let horizontal_dop_f32 = horizontal_dop.map(|val| val as f32);
+                let vertical_dop_f32   = vertical_dop.map(|val| val as f32);
+                let time_dop_f32       = time_dop.map(|val| val as f32);
+
+                let result = sqlx::query!(
+                    r#"
+                    INSERT INTO gnss_skyview (vessel_uuid, sensor_source, horizontal_dop, vertical_dop, time_dop, satellites)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    "#,
+                    vessel_uuid, sensor_source, horizontal_dop_f32, vertical_dop_f32, time_dop_f32, satellites
+                )
+                .execute(&pool).await;
+
+                if let Err(db_err) = result {
+                    eprintln!("Database: Skyview data insert failed! Error: [{:?}]", db_err);
                 }
             }
             DbMessage::InsertWeatherData { vessel_uuid, device_name, pressure, air_temp, humidity } => {

@@ -15,6 +15,8 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
 
+extern crate serde_json;
+
 // Modules
 mod db;
 mod fast_packet;
