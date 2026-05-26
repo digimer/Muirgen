@@ -21,6 +21,7 @@ extern crate serde_json;
 mod db;
 mod fast_packet;
 mod health;
+mod mqtt;
 mod pgns;
 mod router;
 
@@ -33,6 +34,10 @@ async fn main() -> Result<(), sqlx::Error> {
     // Database connection string.
     let db_url = env::var("DATABASE_URL")
         .expect("DATABASE_URL must be defined in the .env file.");
+
+    // Get the MQTT host from the .env file
+    let mqtt_host = env::var("MQTT_SERVER")
+        .expect("MQTT_SERVER must be defined in the .env file.");
 
     // NMEA2000 (CAN bus) network interface. Note that though it's usually 
     // can0, be do not default to it. If this is missing, the .env needs 
@@ -108,8 +113,14 @@ async fn main() -> Result<(), sqlx::Error> {
     // Create the MPSC (multi-producer, single consumer) channel to the DB. 
     let (db_tx, db_rx) = mpsc::channel::<db::DbMessage>(pgn_queue_depth);
 
+    // Create an MPSC channel for the MQTT broker.
+    let (mqtt_tx, mqtt_rx) = mpsc::channel::<db::DbMessage>(pgn_queue_depth);
+
     // Spawn the database writer thread.
     tokio::spawn(db::run_db_thread(pool.clone(), db_rx));
+
+    // Spawn the MQTT publisher thread. 
+    tokio::spawn(mqtt::run_mqtt_thread(mqtt_rx, mqtt_host));
 
     // Setup the shared watchdog timestamp.
     let last_pgn_time = Arc::new(AtomicU64::new(
@@ -257,6 +268,7 @@ async fn main() -> Result<(), sqlx::Error> {
                             priority as u8, 
                             frame.data(), 
                             &db_tx, 
+                            &mqtt_tx, 
                             vessel_uuid, 
                             &mut fp_engine, 
                             &mut n2k_address_map

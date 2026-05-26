@@ -76,6 +76,7 @@ dnf install -y libheif libheif-freeworld ffmpeg
 🞋	128907	1F78B	ROUND TARGET                                                        # 
 ⏀	9152	23C0	DENTISTRY SYMBOL LIGHT VERTICAL WITH CIRCLE                         # Motors
 ⌖	8982	2316	POSITION INDICATOR                                                  # Sensors
+⚠	9888	26A0	WARNING SIGN                                                       # General alarm
 ⏚	9178	23DA	EARTH GROUND                                                        # 
 ⍗	9047	2357	APL FUNCTIONAL SYMBOL QUAD DOWNWARDS ARROW                          # 
 ⦵	10677	29B5	CIRCLE WITH HORIZONTAL BAR                                          # 
@@ -120,6 +121,17 @@ dnf install -y libheif libheif-freeworld ffmpeg
 Bootstrap Icon
 	glyphicon glyphicon-log-out	&#xe163;
 	
+☼	9788	263C	WHITE SUN WITH RAYS
+
+🞊	128906	1F78A	WHITE CIRCLE CONTAINING BLACK SMALL CIRCLE - Accurate (<2 seconds)
+🞉	128905	1F789	EXTREMELY HEAVY WHITE CIRCLE               - Fresh (<4 seconds)
+🞈	128904	1F788	VERY HEAVY WHITE CIRCLE	                   - Tolerable (<6 seconds)
+🞇	128903	1F787	HEAVY WHITE CIRCLE	                       - Aging (<7 seconds)
+🞆	128902	1F786	BOLD WHITE CIRCLE	                         - Borderline (<8 seconds)
+🞅	128901	1F785	MEDIUM BOLD WHITE CIRCLE	                 - Limit of useful (<9 seconds)
+🟕	128981	1F7D5	CIRCLED TRIANGLE                           - Dead (>= 10 seconds)
+
+
 
 ============
 INSERT INTO vessels (uuid, name, flag_nation, port_of_registry, build_details, official_number, hull_id_number, keel_offset_cm, waterline_offset_cm, is_active) VALUES ('019bcfff-728f-7b48-822e-46c4b20a7326', 

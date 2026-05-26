@@ -34,6 +34,7 @@ impl SockSample {
 }
 
 // The types of messages we can send to the database thread
+#[derive(Clone, Debug)]
 pub enum DbMessage {
     ClearAlarm {
         vessel_uuid: uuid::Uuid,

@@ -42,6 +42,7 @@ pub async fn route_pgns(
     priority: u8,
     data: &[u8],
     db_tx: &tokio::sync::mpsc::Sender<DbMessage>,
+    mqtt_tx: &tokio::sync::mpsc::Sender<crate::db::DbMessage>, 
     vessel_uuid: uuid::Uuid,
     fp_engine: &mut crate::fast_packet::FastPacketReassembler, 
     address_map: &mut std::collections::HashMap<u8, u64>
@@ -61,6 +62,8 @@ pub async fn route_pgns(
         }
     };
 
+    // Note that we send all parsed PGNs to both the DB and the MQTT channels. 
+    // This is why we define 'message' via DbMessage and clone it to MQTT.
     match pgn {
         // ISO Address Claim
         60928 => {
@@ -68,8 +71,8 @@ pub async fn route_pgns(
                 // Update the memory map
                 address_map.insert(source_u8, parsed.name);
                 
-                // Record in the DB
-                let _ = db_tx.send(DbMessage::UpdateN2kDevice {
+                // Prepare the message to send to the DB and MQTT channels.
+                let message = DbMessage::UpdateN2kDevice {
                     vessel_uuid,
                     device_name: parsed.name,
                     source_address: source as u8,
@@ -77,7 +80,12 @@ pub async fn route_pgns(
                     device_class: parsed.device_class(),
                     device_function: parsed.device_function(),
                     device_instance: parsed.device_instance(),
-                }).await;
+                };
+
+                // Now send the message to the DB, cloning it so we can send it
+                // as well to MQTT.
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // System Time
@@ -87,10 +95,15 @@ pub async fn route_pgns(
                     // Grab the exact system time when we received this PGN
                     let local_unix_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
                     
-                    let _ = db_tx.send(DbMessage::UpdateSystemTime {
+                    // Prepare the message
+                    let message = DbMessage::UpdateSystemTime {
                         n2k_unix_timestamp,
                         local_unix_timestamp,
-                    }).await;
+                    };
+
+                    // Send it to DB and MQTT channels
+                    let _ = db_tx.send(message.clone()).await;
+                    let _ = mqtt_tx.send(message).await;
                 }
             }
         }
@@ -102,20 +115,26 @@ pub async fn route_pgns(
                 // Pass the reassembled payload (as a slice) into the macro. 
                 // If successful, update the database.
                 if let Some(parsed) = parse_and_print!(Pgn126996, pgn, source, &reassembled_payload) {
-                    let _ = db_tx.send(DbMessage::UpdateN2kProductInfo {
+                    // Prepare the message
+                    let message = DbMessage::UpdateN2kProductInfo {
                         vessel_uuid,
                         device_name,
                         model_id: parsed.model_id(),
                         software_version: parsed.software_version(),
                         serial_code: parsed.serial_code(),
-                    }).await;
+                    };
+
+                    // Send it to DB and MQTT channels
+                    let _ = db_tx.send(message.clone()).await;
+                    let _ = mqtt_tx.send(message).await;
                 }
             }
         }
         // Vessel Heading
         127250 => {
             if let Some(parsed) = parse_and_print!(Pgn127250, pgn, source, data) {
-                let _ = db_tx.send(DbMessage::InsertMotionData {
+                // Prepare the message
+                let message = DbMessage::InsertMotionData {
                     vessel_uuid,
                     device_name,
                     pitch: None,
@@ -125,13 +144,18 @@ pub async fn route_pgns(
                     rate_of_turn: None,
                     course_over_ground: None,
                     speed_over_ground: None,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // Rate of Turn
         127251 => {
             if let Some(parsed) = parse_and_print!(Pgn127251, pgn, source, data) {
-                let _ = db_tx.send(DbMessage::InsertMotionData {
+                // Prepare the message
+                 let message = DbMessage::InsertMotionData {
                     vessel_uuid,
                     device_name,
                     pitch: None,
@@ -141,13 +165,18 @@ pub async fn route_pgns(
                     rate_of_turn: parsed.rate_degrees_per_sec().map(|rot| rot as f64),
                     course_over_ground: None,
                     speed_over_ground: None,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // Attitude
         127257 => {
             if let Some(parsed) = parse_and_print!(Pgn127257, pgn, source, data) {
-                let _ = db_tx.send(DbMessage::InsertMotionData {
+                // Prepare the message
+                 let message = DbMessage::InsertMotionData {
                     vessel_uuid,
                     device_name,
                     pitch: parsed.pitch_degrees().map(|pitch| pitch as f64),
@@ -157,13 +186,18 @@ pub async fn route_pgns(
                     rate_of_turn: None,
                     course_over_ground: None,
                     speed_over_ground: None,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // Magnetic Variation
         127258 => {
             if let Some(parsed) = parse_and_print!(Pgn127258, pgn, source, data) {
-                let _ = db_tx.send(DbMessage::InsertMotionData {
+                // Prepare the message
+                let message = DbMessage::InsertMotionData {
                     vessel_uuid,
                     device_name,
                     pitch: None,
@@ -173,7 +207,11 @@ pub async fn route_pgns(
                     rate_of_turn: None,
                     course_over_ground: None,
                     speed_over_ground: None,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // Position, Rapid Update (10 Hz)
@@ -181,7 +219,8 @@ pub async fn route_pgns(
             if let Some(parsed) = parse_and_print!(Pgn129025, pgn, source, data) {
                 // 129025 is the fast update, single packet data. It doesn't 
                 // contain altitude, sats in view or gnss method.
-                let _ = db_tx.send(DbMessage::InsertPositionData {
+                // Prepare the message
+                let message = DbMessage::InsertPositionData {
                     vessel_uuid,
                     device_name,
                     latitude: parsed.latitude(),
@@ -189,13 +228,18 @@ pub async fn route_pgns(
                     altitude: None, 
                     satellites_in_view: None,
                     gnss_method: None,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // Course and Speed over Ground, Rapid Update
         129026 => {
             if let Some(parsed) = parse_and_print!(Pgn129026, pgn, source, data) {
-                let _ = db_tx.send(DbMessage::InsertMotionData {
+                // Prepare the message
+                let message = DbMessage::InsertMotionData {
                     vessel_uuid, 
                     device_name,
                     pitch: None, 
@@ -205,7 +249,11 @@ pub async fn route_pgns(
                     rate_of_turn: None,
                     course_over_ground: parsed.course_over_ground_degrees().map(|cog| cog as f64),
                     speed_over_ground: parsed.speed_over_ground_mps().map(|sog| sog as f64),
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // GNSS Position Data (Fast Packet!)
@@ -214,7 +262,8 @@ pub async fn route_pgns(
                 // Pass the reassembled payload to the macro
                 if let Some(parsed) = parse_and_print!(Pgn129029, pgn, source, &reassembled_payload) {
                     // This is the extended data for the GNSS data.
-                    let _ = db_tx.send(DbMessage::InsertPositionData {
+                    // Prepare the message
+                    let message = DbMessage::InsertPositionData {
                         vessel_uuid,
                         device_name,
                         latitude: parsed.latitude(),
@@ -222,7 +271,11 @@ pub async fn route_pgns(
                         altitude: parsed.altitude(), 
                         satellites_in_view: parsed.satellites_in_view(),
                         gnss_method: Some(parsed.gnss_method().to_string()),
-                    }).await;
+                    };
+
+                    // Send it to DB and MQTT channels
+                    let _ = db_tx.send(message.clone()).await;
+                    let _ = mqtt_tx.send(message).await;
                 }
             }
         }
@@ -233,28 +286,38 @@ pub async fn route_pgns(
         // GNSS Dilution of Precision
         129539 => {
             if let Some(parsed) = parse_and_print!(Pgn129539, pgn, source, data) {
-                let _ = db_tx.send(DbMessage::InsertSkyviewData {
+                // Prepare the message
+                let message = DbMessage::InsertSkyviewData {
                     vessel_uuid, 
                     device_name,
                     horizontal_dop: parsed.get_horizontal_dop().map(|val| val as f64),
                     vertical_dop: parsed.get_vertical_dop().map(|val| val as f64),
                     time_dop: parsed.get_time_dop().map(|val| val as f64),
                     satellites: None,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // GNSS Sats in View (Fast Packet)
         129540 => {
             if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
                 if let Some(parsed) = parse_and_print!(Pgn129540, pgn, source, &reassembled_payload) {
-                    let _ = db_tx.send(DbMessage::InsertSkyviewData {
+                    // Prepare the message
+                    let message = DbMessage::InsertSkyviewData {
                         vessel_uuid, 
                         device_name,
                         horizontal_dop: None, 
                         vertical_dop: None, 
                         time_dop: None,
                         satellites: Some(parsed.to_json()),
-                    }).await;
+                    };
+
+                    // Send it to DB and MQTT channels
+                    let _ = db_tx.send(message.clone()).await;
+                    let _ = mqtt_tx.send(message).await;
                 }
             }
         }
@@ -276,8 +339,9 @@ pub async fn route_pgns(
                     3 | 4 => { true_speed = speed; true_direction = direction; }
                     _ => {}
                 }
-
-                let _ = db_tx.send(DbMessage::InsertWindData {
+                
+                // Prepare the message
+                let message = DbMessage::InsertWindData {
                     vessel_uuid, 
                     device_name,
                     true_speed, 
@@ -286,33 +350,47 @@ pub async fn route_pgns(
                     ground_direction,
                     apparent_speed, 
                     apparent_direction,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // Environmental Parameters (deprecated in N2K)
         130311 => {
             // Convert Pascals to hPa
             if let Some(parsed) = parse_and_print!(Pgn130311, pgn, source, data) {
-                let _ = db_tx.send(DbMessage::InsertWeatherData {
+                // Prepare the message
+                let message = DbMessage::InsertWeatherData {
                     vessel_uuid,
                     device_name,
                     pressure: parsed.pressure_pascals().map(|pascals| (pascals / 100.0) as f64),
                     air_temp: parsed.temperature_kelvin().map(|temp| temp as f64),
                     humidity: parsed.humidity_percent().map(|humidity| humidity as f64),
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
         // Temperature (Source 1 = Outside Air)
         130312 => {
             if let Some(parsed) = parse_and_print!(Pgn130312, pgn, source, data) {
                 if parsed.source == 1 {
-                    let _ = db_tx.send(DbMessage::InsertWeatherData {
+                    // Prepare the message
+                    let message = DbMessage::InsertWeatherData {
                         vessel_uuid, 
                         device_name,
                         pressure: None, 
                         humidity: None,
                         air_temp: parsed.temperature_kelvin().map(|temp| temp as f64),
-                    }).await;
+                    };
+
+                    // Send it to DB and MQTT channels
+                    let _ = db_tx.send(message.clone()).await;
+                    let _ = mqtt_tx.send(message).await;
                 }
             }
         }
@@ -320,13 +398,18 @@ pub async fn route_pgns(
         130313 => {
             if let Some(parsed) = parse_and_print!(Pgn130313, pgn, source, data) {
                 if parsed.source == 1 {
-                    let _ = db_tx.send(DbMessage::InsertWeatherData {
+                    // Prepare the message
+                    let message = DbMessage::InsertWeatherData {
                         vessel_uuid, 
                         device_name,
                         pressure: None, 
                         air_temp: None,
                         humidity: parsed.humidity_percent().map(|hum| hum as f64),
-                    }).await;
+                    };
+
+                    // Send it to DB and MQTT channels
+                    let _ = db_tx.send(message.clone()).await;
+                    let _ = mqtt_tx.send(message).await;
                 }
             }
         }
@@ -334,13 +417,18 @@ pub async fn route_pgns(
         130314 => {
             if let Some(parsed) = parse_and_print!(Pgn130314, pgn, source, data) {
                 if parsed.source == 0 {
-                    let _ = db_tx.send(DbMessage::InsertWeatherData {
+                    // Prepare the message
+                    let message = DbMessage::InsertWeatherData {
                         vessel_uuid, 
                         device_name,
                         air_temp: None, 
                         humidity: None,
                         pressure: parsed.pressure_pascals().map(|psr| (psr as f64) / 100.0),
-                    }).await;
+                    };
+
+                    // Send it to DB and MQTT channels
+                    let _ = db_tx.send(message.clone()).await;
+                    let _ = mqtt_tx.send(message).await;
                 }
             }
         }
@@ -353,25 +441,38 @@ pub async fn route_pgns(
         // Reassemble the packet, then dump the complete payload to traffic log
         130945 => {
             if let Some(reassembled_payload) = fp_engine.process_frame(source as u8, pgn, data) {
-                let _ = db_tx.send(DbMessage::InsertRawTraffic {
+                // Prepare the message
+                let message = DbMessage::InsertRawTraffic {
                     vessel_uuid,
                     pgn,
                     device_name,
                     priority,
                     payload: reassembled_payload,
-                }).await;
+                };
+
+                // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
             }
         }
 
         // Catch un-parsed PGNs (stored in n2k_traffic)
         _ => {
-            let _ = db_tx.send(DbMessage::InsertRawTraffic {
+            // It's unlikely that we'll want to see unknown PGNs on the MQTT 
+            // channel, but it's not impossible. If this generates too much 
+            // traffic, the mqtt_tx can be commented out.
+            // Prepare the message
+            let message = DbMessage::InsertRawTraffic {
                 vessel_uuid,
                 pgn,
                 device_name,
                 priority,
                 payload: data.to_vec(),
-            }).await;
+            };
+
+            // Send it to DB and MQTT channels
+            let _ = db_tx.send(message.clone()).await;
+            let _ = mqtt_tx.send(message).await;
         }
     }
 }
