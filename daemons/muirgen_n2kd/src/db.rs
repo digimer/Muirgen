@@ -130,9 +130,18 @@ macro_rules! retry_query {
             match $query.execute($pool).await {
                 Ok(_) => break,
                 Err(db_err) => {
-                    let retry_delay = 5;
-                    eprintln!("{}. Error: [{:?}]. Retrying in: [{}] second(s).", $error_msg, db_err, retry_delay);
-                    tokio::time::sleep(tokio::time::Duration::from_secs(retry_delay)).await;
+                    // Is this an issue with the query or the DB? If it's the 
+                    // query, log the error and discard it.
+                    if let sqlx::Error::Database(ref err) = db_err {
+                        // Postgres rejected the write.
+                        eprintln!("[ Error ] - DB write rejected! Context: [{}], Error: [{:?}]. Dropping data.", $error_msg, err);
+                        break;
+                    } else {
+                        // Network or other transient error, loop.
+                        let retry_delay = 5;
+                        eprintln!("{}. Error: [{:?}]. Retrying in: [{}] second(s).", $error_msg, db_err, retry_delay);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(retry_delay)).await;
+                    }
                 }
             }
         }

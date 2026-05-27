@@ -36,7 +36,10 @@
 
 :root {
   --neon-red: #ff0000;
+  --very-strong-red: #ee0000;
+  --kinda-strong-red: #cc0000;
   --strong-red: #dd0000;
+  --high-mid-red: #aa0000;
   --mid-red: #aa0000;
   --soft-red: #880000;
   --dim-red: #440000;
@@ -431,12 +434,13 @@
 /* MUIRGEN ANIMATIONS (V1 STANDARD)                                           */
 /* ========================================================================== */
 
-@keyframes success-fade-out {
-  0%, 80% {
-    opacity: 1;
+@keyframes pulse-icon-alarm {
+  0%, 100% {
+    color: var(--soft-red); 
   }
-  100% {
-    opacity: 0;
+
+  50% {
+    color: var(--neon-red); 
   }
 }
 
@@ -450,6 +454,14 @@
   }
 }
 
+@keyframes success-fade-out {
+  0%, 80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 
 
 
@@ -509,3 +521,34 @@
   width: 90%;
   max-width: var(--box-max-width, 800px);
  }
+
+ /* Decaying Accuracy Glyphs */
+.telemetry-accurate { 
+  margin-left: 8px;
+  color: var(--neon-red); 
+}
+.telemetry-fresh {
+  margin-left: 8px;
+  color: var(--very-strong-red); 
+}
+.telemetry-tolerable { 
+  margin-left: 8px;
+  color: var(--strong-red); 
+}
+.telemetry-aging { 
+  margin-left: 8px;
+  color: var(--kinda-strong-red); 
+}
+.telemetry-borderline { 
+  margin-left: 8px;
+  color: var(--high-mid-red); 
+}
+.telemetry-limit { 
+  margin-left: 8px;
+  color: var(--mid-red); 
+}
+.telemetry-dead { 
+  margin-left: 8px;
+  color: var(--soft-red); 
+  animation: pulse-icon-alarm 2s ease-in-out 5;
+}

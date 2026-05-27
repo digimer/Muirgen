@@ -33,7 +33,36 @@ const App = () => {
   const [logoutMessage, setLogoutMessage] = useState('Carrier dropped, session closed');
   const [setupState, setSetupState]       = useState({userRequired: false, vesselRequired: false });
   const [vessel, setVessel]               = useState(null);
+  // UID forced update tick to handle stuck animations.
+  const [uiTick, setUiTick]               = useState(0);
   
+  // Live telemetry state
+  const [liveTelemetry, setLiveTelemetry] = useState({
+    position: null,
+    motion: null,
+    wind: null,
+    weather: null,
+    skyview: null
+  });
+
+  // Helper; Decaying accuracy glyphs
+  const getAccuracyIndicator = (timestamp) => {
+    // No timestamp is marked as dead.
+    if (!timestamp) return { glyph: '🟕', className: 'telemetry-dead' }; 
+
+    // How old is the last data?
+    const ageSeconds = (Date.now() - timestamp) / 1000;
+
+    // Pick the glyph based on the age of the last received GNSS fix.
+    if (ageSeconds < 1) return { glyph: '🞊', className: 'telemetry-accurate' };
+    if (ageSeconds < 2) return { glyph: '🞉', className: 'telemetry-fresh' };
+    if (ageSeconds < 3) return { glyph: '🞈', className: 'telemetry-tolerable' };
+    if (ageSeconds < 5) return { glyph: '🞇', className: 'telemetry-aging' };
+    if (ageSeconds < 7) return { glyph: '🞆', className: 'telemetry-borderline' }
+    if (ageSeconds < 9) return { glyph: '🞅', className: 'telemetry-limit' }
+    return { glyph: '🟕', className: 'telemetry-dead' }; 
+  };
+
   // Navigation helpers.
   const currentView = viewStack[viewStack.length - 1];
   const pushView    = useCallback((id, context = null, list = [], index = 0, noteTarget = null) => {
@@ -356,6 +385,46 @@ const App = () => {
       console.error('Fetch error:', err);
     }
   }, [isLoggingOut]);
+
+  // Force React to re-evaluate the decaying accuracy glyphs each second.
+  useInterval(() => {
+    if (isLoggedIn && vessel) setUiTick(prev => prev + 1);
+  }, 1000);
+
+  // Websocket telemetry connection
+  useEffect(() => {
+    if (!isLoggedIn || !vessel) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+
+    let ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => console.log("WebSocket comms established successfully.");
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.topic && data.payload && data.payload.vessel_uuid === vessel.uuid) {
+          const topicParts = data.topic.split('/');
+          const subject    = topicParts[topicParts.length - 1];
+
+          setLiveTelemetry(prev => ({
+            ...prev,
+            [subject]: {
+              ...data.payload,
+              _timestamp: Date.now() // Record for the decay timer
+            }
+          }));
+        }
+      } catch (err) {
+        console.error('Error parsing WS message:', err);
+      }
+    };
+
+    ws.onclose = () => console.log('WebSocket comms closed.');
+
+    return () => ws.close(); // Cleanup on unmount
+  }, [isLoggedIn, vessel]);
 
   // Initial load
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -707,7 +776,24 @@ const App = () => {
             </div>
             {/* Future placeholder for GPS lat/lon. */}
             <div className="telemetry-item">
-              <span className="soft-text">Position //</span> ◭ NO SAT LOCK ◮
+              <span className="soft-text">Position // </span>
+              {liveTelemetry.position && liveTelemetry.position.latitude !== null && liveTelemetry.position.longitude !== null ? (
+                <span>
+                  {liveTelemetry.position.latitude.toFixed(6)}°, {liveTelemetry.position.longitude.toFixed(6)}°
+                  <span className={getAccuracyIndicator(liveTelemetry.position._timestamp).className}>
+                    {getAccuracyIndicator(liveTelemetry.position._timestamp).glyph}
+                  </span>
+                </span>
+              ) : (
+                <span>
+                  NO SAT LOCK
+                  {liveTelemetry.position && (
+                    <span className={getAccuracyIndicator(liveTelemetry.position._timestamp).className}>
+                      {getAccuracyIndicator(liveTelemetry.position._timestamp).glyph}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
           </div>
         </div>

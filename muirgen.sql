@@ -2038,7 +2038,7 @@ CREATE OR REPLACE TRIGGER trigger_power_devices_update
 CREATE TABLE position_data (
     vessel_uuid          uuid                               not null,
     sensor_source        text                               not null, -- n2k_devices -> uuid if from the NMEA2000 bus, free form string otherwise
-    location             geography(point, 4326)             not null, 
+    location             geography(point, 4326),                      -- Sometimes null while other useful data remains. 
     altitude             real,                                        -- In meters
     satellites_in_view   smallint,                                    -- Helps quanitfy accuracy of the location data
     gnss_method          text,                                        -- 'GNSS Fix', 'DGNSS Fix (WAAS)', etc.
