@@ -4,18 +4,21 @@
  *   - Sort '/api/<subject>/:uuid/<verb>' *after* '/api/<subject>/<verb>'!
  */
 
-import path from 'path';
-import { fileURLToPath } from 'url';
-import express from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import multer from 'multer';
-import fs from 'fs-extra';
 // NOTE: When sharp supports heic on Alma10, switch back and remove the following two imports and the 
 //       execFilePromis constant.
 import { execFile } from 'child_process';
+import express from 'express';
+import { fileURLToPath } from 'url';
+import fs from 'fs-extra';
+import http from 'http';
+import jwt from 'jsonwebtoken';
+import path from 'path';
+import mqtt from 'mqtt';
+import multer from 'multer';
 import util from 'util';
+import { WebSocketServer } from 'ws';
 
 // For handling shell calls (to heif-convert, specifically).
 const execFilePromise = util.promisify(execFile);
@@ -27,10 +30,11 @@ const __dirname = path.dirname(__filename);
 // Initialise environment variables;
 dotenv.config({ path: path.join(__dirname, '.env') });
 
+// Continue with imports.
+import { auditLog } from './utils/logger.js';
+import { authenticateToken, requireAdmin } from './middleware/auth.js';
 import config from '../config.js';
 import pool from './db.js';
-import { authenticateToken, requireAdmin } from './middleware/auth.js';
-import { auditLog } from './utils/logger.js';
 
 const app = express();
 const frontendDistPath = path.join(__dirname, '../frontend/dist');
@@ -1139,7 +1143,32 @@ app.post('/api/vessels/:uuid/update', authenticateToken, requireAdmin, async (re
 /* *********************************************************************************************************/
 
 const PORT = process.env.PORT || config.apiPort || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+// The HTTP server binds both Express and WebSockets to the same port. 
+const server = http.createServer(app);
+const wss    = new WebSocketServer({ server });
+
+// Add MQTT logic
+const mqttClient = mqtt.connect(`mqtt://${process.env.MQTT_SERVER || 'localhost'}:1883`);
+
+mqttClient.on('connect', () => {
+  console.log('Node backend established comms with MQTT broker successfully.');
+  mqttClient.subscribe('muirgen/telemetry/#');
+});
+
+mqttClient.on('message', (topic, message) => {
+  // Broadcast to all connected websocket clients
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) { 
+      // WebSocket is open
+      client.send(JSON.stringify({
+        topic: topic,
+        payload: JSON.parse(message.toString())
+      }));
+    }
+  });
+});
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend online on port ${PORT}`);
 });
 
