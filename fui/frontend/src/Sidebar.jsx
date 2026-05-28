@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSystemStatus } from './utils/hooks';
 
-const Sidebar = ({ activeView, setActiveView, onLogout }) => {
+const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
   const { isHddActive } = useSystemStatus();
   const menuItems       = [
     { id: 'VSM',                label: 'VSM',       glyph: '⏍' },
@@ -61,6 +61,13 @@ const Sidebar = ({ activeView, setActiveView, onLogout }) => {
             <path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6"></path>
           </svg>
         </span>
+
+        {/* Data Telemetry Alarm */}
+        {dataAlarm && (
+          <span className={`${dataAlarm.className} telemetry-sidebar-icon`} title="Data Telemetry Health">
+            {dataAlarm.glyph}
+          </span>
+        )}
       </div>
     </nav>
   );

@@ -49,7 +49,7 @@ const App = () => {
   const getAccuracyIndicator = (timestamp) => {
     // No timestamp is marked as dead.
     if (!timestamp) return { glyph: '🟕', className: 'telemetry-dead' }; 
-
+ 
     // How old is the last data?
     const ageSeconds = (Date.now() - timestamp) / 1000;
 
@@ -62,6 +62,40 @@ const App = () => {
     if (ageSeconds < 9) return { glyph: '🞅', className: 'telemetry-limit' }
     return { glyph: '🟕', className: 'telemetry-dead' }; 
   };
+
+  // Get the oldest timestamp from all  critical sensors.
+  const getWorstTelemetryTimestamp = () => {
+    // TODO: More sources to be added
+    const criticalTimestamps = [
+      liveTelemetry.position?._timestamp
+    ];
+
+    // If any critical sensors are missing, the master state is 'dead' (0).
+    if (criticalTimestamps.includes(undefined) || criticalTimestamps.includes(null)) {
+      return 0;
+    }
+
+    // Return the oldest timestamp in the array
+    return Math.min(...criticalTimestamps);
+  };
+
+  // Format coordinates to maritime standards
+  const formatCoordinate = (decimalValue, isLatitude) => {
+    if (decimalValue === null || decimalValue === undefined) return '';
+
+    const absVal  = Math.abs(decimalValue);
+    const degrees = Math.floor(absVal);
+    const minutes = ((absVal - degrees) * 60).toFixed(3);
+
+    const cardinal = isLatitude 
+      ? (decimalValue >= 0 ? 'N' : 'S')
+      : (decimalValue >= 0 ? 'E' : 'W');
+
+      const degreeString = isLatitude ? degrees.toString().padStart(2, '0') : degrees.toString().padStart(3, '0');
+      const minuteString = minutes.padStart(6, '0'); 
+
+      return `${degreeString}° ${minuteString}' ${cardinal}`;
+  }
 
   // Navigation helpers.
   const currentView = viewStack[viewStack.length - 1];
@@ -444,12 +478,31 @@ const App = () => {
 
         {/* Navigation Sidebar */}
         {isLoggedIn && !isLoggingOut && (
-          <Sidebar activeView={currentView?.id} setActiveView={resetToView} onLogout={handleLogout} />
+          <Sidebar 
+            activeView={currentView?.id} setActiveView={resetToView} onLogout={handleLogout} 
+            dataAlarm={getAccuracyIndicator(getWorstTelemetryTimestamp())}
+          />
         )}
         
         {/* Dynamic background Viewport */}
         <div className={`content-viewport ${isLoggingOut ? 'blur-active' : ''}`}>
           
+          {/* Top Telemetry Header (Navigation Data) */}
+          <div className="telemetry-header">
+            <div className="telemetry-header-block">
+              <span className="telemetry-header-text">Wind // (T/A) [</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-header-text">] kts</span>
+            </div>
+            <div className="telemetry-header-block">
+              <span className="telemetry-header-text">Heading // (T/M) [</span><span className="telemetry-dead">---°</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---°</span><span className="telemetry-header-text">]</span>
+            </div>
+            <div className="telemetry-header-block">
+              <span className="telemetry-header-text">Speed // (G/W) [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text"></span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] kts</span>
+            </div>
+            <div className="telemetry-header-block">
+              <span className="telemetry-header-text">Depth // K: [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] m</span>
+            </div>
+          </div>
+
           {/* View Center Container */}
           <div className="view-center-container">
             
@@ -766,33 +819,24 @@ const App = () => {
           {/* Telemetry footer */}
           <div className="telemetry-footer">
             <div className="telemetry-item">
-              <span className="soft-text">System Time //</span> {displayTime}
+              <span className="telemetry-header-text">System Time //</span> <span className="telemetry-accurate">{displayTime}</span>
             </div>
             <div className="telemetry-item">
-              <span className="soft-text">Database //</span>
-              <span className={dbData.status === 'Online' ? 'neon-text' : 'danger-text'}>
-                {dbData.status.toUpperCase()}
-              </span>
+              <span className="telemetry-header-text">ETA //</span>
+                <span className="telemetry-off">no active waypoint</span>
             </div>
             {/* Future placeholder for GPS lat/lon. */}
             <div className="telemetry-item">
-              <span className="soft-text">Position // </span>
+              <span className="telemetry-header-text">Position // </span>
               {liveTelemetry.position && liveTelemetry.position.latitude !== null && liveTelemetry.position.longitude !== null ? (
                 <span>
-                  {liveTelemetry.position.latitude.toFixed(6)}°, {liveTelemetry.position.longitude.toFixed(6)}°
-                  <span className={getAccuracyIndicator(liveTelemetry.position._timestamp).className}>
-                    {getAccuracyIndicator(liveTelemetry.position._timestamp).glyph}
-                  </span>
+                  {getAccuracyIndicator(liveTelemetry.position._timestamp).className === 'telemetry-dead'
+                    ? "---° --.---' ---° --.---'" 
+                    : `${formatCoordinate(liveTelemetry.position.latitude, true)} ${formatCoordinate(liveTelemetry.position.longitude, false)}`
+                  }
                 </span>
               ) : (
-                <span>
-                  NO SAT LOCK
-                  {liveTelemetry.position && (
-                    <span className={getAccuracyIndicator(liveTelemetry.position._timestamp).className}>
-                      {getAccuracyIndicator(liveTelemetry.position._timestamp).glyph}
-                    </span>
-                  )}
-                </span>
+                <span className="telemetry-dead">---° --.---' ---° --.---'</span>
               )}
             </div>
           </div>

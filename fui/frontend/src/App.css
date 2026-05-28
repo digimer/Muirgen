@@ -1143,28 +1143,6 @@ textarea:focus::placeholder {
   opacity: 0.5;
 }
 
-/* (mostly) static footer telemetry data */
-.telemetry-footer {
-  position: absolute;
-  bottom: 0;  /* Pin it to the bottom of the view port */
-  left: 0;    /* Align with the sidebar width */
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  border-top: 1px solid var(--soft-red);
-  padding: 10px 20px; /* Retain the horizontal separator */
-  font-family: 'Ubuntu Sans Mono', monospace;
-  font-size: 0.85rem;
-  background: rgba(20, 0, 0, 0.9);
-  z-index: 102; /* Raise the footer above the raised thumbnails */
-}
-
-/* Items displayed in the telemetry footer */
-.telemetry-item {
-  display: flex;
-  gap: 10px;
-}
-
 .dim-text {
   color: var(--dim-red);
   letter-spacing: 2px;
@@ -2117,24 +2095,6 @@ input[type="number"] {
   box-shadow: 0 0 20px var(--neon-red);
   z-index: 1001;
   position: relative;
-}
-
-/* Adjust the viewpwort to prevent content from being hidden by the footer */
-.content-viewport {
-  flex: 1;
-  /* Take up remaining horizontal space */
-  position: relative;
-  /* Anchor for the absolute footer */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  /* Centers children veritcally along the main axis */
-  align-items: center;
-  /* Centers children horizontally */
-  padding: 20px;
-  padding-bottom: 60px;
-  /* Room for the pinned footer */
-  overflow-y: auto;
 }
 
 .action-bar-overlay {

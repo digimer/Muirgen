@@ -115,6 +115,30 @@
 }
 
 /* ========================================================================== */
+/* Main Viewport (V1 STANDARD)                                                */
+/* ========================================================================== */
+
+/* Adjust the viewpwort to prevent content from being hidden by the footer */
+.content-viewport {
+  flex: 1;
+  /* Take up remaining horizontal space */
+  position: relative;
+  /* Anchor for the absolute footer */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Centers children veritcally along the main axis */
+  align-items: center;
+  /* Centers children horizontally */
+  padding: 20px;
+  /* Room for the header and footer telemetry bars */
+  padding-top: 60px;
+  padding-bottom: 60px;
+  /* Room for the pinned footer */
+  overflow-y: auto;
+}
+
+/* ========================================================================== */
 /* File/Image upload staging quque (V1 STANDARD)                              */
 /* ========================================================================== */
 
@@ -389,11 +413,12 @@
   white-space: nowrap;
 }
 
-/* Status LEDs (currently only HDD) */
+/* Status LEDs */
 .sidebar-status-led-group {
   display: flex;
-  flex-direction: column;
-  align-items: left;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
   gap: 5px;
   padding-top: 0.5em;
 }
@@ -523,32 +548,96 @@
  }
 
  /* Decaying Accuracy Glyphs */
-.telemetry-accurate { 
+.telemetry-right-pad {
   margin-left: 8px;
+}
+
+/* Telemetry Header */
+.telemetry-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--soft-red);
+  padding: 10px 20px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 0.85rem;
+  background: rgba(20, 0, 0, 0.9);
+  z-index: 102; 
+}
+
+/* (mostly) static footer telemetry data */
+.telemetry-footer {
+  position: absolute;
+  bottom: 0;  /* Pin it to the bottom of the view port */
+  left: 0;    /* Align with the sidebar width */
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--soft-red);
+  padding: 10px 20px; /* Retain the horizontal separator */
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 0.85rem;
+  background: rgba(20, 0, 0, 0.9);
+  z-index: 102; /* Raise the footer above the raised thumbnails */
+}
+
+/* Items displayed in the telemetry footer */
+.telemetry-item {
+  display: flex;
+  gap: 10px;
+}
+
+.telemetry-header-text {
+  color: var(--strong-red);
+  letter-spacing: 2px;
+}
+
+/* Telemetry Footer */
+.telemetry-sidebar-icon {
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.telemetry-data-divider {
+  display: inline-block;
+  transform: rotate(15deg);
+}
+
+.telemetry-header-block {
+  white-space: nowrap;
+}
+
+/* Fading Telemetry relative to data age */
+.telemetry-accurate { 
   color: var(--neon-red); 
 }
 .telemetry-fresh {
-  margin-left: 8px;
   color: var(--very-strong-red); 
 }
 .telemetry-tolerable { 
-  margin-left: 8px;
   color: var(--strong-red); 
 }
 .telemetry-aging { 
-  margin-left: 8px;
   color: var(--kinda-strong-red); 
 }
 .telemetry-borderline { 
-  margin-left: 8px;
   color: var(--high-mid-red); 
 }
 .telemetry-limit { 
-  margin-left: 8px;
   color: var(--mid-red); 
 }
 .telemetry-dead { 
-  margin-left: 8px;
   color: var(--soft-red); 
-  animation: pulse-icon-alarm 2s ease-in-out 5;
+  animation: pulse-icon-alarm 2s ease-in-out infinite;
+}
+/* Differs from dead when the data is expected to not be shown and do not */
+/* animated. */
+.telemetry-off { 
+  color: var(--soft-red); 
 }
