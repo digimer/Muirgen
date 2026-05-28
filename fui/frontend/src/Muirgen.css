@@ -37,10 +37,11 @@
 :root {
   --neon-red: #ff0000;
   --very-strong-red: #ee0000;
-  --kinda-strong-red: #cc0000;
   --strong-red: #dd0000;
-  --high-mid-red: #aa0000;
+  --kinda-strong-red: #cc0000;
+  --high-mid-red: #bb0000;
   --mid-red: #aa0000;
+  --low-mid-red: #990000;
   --soft-red: #880000;
   --dim-red: #440000;
   --subtle-red: #220000;
@@ -360,11 +361,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px; /* Fixed width keeps buttons aligned */
+  width: 26px; /* Fixed width keeps buttons aligned */
   color: var(--soft-red);
   opacity: 0.8;
   transition: all 0.2s ease;
   flex-shrink: 0;
+}
+
+/* tuning for the logout exit */
+.sidebar-exit-button {
+  margin-bottom: 50px;
 }
 
 /* Add specific nudges here to align certain utf-8 glyphs. 
@@ -374,6 +380,7 @@
 
 .glyph-logout {
   transform: rotate(180deg);
+  margin-bottom: 50px;
 }
 
 .glyph-user_management {
@@ -392,6 +399,9 @@
   font-size: 2em;
 }
 
+.glyph-data-alarm {
+  transform: translateY(2px);
+}
 
 /* The framed button box */
 .sidebar-item-button {
@@ -406,6 +416,11 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   transition: all 0.2s ease;
+}
+
+/* Custom style for the exit button */
+.sidebar-exit-button {
+  border-color: var(--soft-red);
 }
 
 .sidebar-label-text {
@@ -461,11 +476,10 @@
 
 @keyframes pulse-icon-alarm {
   0%, 100% {
-    color: var(--soft-red); 
-  }
-
-  50% {
     color: var(--neon-red); 
+  }
+  50% {
+    color: var(--soft-red); 
   }
 }
 
@@ -615,25 +629,25 @@
 
 /* Fading Telemetry relative to data age */
 .telemetry-accurate { 
-  color: var(--neon-red); 
+  color: var(--low-mid-red); 
 }
 .telemetry-fresh {
-  color: var(--very-strong-red); 
+  color: var(--mid-red); 
 }
 .telemetry-tolerable { 
-  color: var(--strong-red); 
+  color: var(--high-mid-red); 
 }
 .telemetry-aging { 
   color: var(--kinda-strong-red); 
 }
 .telemetry-borderline { 
-  color: var(--high-mid-red); 
+  color: var(--strong-red); 
 }
 .telemetry-limit { 
-  color: var(--mid-red); 
+  color: var(--very-strong-red); 
 }
 .telemetry-dead { 
-  color: var(--soft-red); 
+  color: var(--neon-red); 
   animation: pulse-icon-alarm 2s ease-in-out infinite;
 }
 /* Differs from dead when the data is expected to not be shown and do not */

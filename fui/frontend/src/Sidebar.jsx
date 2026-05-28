@@ -43,7 +43,7 @@ const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
         {/* Exit (End Session) Button (always inactive style) */}
         <div className="sidebar-item-container" onClick={onLogout}>
           <span className="sidebar-item-glyph glyph-logout">➠</span>
-          <button className="sidebar-item-button" style={{ borderColor: 'var(--soft-red)' }}>
+          <button className="sidebar-item-button sidebar-exit-button">
             <span className="sidebar-label-text">Exit</span>
           </button>
         </div>
@@ -64,7 +64,7 @@ const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
 
         {/* Data Telemetry Alarm */}
         {dataAlarm && (
-          <span className={`${dataAlarm.className} telemetry-sidebar-icon`} title="Data Telemetry Health">
+          <span className={`${dataAlarm.className} telemetry-sidebar-icon glyph-data-alarm`} title="Data Telemetry Health">
             {dataAlarm.glyph}
           </span>
         )}

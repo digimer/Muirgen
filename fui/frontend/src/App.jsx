@@ -65,9 +65,13 @@ const App = () => {
 
   // Get the oldest timestamp from all  critical sensors.
   const getWorstTelemetryTimestamp = () => {
+    // We need a satellite lock for the data to be considered good
+    const positionIsLocked  = liveTelemetry.position?.latitude !== null && liveTelemetry.position?.longitude !== null;
+    const positionTimestamp = positionIsLocked ? liveTelemetry.position?._timestamp : null;
+
     // TODO: More sources to be added
     const criticalTimestamps = [
-      liveTelemetry.position?._timestamp
+      positionTimestamp
     ];
 
     // If any critical sensors are missing, the master state is 'dead' (0).
@@ -836,7 +840,11 @@ const App = () => {
                   }
                 </span>
               ) : (
-                <span className="telemetry-dead">---° --.---' ---° --.---'</span>
+                <span className="telemetry-dead">
+                  {liveTelemetry.position?._timestamp && (Date.now() - liveTelemetry.position._timestamp < 10000)
+                    ? "⍙ Acquiring Satellites..."
+                    : "---° --.---' ---° --.---'"}
+                </span>
               )}
             </div>
           </div>
