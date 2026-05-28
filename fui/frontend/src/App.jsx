@@ -13,6 +13,7 @@ import UserManagement from './UserManagement';
 import EntityViewer from './EntityViewer.jsx';
 import BatteryEdit from './BatteryEdit';
 import BatteryManagement from './BatteryManagement.jsx';
+import ConfigPanel from './ConfigPanel.jsx';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
@@ -131,6 +132,28 @@ const App = () => {
   const resetToView = useCallback((id) => {
     setViewStack([{ id, context: null, list: [], index: 0, noteTarget: null }]);
   }, []);
+
+  const jumpToView = useCallback((targetIndex) => {
+    setViewStack(prev => prev.slice(0, targetIndex + 1))
+  }, []);
+  const formatBreadcrumb = (id) => {
+    // Short names to actual names mapping
+    const map = {
+      'VSM': 'VSM',                      // Vessel Status Monitor (root)
+      'CONFIG': 'Config',                // 
+      'TELEMETRY': 'Telemetry',          // Sensor data
+      'STATE': 'State',                  // Equipment status
+      'VESSEL_MANAGEMENT': 'Vessels',    // Adding, managing, logging, etc for vessels
+      'USER_MANAGEMENT': 'Operators',    // Adding, managing, logging, etc for users (not crew, though there may be some overlap)
+      'BATTERY_MANAGEMENT': 'Batteries', // Adding, managing, logging, etc for batteries
+      'MOTOR_MANAGEMENT': 'Motors',      // Adding, managing, logging, etc for motors
+      'POWER_MANAGEMENT': 'Power',       // Adding, managing, logging, etc for power devices
+      'SENSOR_MANAGEMENT': 'Sensors',    // Adding, managing, logging, etc for sensors
+      'VESSEL_PROFILE': 'Profile',       // ToDo - How is this different from vessel management? Is this a sub page?
+      'VESSEL_EDIT': 'Edit',             // ToDo - ^
+    };
+    return map[id] || id;
+  };
 
   // Local tick to update the displayed time each second.
   useInterval(() => {
@@ -494,17 +517,32 @@ const App = () => {
           {/* Top Telemetry Header (Navigation Data) */}
           <div className="telemetry-header">
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Wind // (T/A) [</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-header-text">] kts</span>
+              <span className="telemetry-header-text">Wind ⫽ (T/A) [</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-header-text">] kts</span>
             </div>
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Heading // (T/M) [</span><span className="telemetry-dead">---°</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---°</span><span className="telemetry-header-text">]</span>
+              <span className="telemetry-header-text">Heading ⫽ (T/M) [</span><span className="telemetry-dead">---°</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---°</span><span className="telemetry-header-text">]</span>
             </div>
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Speed // (G/W) [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text"></span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] kts</span>
+              <span className="telemetry-header-text">Speed ⫽ (G/W) [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text"></span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] kts</span>
             </div>
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Depth // K: [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] m</span>
+              <span className="telemetry-header-text">Depth ⫽ K: [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] m</span>
             </div>
+          </div>
+
+          {/* Breadcrumn Navigation Trail */}
+          <div className="breadcrumb-header">
+            {viewStack.map((view, index) => (
+              <span key={index}>
+                <span 
+                  className={`breadcrumb-item ${index === viewStack.length - 1 ? 'active' : 'clickable'}`} 
+                  onClick={() => { if (index < viewStack.length - 1) jumpToView(index); }}
+                >
+                  {formatBreadcrumb(view.id)}
+                </span>
+                {index < viewStack.length - 1 && <span className="breadcrumb-separator"> ⫽ </span>}
+              </span>
+            ))}
           </div>
 
           {/* View Center Container */}
@@ -531,7 +569,7 @@ const App = () => {
                 {/* The main / initial page. For now, it's a simple data box */}
                 {currentView?.id === 'VSM' && vessel && (
                   <>
-                    <h3 className="step-title">◫ Vessel Status Monitor // {vessel.name || 'Loading...'}</h3>
+                    <h3 className="step-title">◫ Vessel Status Monitor ⫽ {vessel.name || 'Loading...'}</h3>
                     <p>Flag Nation: {vessel.flag_nation || 'Loading...'}</p>
                     <p>Home Port: {vessel.port_of_registry || 'Loading...'}</p>
                     <p>Build Details: {vessel.build_details || 'Loading...'}</p>
@@ -541,6 +579,11 @@ const App = () => {
                   </>
                 )}
                 
+                {/* Systems Configuration Root Map */}
+                {currentView?.id === 'CONFIG' && (
+                  <ConfigPanel pushView={pushView} />
+                )}
+
                 {/* The vessel management */}
                 {currentView?.id === 'VESSEL_MANAGEMENT' && (
                   <VesselManagement
@@ -823,15 +866,15 @@ const App = () => {
           {/* Telemetry footer */}
           <div className="telemetry-footer">
             <div className="telemetry-item">
-              <span className="telemetry-header-text">System Time //</span> <span className="telemetry-accurate">{displayTime}</span>
+              <span className="telemetry-header-text">System Time ⫽</span> <span className="telemetry-accurate">{displayTime}</span>
             </div>
             <div className="telemetry-item">
-              <span className="telemetry-header-text">ETA //</span>
+              <span className="telemetry-header-text">ETA ⫽</span>
                 <span className="telemetry-off">no active waypoint</span>
             </div>
             {/* Future placeholder for GPS lat/lon. */}
             <div className="telemetry-item">
-              <span className="telemetry-header-text">Position // </span>
+              <span className="telemetry-header-text">Position ⫽ </span>
               {liveTelemetry.position && liveTelemetry.position.latitude !== null && liveTelemetry.position.longitude !== null ? (
                 <span>
                   {getAccuracyIndicator(liveTelemetry.position._timestamp).className === 'telemetry-dead'
@@ -842,7 +885,7 @@ const App = () => {
               ) : (
                 <span className="telemetry-dead">
                   {liveTelemetry.position?._timestamp && (Date.now() - liveTelemetry.position._timestamp < 10000)
-                    ? "⍙ Acquiring Satellites..."
+                    ? "⍙ Acquiring Satellites ⍙"
                     : "---° --.---' ---° --.---'"}
                 </span>
               )}

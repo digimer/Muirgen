@@ -140,6 +140,124 @@
 }
 
 /* ========================================================================== */
+/* Navigation & Breadcrumbs (V1 STANDARD)                                     */
+/* ========================================================================== */
+
+/* Breadcrumb Navigation */
+.breadcrumb-header {
+  width: 100%;
+  text-align: left;
+  padding: 10px 0;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--dim-red);
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.breadcrumb-item {
+  color: var(--soft-red);
+  letter-spacing: 2px;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.breadcrumb-item.clickable {
+  cursor: pointer;
+}
+
+.breadcrumb-item.clickable:hover {
+  color: var(--neon-red);
+  text-shadow: 0 0 8px var(--neon-red);
+}
+
+.breadcrumb-item.active {
+  color: var(--neon-red);
+  font-weight: bold;
+}
+
+.breadcrumb-separator {
+  color: var(--dim-red);
+  margin: 0 10px;
+}
+
+/* System Grid */
+.system-grid-container {
+  width: 100%;
+  max-width: var(--box-max-width, 900px);
+  margin: 0 auto;
+}
+
+/* Auto-fit creates as many columns as will fit at min 250px each */
+.system-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* The touch-button class provides the hover glow and colors */
+/* Container provides the 1px "border" via background color and the outer chamfer */
+.system-grid-button-container {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--soft-red);
+  padding: 1px; /* The border width */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+  border: none;
+  cursor: pointer;
+  height: 120px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+/* Inner element provides the dark background and inner chamfer */
+.system-grid-button-inner {
+  position: relative;
+  background-color: var(--dark-bg);
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 19px), calc(100% - 19px) 100%, 0 100%);
+  color: var(--soft-red);
+  transition: all 0.2s ease;
+}
+
+/* Hover lighting effect */
+.system-grid-button-container:hover {
+  background-color: var(--neon-red);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+}
+
+.system-grid-button-container:hover .system-grid-button-inner {
+  color: var(--neon-red);
+  background-color: var(--subtle-red);
+}
+
+.system-grid-glyph {
+  position: absolute;
+  top: 45%; /* slightly above true-center to balance the text at the bottom */
+  left: 50%;
+  transform: translate(-50%, -50%);  font-size: 2.5rem;
+}
+
+.system-grid-label {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+/* VSM Sidebar Offset Divider */
+.vsm-root-separator {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  opacity: 0.5; /* Keeps it subtle */
+}
+
+
+/* ========================================================================== */
 /* File/Image upload staging quque (V1 STANDARD)                              */
 /* ========================================================================== */
 

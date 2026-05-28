@@ -3,15 +3,14 @@ import { useSystemStatus } from './utils/hooks';
 
 const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
   const { isHddActive } = useSystemStatus();
-  const menuItems       = [
-    { id: 'VSM',                label: 'VSM',       glyph: '⏍' },
-    { id: 'VESSEL_MANAGEMENT',  label: 'Vessels',   glyph: '⏃' },
-    { id: 'USER_MANAGEMENT',    label: 'Operators', glyph: '⏿' },
-    { id: 'BATTERY_MANAGEMENT', label: 'Batteries', glyph: '⛫' },
-    { id: 'MOTOR_MANAGEMENT',   label: 'Motors',    glyph: '⦵' },
-    { id: 'POWER_MANAGEMENT',   label: 'Power',     glyph: '⏚' },
-    { id: 'SENSOR_MANAGEMENT',  label: 'Sensors',   glyph: '⌖' },
-
+  
+  // Root level menu
+  const menuItems = [
+    { id: 'VSM',        label: 'VSM',        glyph: '⏍' },
+    { id: 'CONFIG',     label: 'CONFIG',     glyph: '⌥' },
+    { id: 'TELEMETRY',  label: 'TELEMETRY',  glyph: '🛰' },
+    { id: 'STATUS',     label: 'STATUS',     glyph: '⏦' },
+    { id: 'NAVIGATION', label: 'NAVIGATION', glyph: '⏧' },
   ];
   
   return (
@@ -25,16 +24,21 @@ const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
       
       {/* Index buttons */}
       <ul className="sidebar-list">
-        {menuItems.map((item) => (
-          <li key={item.id}>
-            <div className={`sidebar-item-container ${activeView === item.id ? 'is-active' : ''}`} onClick={() => setActiveView(item.id)}>
-              <span className={`sidebar-item-glyph glyph-${item.id.toLowerCase()}`}>{item.glyph}</span>
-              <button className="sidebar-item-button">
-                <span className="sidebar-label-text">{item.label}</span>
-              </button>
-            </div>
-          </li>
-        ))}
+        {menuItems.map((item) => {
+          // Offset VSM to act as the master root visual anchor
+          const isVsm = item.id === 'VSM';
+          return (
+            <li key={item.id}>
+              <div className={`sidebar-item-container ${activeView === item.id ? 'is-active' : ''}`} onClick={() => setActiveView(item.id)}>
+                <span className={`sidebar-item-glyph glyph-${item.id.toLowerCase()}`}>{item.glyph}</span>
+                <button className="sidebar-item-button">
+                  <span className="sidebar-label-text">{item.label}</span>
+                </button>
+              </div>
+              {isVsm && <div className="sidebar-divider margin-divider-bottom vsm-root-separator" />}
+            </li>
+          );
+        })}
       </ul>
       
       {/* Footer area */}
