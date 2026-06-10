@@ -15,7 +15,8 @@ import BatteryEdit from './BatteryEdit';
 import BatteryManagement from './BatteryManagement.jsx';
 import ConfigPanel from './ConfigPanel.jsx';
 import Skyview from './Skyview.jsx';
-import { formatCoordinate, getDOPConfidenceHeight } from './utils/formatters';
+import TelemetryManagement from './TelemetryManagement.jsx';
+import { formatCoordinate } from './utils/formatters';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
@@ -634,6 +635,11 @@ const App = () => {
                 {/* Systems Configuration Root Map */}
                 {currentView?.id === 'CONFIG' && (
                   <ConfigPanel pushView={pushView} />
+                )}
+
+                {/* Telemetry Root Map */}
+                {currentView?.id === 'TELEMETRY' && (
+                  <TelemetryManagement pushView={pushView} />
                 )}
 
                 {/* Skyview Diagnostics Panel */}
