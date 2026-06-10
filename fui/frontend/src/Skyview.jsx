@@ -1,6 +1,6 @@
 // Handles the Skyview page.
 import React, { useState, useRef } from 'react';
-import { formatAge, formatCoordinate } from './utils/formatters';
+import { formatAge, formatCoordinate, getDOPConfidenceHeight } from './utils/formatters';
 import './Muirgen.css';
 
 const Skyview = ({ liveTelemetry }) => {
@@ -137,21 +137,6 @@ const Skyview = ({ liveTelemetry }) => {
     : Infinity;
   const isStale = (skyview?._timestamp && (Date.now() - skyview._timestamp > 10000)) || positionAge > 10000;
 
-  // Maps HDOP to a 0-100% confidence scale
-  const getConfidenceHeight = (dop) => {
-    if (dop === null || dop === undefined) return 0;
-    if (dop <= 1.0) return 100;
-    if (dop >= 10.0) return 0;
-    
-    if (dop <= 2.0) {
-       return 100 - ((dop - 1.0) * 25); // 1.0->2.0 = 100%->75%
-    } else if (dop <= 5.0) {
-       return 75 - (((dop - 2.0) / 3.0) * 50); // 2.0->5.0 = 75%->25%
-    } else {
-       return 25 - (((dop - 5.0) / 5.0) * 25); // 5.0->10.0 = 25%->0%
-    }
-  };
-
   return (
     <div className="skyview-container">
       <div className="skyview-top-grid">
@@ -165,20 +150,20 @@ const Skyview = ({ liveTelemetry }) => {
             &nbsp; <span>
               HDOP: [{skyview?.horizontal_dop?.toFixed(2) || '--'}]
               <span className="skyview-confidence-meter" title="Accuracy Confidence">
-                <span className="skyview-confidence-fill" style={{ height: `${getConfidenceHeight(skyview?.horizontal_dop)}%`}}></span>
+                <span className="skyview-confidence-fill" style={{ height: `${getDOPConfidenceHeight(skyview?.horizontal_dop)}%`}}></span>
               </span>
             </span>
             &nbsp; <span>
               VDOP: [{skyview?.vertical_dop?.toFixed(2) || '--'}]
               <span className="skyview-confidence-meter" title="Accuracy Confidence">
-                <span className="skyview-confidence-fill" style={{ height: `${getConfidenceHeight(skyview?.vertical_dop)}%`}}></span>
+                <span className="skyview-confidence-fill" style={{ height: `${getDOPConfidenceHeight(skyview?.vertical_dop)}%`}}></span>
               </span>
             </span>
             {/* TDOP is not useful for private vessels (nor most commercial vessels). While it is supported in the backend, it is not displayed. */}
             {/* &nbsp; <span>
               TDOP: [{skyview?.time_dop?.toFixed(2) || '--'}]
               <span className="skyview-confidence-meter" title="Accuracy Confidence">
-                <span className="skyview-confidence-fill" style={{ height: `${getConfidenceHeight(skyview?.time_dop)}%`}}></span>
+                <span className="skyview-confidence-fill" style={{ height: `${getDOPConfidenceHeight(skyview?.time_dop)}%`}}></span>
               </span>
             </span> */}
           </div>
@@ -216,10 +201,11 @@ const Skyview = ({ liveTelemetry }) => {
         </div>
       </div>
       <div className="skyview-bottom-span">
+        {/* We will enable the dead-reckoning and the estimated position later. For now, this is a placeholder
         <div className="skyview-dr-stubs">
-           <div className="dr-stub">EP: [Awaiting DST810]</div> {/* Estimated Position */}
-           <div className="dr-stub">DR: [Awaiting DST810]</div> {/* Dead reckoning */}
-        </div>
+           <div className="dr-stub">EP: [Awaiting DST810]</div>
+           <div className="dr-stub">DR: [Awaiting DST810]</div>
+        </div>*/}
         
         <div className={`skyview-latlon ${(isStale || (liveTelemetry?.position && liveTelemetry.position.latitude == null)) ? 'data-stale-hash' : ''}`}>
           {liveTelemetry?.position && liveTelemetry.position.latitude != null && !isStale ? (

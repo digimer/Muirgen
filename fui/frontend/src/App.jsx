@@ -15,7 +15,7 @@ import BatteryEdit from './BatteryEdit';
 import BatteryManagement from './BatteryManagement.jsx';
 import ConfigPanel from './ConfigPanel.jsx';
 import Skyview from './Skyview.jsx';
-import { formatCoordinate } from './utils/formatters';
+import { formatCoordinate, getDOPConfidenceHeight } from './utils/formatters';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
@@ -941,20 +941,20 @@ const App = () => {
               {liveTelemetry.position && liveTelemetry.position.latitude != null && liveTelemetry.position.longitude != null ? (
                 <span>
                   {getAccuracyIndicator(liveTelemetry.position._location_timestamp).className === 'telemetry-dead'
-                    ? "---° --.---' ---° --.---'" 
-                    : `${formatCoordinate(liveTelemetry.position.latitude, true)} ${formatCoordinate(liveTelemetry.position.longitude, false)}`
+                    ? "---° --.---', ---° --.---', " 
+                    : `${formatCoordinate(liveTelemetry.position.latitude, true)}, ${formatCoordinate(liveTelemetry.position.longitude, false)}, `
                   }
                 </span>
               ) : (
                 <span className="telemetry-dead">
                   {liveTelemetry.position?._timestamp && (Date.now() - liveTelemetry.position._timestamp < 10000)
                     ? "⍙ Acquiring Satellites ⍙"
-                    : "---° --.---' ---° --.---'"}
+                    : "---° --.---', ---° --.---', "}
                 </span>
               )}
               {/* Horizontal Dilution of Precision (HDOP); Under 2 is acceptable accuracy. Under 0.8 is ideal. */}
                 {liveTelemetry?.skyview && liveTelemetry.skyview.horizontal_dop != null && (
-                <span className="telemetry-accurate telemetry-right-pad">
+                <span className="telemetry-right-pad">
                   HDOP: [{liveTelemetry.skyview.horizontal_dop.toFixed(2)}]
                 </span>
               )}

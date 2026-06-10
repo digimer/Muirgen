@@ -45,3 +45,19 @@ export const formatMuirgenDate = (dateString) => {
   const pad = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
+
+// Maps the Horizontal/Vertical Dilution Of Precision (HDOP/VDOP) to a 0-100%
+// confidence scale for bar graphs
+export const getDOPConfidenceHeight = (dop) => {
+  if (dop === null || dop === undefined) return 0;
+  if (dop <= 1.0) return 100;
+  if (dop >= 10.0) return 0;
+  
+  if (dop <= 2.0) {
+     return 100 - ((dop - 1.0) * 25); // 1.0->2.0 = 100%->75%
+  } else if (dop <= 5.0) {
+     return 75 - (((dop - 2.0) / 3.0) * 50); // 2.0->5.0 = 75%->25%
+  } else {
+     return 25 - (((dop - 5.0) / 5.0) * 25); // 5.0->10.0 = 25%->0%
+  }
+};
