@@ -1,5 +1,6 @@
 // Handles the Skyview page.
 import React, { useState, useRef } from 'react';
+import { formatAge } from './utils/formatters';
 import './Muirgen.css';
 
 const Skyview = ({ vessel, liveTelemetry, formatCoordinate }) => {
@@ -130,8 +131,11 @@ const Skyview = ({ vessel, liveTelemetry, formatCoordinate }) => {
     );
   };
 
-  // Mark a satellite stake if we've not seen it in over 10 seconds. 
-  const isStale = skyview?._timestamp && (Date.now() - skyview._timestamp > 10000);
+  // Accurately age the coordinates even if the sensor is spamming empty packets
+  const positionAge = liveTelemetry?.position?._location_timestamp 
+    ? (Date.now() - liveTelemetry.position._location_timestamp)
+    : Infinity;
+  const isStale = (skyview?._timestamp && (Date.now() - skyview._timestamp > 10000)) || positionAge > 10000;
 
   // Maps HDOP to a 0-100% confidence scale
   const getConfidenceHeight = (dop) => {
@@ -217,19 +221,21 @@ const Skyview = ({ vessel, liveTelemetry, formatCoordinate }) => {
            <div className="dr-stub">DR: [Awaiting DST810]</div> {/* Dead reckoning */}
         </div>
         
-        <div className={`skyview-latlon ${isStale ? 'data-stale-hash' : ''}`}>
-           {liveTelemetry?.position && liveTelemetry.position.latitude !== null && !isStale ? (
-             <div className="latlon-live">
-               {formatCoordinate(liveTelemetry.position.latitude, true)}, {formatCoordinate(liveTelemetry.position.longitude, false)}
-             </div>
-           ) : (
-             <div className="latlon-stale">
-               <div className="skyview-stale-warning">[Warning: Stale Data] {skyview?._timestamp && `Last Data: [${Math.floor((Date.now() - skyview._timestamp)/1000)}]s ago`}</div>
-               {liveTelemetry?.position && liveTelemetry.position.latitude !== null && liveTelemetry?.position?.longitude !== null
-                 ? `${formatCoordinate(liveTelemetry.position.latitude, true)}    ${formatCoordinate(liveTelemetry.position.longitude, false)}`
-                 : "---° --.---' ---° --.---'"}
-             </div>
-           )}
+        <div className={`skyview-latlon ${(isStale || (liveTelemetry?.position && liveTelemetry.position.latitude == null)) ? 'data-stale-hash' : ''}`}>
+          {liveTelemetry?.position && liveTelemetry.position.latitude != null && !isStale ? (
+            <div className="latlon-live">
+              {formatCoordinate(liveTelemetry.position.latitude, true)}, {formatCoordinate(liveTelemetry.position.longitude, false)}
+            </div>
+          ) : (
+            <div className="skyview-latlon-stale">
+              {(positionAge !== Infinity) && <div className="skyview-stale-warning">[Warning: Stale Position] Last Fix: [{formatAge(positionAge)}] ago</div>}
+              <div className="skyview-latlon-stale-coords">
+                 {liveTelemetry?.position && liveTelemetry.position.latitude != null && liveTelemetry?.position?.longitude != null
+                   ? `${formatCoordinate(liveTelemetry.position.latitude, true)}    ${formatCoordinate(liveTelemetry.position.longitude, false)}`
+                   : "---° --.---' ---° --.---'"}
+               </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

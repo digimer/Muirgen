@@ -319,6 +319,38 @@ const App = () => {
     }
   }, [currentView?.id, fetchManagementData, fetchUserManagementData]);
   
+  // Fetch initial last-known telemetry when the vessel loads
+  useEffect(() => {
+    if (!vessel || !vessel.uuid || !isLoggedIn) return;
+
+    const fetchLastKnownTelemetry = async () => {
+      try {
+        const res = await apiFetch(`/api/vessels/${vessel.uuid}/telemetry/last-known`);
+        if (res.ok) {
+          const data = await res.json();
+          setLiveTelemetry(prev => {
+            const newState = { ...prev };
+            // Only populate if we haven't already received fresh data via WebSocket
+            if (data.position && !newState.position) {
+              newState.position = {
+                ...data.position,
+                _location_timestamp: data.position._timestamp
+              };
+            }
+            if (data.skyview && !newState.skyview) {
+              newState.skyview = data.skyview;
+            }
+            return newState;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load last known telemetry:', err);
+      }
+    };
+    
+    fetchLastKnownTelemetry();
+  }, [vessel, isLoggedIn]);
+
   // Refresh ViewContext with live data if we are editing.
   useEffect(() => {
     // We only refresh context if there's a valid ID and context to refresh!
@@ -497,13 +529,20 @@ const App = () => {
               }
             });
 
+            const merged = {
+              ...currentSubject, 
+              ...newPayload, 
+              _timestamp: Date.now()
+            };
+
+            // If this payload included coordinates, track exactly when we got them
+            if (newPayload.latitude !== undefined) {
+              merged._location_timestamp = Date.now();
+            }
+
             return {
               ...prev,
-              [subject]: {
-                ...currentSubject, 
-                ...newPayload, 
-                _timestamp: Date.now()
-              }
+              [subject]: merged
             };
           });
         }
@@ -916,9 +955,9 @@ const App = () => {
               ]);
             }}>
               <span className="telemetry-header-text">Position ⫽ </span>
-              {liveTelemetry.position && liveTelemetry.position.latitude !== null && liveTelemetry.position.longitude !== null ? (
+              {liveTelemetry.position && liveTelemetry.position.latitude != null && liveTelemetry.position.longitude != null ? (
                 <span>
-                  {getAccuracyIndicator(liveTelemetry.position._timestamp).className === 'telemetry-dead'
+                  {getAccuracyIndicator(liveTelemetry.position._location_timestamp).className === 'telemetry-dead'
                     ? "---° --.---' ---° --.---'" 
                     : `${formatCoordinate(liveTelemetry.position.latitude, true)} ${formatCoordinate(liveTelemetry.position.longitude, false)}`
                   }
@@ -931,7 +970,7 @@ const App = () => {
                 </span>
               )}
               {/* Horizontal Dilution of Precision (HDOP); Under 2 is acceptable accuracy. Under 0.8 is ideal. */}
-              {liveTelemetry?.skyview?.horizontal_dop !== undefined && liveTelemetry.skyview.horizontal_dop !== null && (
+                {liveTelemetry?.skyview && liveTelemetry.skyview.horizontal_dop != null && (
                 <span className="telemetry-accurate telemetry-right-pad">
                   HDOP: [{liveTelemetry.skyview.horizontal_dop.toFixed(2)}]
                 </span>

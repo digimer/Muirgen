@@ -1138,6 +1138,54 @@ app.post('/api/vessels/:uuid/update', authenticateToken, requireAdmin, async (re
   }
 });
 
+// Get the last known telemetry data for a vessel
+app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  
+  try {
+    // Fetch the most recent row for position and skyview. 
+    // They may have different timestamps if one sensor went offline before the other.
+    const posResult = await pool.query(
+      `SELECT ST_Y(location::geometry) AS latitude, ST_X(location::geometry) AS longitude, time 
+       FROM position_data 
+       WHERE vessel_uuid = $1 AND location IS NOT NULL
+       ORDER BY time DESC LIMIT 1;`,
+      [targetUuid]
+    );
+
+    const skyResult = await pool.query(
+      `SELECT horizontal_dop, vertical_dop, satellites, time 
+       FROM gnss_skyview 
+       WHERE vessel_uuid = $1 
+       ORDER BY time DESC LIMIT 1;`,
+      [targetUuid]
+    );
+
+    // Parse the Postgres timestamps to JS UNIX timestamps so they match the React Date.now() logic
+    const positionData = posResult.rows.length > 0 ? {
+      latitude: posResult.rows[0].latitude,
+      longitude: posResult.rows[0].longitude,
+      _timestamp: new Date(posResult.rows[0].time).getTime()
+    } : null;
+
+    const skyviewData = skyResult.rows.length > 0 ? {
+      horizontal_dop: skyResult.rows[0].horizontal_dop,
+      vertical_dop: skyResult.rows[0].vertical_dop,
+      satellites: skyResult.rows[0].satellites,
+      _timestamp: new Date(skyResult.rows[0].time).getTime()
+    } : null;
+
+    res.json({
+      position: positionData,
+      skyview: skyviewData
+    });
+
+  } catch (err) {
+    console.error('Last known telemetry fetch failed! Error: ', err.message);
+    res.status(500).json({ error: `Last known telemetry fetch failed! Error: ${err.message}` });
+  }
+});
+
 /* *********************************************************************************************************/
 /* Non-endpoint stuff                                                                                      */
 /* *********************************************************************************************************/
