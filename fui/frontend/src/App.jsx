@@ -14,6 +14,7 @@ import EntityViewer from './EntityViewer.jsx';
 import BatteryEdit from './BatteryEdit';
 import BatteryManagement from './BatteryManagement.jsx';
 import ConfigPanel from './ConfigPanel.jsx';
+import Skyview from './Skyview.jsx';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
@@ -105,7 +106,14 @@ const App = () => {
   // Navigation helpers.
   const currentView = viewStack[viewStack.length - 1];
   const pushView    = useCallback((id, context = null, list = [], index = 0, noteTarget = null) => {
-    setViewStack(prev => [...prev, { id, context, list, index, noteTarget }]);
+    setViewStack(prev => {
+      const top = prev[prev.length - 1];
+      if (top && top.id === id) {
+        // Ignore, we're already showing this view
+        return prev; 
+      }
+      return [...prev, { id, context, list, index, noteTarget }];
+    });
   }, []);
   const popView = useCallback((optionalTargetNoteId = null) => {
     setViewStack(prev => {
@@ -130,7 +138,15 @@ const App = () => {
     });
   }, []);
   const resetToView = useCallback((id) => {
-    setViewStack([{ id, context: null, list: [], index: 0, noteTarget: null }]);
+    if (id === 'VSM') {
+      setViewStack([{ id: 'VSM', context: null, list: [], index: 0, noteTarget: null }]);
+    } else {
+      // Always anchor the breadcrumb tree to VSM
+      setViewStack([
+        { id: 'VSM', context: null, list: [], index: 0, noteTarget: null },
+        { id, context: null, list: [], index: 0, noteTarget: null }
+      ]);
+    }
   }, []);
 
   const jumpToView = useCallback((targetIndex) => {
@@ -151,6 +167,7 @@ const App = () => {
       'SENSOR_MANAGEMENT': 'Sensors',    // Adding, managing, logging, etc for sensors
       'VESSEL_PROFILE': 'Profile',       // ToDo - How is this different from vessel management? Is this a sub page?
       'VESSEL_EDIT': 'Edit',             // ToDo - ^
+      'TELEMETRY_SKYVIEW': 'Skyview',    // The GNSS/GPS skyview
     };
     return map[id] || id;
   };
@@ -469,13 +486,26 @@ const App = () => {
           const topicParts = data.topic.split('/');
           const subject    = topicParts[topicParts.length - 1];
 
-          setLiveTelemetry(prev => ({
-            ...prev,
-            [subject]: {
-              ...data.payload,
-              _timestamp: Date.now() // Record for the decay timer
-            }
-          }));
+          setLiveTelemetry(prev => {
+            const currentSubject = prev[subject] || {};
+            const newPayload     = { ...data.payload };
+
+            // Discard NULLs so fragmented PGNs don't overwrite previous data.
+            Object.keys(newPayload).forEach(key => {
+              if (newPayload[key] === null) {
+                delete newPayload[key];
+              }
+            });
+
+            return {
+              ...prev,
+              [subject]: {
+                ...currentSubject, 
+                ...newPayload, 
+                _timestamp: Date.now()
+              }
+            };
+          });
         }
       } catch (err) {
         console.error('Error parsing WS message:', err);
@@ -582,6 +612,11 @@ const App = () => {
                 {/* Systems Configuration Root Map */}
                 {currentView?.id === 'CONFIG' && (
                   <ConfigPanel pushView={pushView} />
+                )}
+
+                {/* Skyview Diagnostics Panel */}
+                {currentView?.id === 'TELEMETRY_SKYVIEW' && (
+                  <Skyview vessel={vessel} liveTelemetry={liveTelemetry} formatCoordinate={formatCoordinate} />
                 )}
 
                 {/* The vessel management */}
@@ -872,8 +907,14 @@ const App = () => {
               <span className="telemetry-header-text">ETA ⫽</span>
                 <span className="telemetry-off">no active waypoint</span>
             </div>
-            {/* Future placeholder for GPS lat/lon. */}
-            <div className="telemetry-item">
+            {/* GPS lat/lon. */}
+            <div className="telemetry-item telemetry-clickable" onClick={() => {
+              setViewStack([
+                { id: 'VSM', context: null, list: [], index: 0, noteTarget: null },
+                { id: 'TELEMETRY', context: null, list: [], index: 0, noteTarget: null },
+                { id: 'TELEMETRY_SKYVIEW', context: null, list: [], index: 0, noteTarget: null }
+              ]);
+            }}>
               <span className="telemetry-header-text">Position ⫽ </span>
               {liveTelemetry.position && liveTelemetry.position.latitude !== null && liveTelemetry.position.longitude !== null ? (
                 <span>
@@ -887,6 +928,12 @@ const App = () => {
                   {liveTelemetry.position?._timestamp && (Date.now() - liveTelemetry.position._timestamp < 10000)
                     ? "⍙ Acquiring Satellites ⍙"
                     : "---° --.---' ---° --.---'"}
+                </span>
+              )}
+              {/* Horizontal Dilution of Precision (HDOP); Under 2 is acceptable accuracy. Under 0.8 is ideal. */}
+              {liveTelemetry?.skyview?.horizontal_dop !== undefined && liveTelemetry.skyview.horizontal_dop !== null && (
+                <span className="telemetry-accurate telemetry-right-pad">
+                  HDOP: [{liveTelemetry.skyview.horizontal_dop.toFixed(2)}]
                 </span>
               )}
             </div>

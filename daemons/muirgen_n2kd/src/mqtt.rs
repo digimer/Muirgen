@@ -37,10 +37,13 @@ pub async fn run_mqtt_thread(mut receiver: mpsc::Receiver<crate::db::DbMessage>,
                 let topic = format!("muirgen/telemetry/{}/position", vessel_uuid);
                 let _     = client.publish(topic, QoS::AtMostOnce, false, payload.to_string()).await;
             }
-            crate::db::DbMessage::InsertSkyviewData { vessel_uuid, horizontal_dop, .. } => {
+            crate::db::DbMessage::InsertSkyviewData { vessel_uuid, horizontal_dop, vertical_dop, time_dop, satellites, .. } => {
                 let payload = json!({
                     "vessel_uuid": vessel_uuid.to_string(),
-                    "horizontal_dop": horizontal_dop
+                    "horizontal_dop": horizontal_dop,
+                    "vertical_dop": vertical_dop,
+                    "time_dop": time_dop,
+                    "satellites": satellites
                 });
                 let topic = format!("muirgen/telemetry/{}/skyview", vessel_uuid);
                 let _     = client.publish(topic, QoS::AtMostOnce, false, payload.to_string()).await;

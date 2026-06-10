@@ -27,9 +27,21 @@ const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
         {menuItems.map((item) => {
           // Offset VSM to act as the master root visual anchor
           const isVsm = item.id === 'VSM';
+
+          // Map any deep views back to their root for contextual anchoring
+          const getRootForView = (viewId) => {
+            if (!viewId) return 'VSM';
+            if (viewId.startsWith('TELEMETRY')) return 'TELEMETRY';
+            if (viewId.endsWith('_MANAGEMENT') || viewId === 'CONFIG') return 'CONFIG';
+            if (viewId.startsWith('STATUS') || viewId.startsWith('STATE')) return 'STATUS';
+            if (viewId.startsWith('NAVIGATION')) return 'NAVIGATION';
+            return 'VSM';
+          };
+          const isActive = getRootForView(activeView) === item.id;
+
           return (
             <li key={item.id}>
-              <div className={`sidebar-item-container ${activeView === item.id ? 'is-active' : ''}`} onClick={() => setActiveView(item.id)}>
+              <div className={`sidebar-item-container ${isActive ? 'is-active' : ''}`} onClick={() => setActiveView(item.id)}>
                 <span className={`sidebar-item-glyph glyph-${item.id.toLowerCase()}`}>{item.glyph}</span>
                 <button className="sidebar-item-button">
                   <span className="sidebar-label-text">{item.label}</span>
@@ -68,7 +80,11 @@ const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
 
         {/* Data Telemetry Alarm */}
         {dataAlarm && (
-          <span className={`${dataAlarm.className} telemetry-sidebar-icon glyph-data-alarm`} title="Data Telemetry Health">
+          <span 
+            className={`${dataAlarm.className} telemetry-sidebar-icon glyph-data-alarm telemetry-clickable`} 
+            title="Data Telemetry Health"
+            onClick={() => setActiveView('STATUS')}
+          >
             {dataAlarm.glyph}
           </span>
         )}

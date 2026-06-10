@@ -685,6 +685,7 @@ input:-webkit-autofill:active {
   justify-content: center;
   align-items: center;
   width: 100%;
+  position: relative;
 }
 
 /* Entity viewer classes */
