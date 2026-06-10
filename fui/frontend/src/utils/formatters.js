@@ -17,6 +17,24 @@ export const formatAge = (ms) => {
   return parts.join(' ');
 };
 
+// Format raw decimal lat/lon degrees to maritime standards
+export const formatCoordinate = (decimalValue, isLatitude) => {
+  if (decimalValue === null || decimalValue === undefined) return '';
+
+  const absVal  = Math.abs(decimalValue);
+  const degrees = Math.floor(absVal);
+  const minutes = ((absVal - degrees) * 60).toFixed(3);
+
+  const cardinal = isLatitude 
+    ? (decimalValue >= 0 ? 'N' : 'S')
+    : (decimalValue >= 0 ? 'E' : 'W');
+
+  const degreeString = isLatitude ? degrees.toString().padStart(2, '0') : degrees.toString().padStart(3, '0');
+  const minuteString = minutes.padStart(6, '0'); 
+
+  return `${degreeString}° ${minuteString}' ${cardinal}`;
+}
+
 // This is used to have a consistent date format through out Muirgen; YYYY/MM/DD hh:mm
 export const formatMuirgenDate = (dateString) => {
   const date = new Date(dateString); 

@@ -1,9 +1,9 @@
 // Handles the Skyview page.
 import React, { useState, useRef } from 'react';
-import { formatAge } from './utils/formatters';
+import { formatAge, formatCoordinate } from './utils/formatters';
 import './Muirgen.css';
 
-const Skyview = ({ vessel, liveTelemetry, formatCoordinate }) => {
+const Skyview = ({ liveTelemetry }) => {
   const skyview = liveTelemetry?.skyview;
 
   const [hoveredPrn, setHoveredPrn] = useState(null);

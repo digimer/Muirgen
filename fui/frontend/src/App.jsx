@@ -15,6 +15,7 @@ import BatteryEdit from './BatteryEdit';
 import BatteryManagement from './BatteryManagement.jsx';
 import ConfigPanel from './ConfigPanel.jsx';
 import Skyview from './Skyview.jsx';
+import { formatCoordinate } from './utils/formatters';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
@@ -84,24 +85,6 @@ const App = () => {
     // Return the oldest timestamp in the array
     return Math.min(...criticalTimestamps);
   };
-
-  // Format coordinates to maritime standards
-  const formatCoordinate = (decimalValue, isLatitude) => {
-    if (decimalValue === null || decimalValue === undefined) return '';
-
-    const absVal  = Math.abs(decimalValue);
-    const degrees = Math.floor(absVal);
-    const minutes = ((absVal - degrees) * 60).toFixed(3);
-
-    const cardinal = isLatitude 
-      ? (decimalValue >= 0 ? 'N' : 'S')
-      : (decimalValue >= 0 ? 'E' : 'W');
-
-      const degreeString = isLatitude ? degrees.toString().padStart(2, '0') : degrees.toString().padStart(3, '0');
-      const minuteString = minutes.padStart(6, '0'); 
-
-      return `${degreeString}° ${minuteString}' ${cardinal}`;
-  }
 
   // Navigation helpers.
   const currentView = viewStack[viewStack.length - 1];
@@ -655,7 +638,7 @@ const App = () => {
 
                 {/* Skyview Diagnostics Panel */}
                 {currentView?.id === 'TELEMETRY_SKYVIEW' && (
-                  <Skyview vessel={vessel} liveTelemetry={liveTelemetry} formatCoordinate={formatCoordinate} />
+                  <Skyview liveTelemetry={liveTelemetry} />
                 )}
 
                 {/* The vessel management */}
