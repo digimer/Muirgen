@@ -1161,6 +1161,30 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
       [targetUuid]
     );
 
+    const motionResult = await pool.query(
+      `SELECT heading_magnetic, course_over_ground, speed_over_ground, speed_through_water, time 
+       FROM motion_data 
+       WHERE vessel_uuid = $1 
+       ORDER BY time DESC LIMIT 1;`,
+      [targetUuid]
+    );
+
+    const windResult = await pool.query(
+      `SELECT true_speed, true_direction, apparent_speed, apparent_direction, time 
+       FROM wind_data 
+       WHERE vessel_uuid = $1 
+       ORDER BY time DESC LIMIT 1;`,
+      [targetUuid]
+    );
+
+    const depthResult = await pool.query(
+      `SELECT measured, time 
+       FROM depth_data 
+       WHERE vessel_uuid = $1 
+       ORDER BY time DESC LIMIT 1;`,
+      [targetUuid]
+    );
+
     // Parse the Postgres timestamps to JS UNIX timestamps so they match the React Date.now() logic
     const positionData = posResult.rows.length > 0 ? {
       latitude: posResult.rows[0].latitude,
@@ -1175,9 +1199,33 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
       _timestamp: new Date(skyResult.rows[0].time).getTime()
     } : null;
 
+    const motionData = motionResult.rows.length > 0 ? {
+      heading_magnetic: motionResult.rows[0].heading_magnetic,
+      course_over_ground: motionResult.rows[0].course_over_ground,
+      speed_over_ground: motionResult.rows[0].speed_over_ground,
+      speed_through_water: motionResult.rows[0].speed_through_water,
+      _timestamp: new Date(motionResult.rows[0].time).getTime()
+    } : null;
+
+    const windData = windResult.rows.length > 0 ? {
+      true_speed: windResult.rows[0].true_speed,
+      true_direction: windResult.rows[0].true_direction,
+      apparent_speed: windResult.rows[0].apparent_speed,
+      apparent_direction: windResult.rows[0].apparent_direction,
+      _timestamp: new Date(windResult.rows[0].time).getTime()
+    } : null;
+    
+    const depthData = depthResult.rows.length > 0 ? {
+      depth: depthResult.rows[0].measured, // Maps DB 'measured' to MQTT 'depth'
+      _timestamp: new Date(depthResult.rows[0].time).getTime()
+    } : null;
+
     res.json({
       position: positionData,
-      skyview: skyviewData
+      skyview: skyviewData,
+      motion: motionData,
+      wind: windData,
+      depth: depthData
     });
 
   } catch (err) {

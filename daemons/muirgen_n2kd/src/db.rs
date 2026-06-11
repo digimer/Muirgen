@@ -41,6 +41,12 @@ pub enum DbMessage {
         set_by: String,
         code: String,
     },
+    InsertDepthData {
+        vessel_uuid: uuid::Uuid,
+        device_name: u64,
+        depth: Option<f64>,
+        offset: Option<f64>,
+    },
     InsertMotionData {
         vessel_uuid: uuid::Uuid,
         device_name: u64,
@@ -49,6 +55,7 @@ pub enum DbMessage {
         heading_magnetic: Option<f64>,
         magnetic_variation: Option<f64>,
         rate_of_turn: Option<f64>,
+        speed_through_water: Option<f64>,
         course_over_ground: Option<f64>,
         speed_over_ground: Option<f64>,
     },
@@ -195,25 +202,42 @@ pub async fn run_db_thread(
                 );
                 println!("Alarm Set: [{}:{}], [{}] -> [{}]", set_by, code, title, description);
             }
-            DbMessage::InsertMotionData { vessel_uuid, device_name, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn, speed_over_ground, course_over_ground } => {
-                let sensor_source          = format!("n2k:{}", device_name);
-                let pitch_f32              = pitch.map(|pitch| pitch as f32);
-                let roll_f32               = roll.map(|roll| roll as f32);
-                let heading_f32            = heading_magnetic.map(|heading| heading as f32);
-                let variation_f32          = magnetic_variation.map(|var| var as f32);
-                let rate_of_turn_f32       = rate_of_turn.map(|rot| rot as f32);
-                let speed_over_ground_f32  = speed_over_ground.map(|sog| sog as f32);
-                let course_over_ground_f32 = course_over_ground.map(|cog| cog as f32);
+            DbMessage::InsertDepthData { vessel_uuid, device_name, depth, offset: _ } => {
+                let sensor_source = format!("n2k:{}", device_name);
+                let measured_f32 = depth.map(|d| d as f32); // Store raw depth for now. UI/backend can handle offset math if needed
+
+                retry_query!(
+                    &pool,
+                    "Database: Depth data insert failed!",
+                    sqlx::query!(
+                        r#"
+                        INSERT INTO depth_data (vessel_uuid, sensor_source, measured)
+                        VALUES ($1, $2, $3)
+                        "#,
+                        vessel_uuid, sensor_source, measured_f32
+                    )
+                );
+            }
+            DbMessage::InsertMotionData { vessel_uuid, device_name, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn, speed_through_water, speed_over_ground, course_over_ground } => {
+                let sensor_source           = format!("n2k:{}", device_name);
+                let pitch_f32               = pitch.map(|pitch| pitch as f32);
+                let roll_f32                = roll.map(|roll| roll as f32);
+                let heading_f32             = heading_magnetic.map(|heading| heading as f32);
+                let variation_f32           = magnetic_variation.map(|var| var as f32);
+                let rate_of_turn_f32        = rate_of_turn.map(|rot| rot as f32);
+                let speed_through_water_f32 = speed_through_water.map(|stw| stw as f32);
+                let speed_over_ground_f32   = speed_over_ground.map(|sog| sog as f32);
+                let course_over_ground_f32  = course_over_ground.map(|cog| cog as f32);
 
                 retry_query!(
                     &pool,
                     "Database: Motion data insert failed!",
                     sqlx::query!(
                         r#"
-                        INSERT INTO motion_data (vessel_uuid, sensor_source, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn, speed_over_ground, course_over_ground)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        INSERT INTO motion_data (vessel_uuid, sensor_source, pitch, roll, heading_magnetic, magnetic_variation, rate_of_turn, speed_through_water, speed_over_ground, course_over_ground)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                         "#,
-                        vessel_uuid, sensor_source, pitch_f32, roll_f32, heading_f32, variation_f32, rate_of_turn_f32, speed_over_ground_f32, course_over_ground_f32
+                        vessel_uuid, sensor_source, pitch_f32, roll_f32, heading_f32, variation_f32, rate_of_turn_f32, speed_through_water_f32, speed_over_ground_f32, course_over_ground_f32
                     )
                 );
             }

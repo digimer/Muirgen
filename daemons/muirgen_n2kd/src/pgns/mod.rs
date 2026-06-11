@@ -5,6 +5,8 @@ pub mod pgn_127250; // Vessel Heading
 pub mod pgn_127251; // Rate of Turn
 pub mod pgn_127257; // Attitude
 pub mod pgn_127258; // Magnetic Variation
+pub mod pgn_128259; // Speed (Water referenced / Ground referenced)
+pub mod pgn_128267; // Water Depth
 pub mod pgn_129025; // Position, Rapid Update
 pub mod pgn_129026; // Course and Speed over Ground, Rapid Update
 pub mod pgn_129029; // GNSS Position Data (Fast Packet)

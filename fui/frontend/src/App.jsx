@@ -569,17 +569,90 @@ const App = () => {
           
           {/* Top Telemetry Header (Navigation Data) */}
           <div className="telemetry-header">
+            {/* WIND (True / Apparent) */}
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Wind ⫽ (T/A) [</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---° --.-</span><span className="telemetry-header-text">] kts</span>
+              <span className="telemetry-header-text">Wind ⫽ (T/A) [</span>
+              {liveTelemetry.wind?._timestamp && (Date.now() - liveTelemetry.wind._timestamp < 10000) ? (
+                <>
+                  <span className={liveTelemetry.wind.true_direction != null ? "" : "telemetry-dead"}>
+                    {liveTelemetry.wind.true_direction != null ? `${liveTelemetry.wind.true_direction.toFixed(0).padStart(3, '0')}° ` : '---° '}
+                    {liveTelemetry.wind.true_speed != null ? (liveTelemetry.wind.true_speed * 1.94384).toFixed(1) : '--.-'}
+                  </span>
+                  <span className="telemetry-data-divider">┆</span>
+                  <span className={liveTelemetry.wind.apparent_direction != null ? "" : "telemetry-dead"}>
+                    {liveTelemetry.wind.apparent_direction != null ? `${liveTelemetry.wind.apparent_direction.toFixed(0).padStart(3, '0')}° ` : '---° '}
+                    {liveTelemetry.wind.apparent_speed != null ? (liveTelemetry.wind.apparent_speed * 1.94384).toFixed(1) : '--.-'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="telemetry-dead">---° --.-</span>
+                  <span className="telemetry-data-divider">┆</span>
+                  <span className="telemetry-dead">---° --.-</span>
+                </>
+              )}
+              <span className="telemetry-header-text">] kts</span>
             </div>
+
+            {/* HEADING (True / Magnetic) */}
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Heading ⫽ (T/M) [</span><span className="telemetry-dead">---°</span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">---°</span><span className="telemetry-header-text">]</span>
+              <span className="telemetry-header-text">Heading ⫽ (T/M) [</span>
+              {liveTelemetry.motion?._timestamp && (Date.now() - liveTelemetry.motion._timestamp < 10000) ? (
+                <>
+                  <span className={liveTelemetry.motion.heading_magnetic != null && liveTelemetry.motion.magnetic_variation != null ? "" : "telemetry-dead"}>
+                    {liveTelemetry.motion.heading_magnetic != null && liveTelemetry.motion.magnetic_variation != null 
+                      ? `${((liveTelemetry.motion.heading_magnetic + liveTelemetry.motion.magnetic_variation + 360.0) % 360.0).toFixed(0).padStart(3, '0')}°` 
+                      : '---°'}
+                  </span>
+                  <span className="telemetry-data-divider">┆</span>
+                  <span className={liveTelemetry.motion.heading_magnetic != null ? "" : "telemetry-dead"}>
+                    {liveTelemetry.motion.heading_magnetic != null ? `${liveTelemetry.motion.heading_magnetic.toFixed(0).padStart(3, '0')}°` : '---°'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="telemetry-dead">---°</span>
+                  <span className="telemetry-data-divider">┆</span>
+                  <span className="telemetry-dead">---°</span>
+                </>
+              )}
+              <span className="telemetry-header-text">]</span>
             </div>
+
+            {/* SPEED (Ground / Water) */}
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Speed ⫽ (G/W) [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text"></span><span className="telemetry-data-divider">┆</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] kts</span>
+              <span className="telemetry-header-text">Speed ⫽ (G/W) [</span>
+              {liveTelemetry.motion?._timestamp && (Date.now() - liveTelemetry.motion._timestamp < 10000) ? (
+                <>
+                  <span className={liveTelemetry.motion.speed_over_ground != null ? "" : "telemetry-dead"}>
+                    {liveTelemetry.motion.speed_over_ground != null ? (liveTelemetry.motion.speed_over_ground * 1.94384).toFixed(1) : '--.-'}
+                  </span>
+                  <span className="telemetry-data-divider">┆</span>
+                  <span className={liveTelemetry.motion.speed_through_water != null ? "" : "telemetry-dead"}>
+                    {liveTelemetry.motion.speed_through_water != null ? (liveTelemetry.motion.speed_through_water * 1.94384).toFixed(1) : '--.-'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="telemetry-dead">--.-</span>
+                  <span className="telemetry-data-divider">┆</span>
+                  <span className="telemetry-dead">--.-</span>
+                </>
+              )}
+              <span className="telemetry-header-text">] kts</span>
             </div>
+
+            {/* DEPTH (Keel) */}
             <div className="telemetry-header-block">
-              <span className="telemetry-header-text">Depth ⫽ K: [</span><span className="telemetry-dead">--.-</span><span className="telemetry-header-text">] m</span>
+              <span className="telemetry-header-text">Depth ⫽ K: [</span>
+              {liveTelemetry.depth?._timestamp && (Date.now() - liveTelemetry.depth._timestamp < 10000) ? (
+                <span className={liveTelemetry.depth.depth != null ? "" : "telemetry-dead"}>
+                  {liveTelemetry.depth.depth != null ? liveTelemetry.depth.depth.toFixed(1) : '--.-'}
+                </span>
+              ) : (
+                <span className="telemetry-dead">--.-</span>
+              )}
+              <span className="telemetry-header-text">] m</span>
             </div>
           </div>
 

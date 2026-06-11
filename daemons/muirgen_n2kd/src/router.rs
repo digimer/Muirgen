@@ -7,6 +7,8 @@ use crate::pgns::pgn_127250::Pgn127250;
 use crate::pgns::pgn_127251::Pgn127251;
 use crate::pgns::pgn_127257::Pgn127257;
 use crate::pgns::pgn_127258::Pgn127258;
+use crate::pgns::pgn_128259::Pgn128259;
+use crate::pgns::pgn_128267::Pgn128267;
 use crate::pgns::pgn_129025::Pgn129025;
 use crate::pgns::pgn_129026::Pgn129026;
 use crate::pgns::pgn_129029::Pgn129029;
@@ -142,6 +144,7 @@ pub async fn route_pgns(
                     heading_magnetic: parsed.heading_degrees().map(|heading| heading as f64),
                     magnetic_variation: None,
                     rate_of_turn: None,
+                    speed_through_water: None,
                     course_over_ground: None,
                     speed_over_ground: None,
                 };
@@ -163,6 +166,7 @@ pub async fn route_pgns(
                     heading_magnetic: None,
                     magnetic_variation: None,
                     rate_of_turn: parsed.rate_degrees_per_sec().map(|rot| rot as f64),
+                    speed_through_water: None, 
                     course_over_ground: None,
                     speed_over_ground: None,
                 };
@@ -184,6 +188,7 @@ pub async fn route_pgns(
                     heading_magnetic: None,
                     magnetic_variation: None,
                     rate_of_turn: None,
+                    speed_through_water: None, 
                     course_over_ground: None,
                     speed_over_ground: None,
                 };
@@ -205,11 +210,44 @@ pub async fn route_pgns(
                     heading_magnetic: None,
                     magnetic_variation: parsed.variation_degrees().map(|var| var as f64),
                     rate_of_turn: None,
+                    speed_through_water: None,
                     course_over_ground: None,
                     speed_over_ground: None,
                 };
 
                 // Send it to DB and MQTT channels
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
+            }
+        }
+        // Speed (Water referenced / Ground referenced)
+        128259 => {
+            if let Some(parsed) = parse_and_print!(Pgn128259, pgn, source, data) {
+                let message = DbMessage::InsertMotionData {
+                    vessel_uuid,
+                    device_name,
+                    pitch: None,
+                    roll: None,
+                    heading_magnetic: None,
+                    magnetic_variation: None,
+                    rate_of_turn: None,
+                    course_over_ground: None,
+                    speed_over_ground: parsed.speed_ground_mps().map(|s| s as f64),
+                    speed_through_water: parsed.speed_water_mps().map(|s| s as f64),
+                };
+                let _ = db_tx.send(message.clone()).await;
+                let _ = mqtt_tx.send(message).await;
+            }
+        }
+        // Water Depth
+        128267 => {
+            if let Some(parsed) = parse_and_print!(Pgn128267, pgn, source, data) {
+                let message = DbMessage::InsertDepthData {
+                    vessel_uuid,
+                    device_name,
+                    depth: parsed.depth_meters().map(|d| d as f64),
+                    offset: parsed.offset_meters().map(|o| o as f64),
+                };
                 let _ = db_tx.send(message.clone()).await;
                 let _ = mqtt_tx.send(message).await;
             }
@@ -247,6 +285,7 @@ pub async fn route_pgns(
                     heading_magnetic: None, 
                     magnetic_variation: None, 
                     rate_of_turn: None,
+                    speed_through_water: None,
                     course_over_ground: parsed.course_over_ground_degrees().map(|cog| cog as f64),
                     speed_over_ground: parsed.speed_over_ground_mps().map(|sog| sog as f64),
                 };
