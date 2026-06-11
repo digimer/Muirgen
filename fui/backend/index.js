@@ -1214,7 +1214,7 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
       apparent_direction: windResult.rows[0].apparent_direction,
       _timestamp: new Date(windResult.rows[0].time).getTime()
     } : null;
-    
+
     const depthData = depthResult.rows.length > 0 ? {
       depth: depthResult.rows[0].measured, // Maps DB 'measured' to MQTT 'depth'
       _timestamp: new Date(depthResult.rows[0].time).getTime()
@@ -1255,11 +1255,16 @@ mqttClient.on('message', (topic, message) => {
   // Broadcast to all connected websocket clients
   wss.clients.forEach((client) => {
     if (client.readyState === 1) { 
-      // WebSocket is open
-      client.send(JSON.stringify({
-        topic: topic,
-        payload: JSON.parse(message.toString())
-      }));
+      // WebSocket is open, wrap the send in try in case it fails for some 
+      // reason like bad/NaN data.
+      try {
+        client.send(JSON.stringify({
+          topic: topic,
+          payload: JSON.parse(message.toString())
+        }));
+      } catch (err) {
+        console.error(`Failed to parse MQTT message on topic: [${topic}]. Error: `, err);
+      }
     }
   });
 });
