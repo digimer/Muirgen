@@ -22,7 +22,12 @@ const Skyview = ({ liveTelemetry }) => {
 
   const renderRadarPlot = () => {
     if (!skyview || !skyview.satellites || skyview.satellites.length === 0) {
-      return <div className="radar-empty">No Satellite Data</div>;
+      const isGpsOnline = liveTelemetry?.position?._timestamp && (Date.now() - liveTelemetry.position._timestamp < 10000);
+      return (
+        <div className="radar-empty">
+          {isGpsOnline ? 'Acquiring Data, please wait...' : 'No Satellite Data'}
+        </div>
+      );
     }
 
     const radius = 100;
@@ -146,24 +151,24 @@ const Skyview = ({ liveTelemetry }) => {
 
         <div className="skyview-data-panel">
           <div className="skyview-dop-header">
-            <span>Sats: [{skyview?.satellites?.length || '--'}]</span>
+            <span>Sats: [{!isStale && skyview?.satellites ? skyview.satellites.length : '--'}]</span>
             &nbsp; <span>
-              HDOP: [{skyview?.horizontal_dop?.toFixed(2) || '--'}]
+              HDOP: [{!isStale && skyview?.horizontal_dop != null ? skyview.horizontal_dop.toFixed(2) : '--'}]
               <span className="skyview-confidence-meter" title="Accuracy Confidence">
-                <span className="skyview-confidence-fill" style={{ height: `${getDOPConfidenceHeight(skyview?.horizontal_dop)}%`}}></span>
+                <span className="skyview-confidence-fill" style={{ height: `${!isStale ? getDOPConfidenceHeight(skyview?.horizontal_dop) : 0}%`}}></span>
               </span>
             </span>
             &nbsp; <span>
-              VDOP: [{skyview?.vertical_dop?.toFixed(2) || '--'}]
+              VDOP: [{!isStale && skyview?.vertical_dop != null ? skyview.vertical_dop.toFixed(2) : '--'}]
               <span className="skyview-confidence-meter" title="Accuracy Confidence">
-                <span className="skyview-confidence-fill" style={{ height: `${getDOPConfidenceHeight(skyview?.vertical_dop)}%`}}></span>
+                <span className="skyview-confidence-fill" style={{ height: `${!isStale ? getDOPConfidenceHeight(skyview?.vertical_dop) : 0}%`}}></span>
               </span>
             </span>
             {/* TDOP is not useful for private vessels (nor most commercial vessels). While it is supported in the backend, it is not displayed. */}
             {/* &nbsp; <span>
-              TDOP: [{skyview?.time_dop?.toFixed(2) || '--'}]
+              TDOP: [{!isStale && skyview?.time_dop != null ? skyview.time_dop.toFixed(2) : '--'}]
               <span className="skyview-confidence-meter" title="Accuracy Confidence">
-                <span className="skyview-confidence-fill" style={{ height: `${getDOPConfidenceHeight(skyview?.time_dop)}%`}}></span>
+                <span className="skyview-confidence-fill" style={{ height: `${!isStale ? getDOPConfidenceHeight(skyview?.time_dop) : 0}%`}}></span>
               </span>
             </span> */}
           </div>

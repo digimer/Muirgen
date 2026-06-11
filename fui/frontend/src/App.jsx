@@ -944,24 +944,21 @@ const App = () => {
               ]);
             }}>
               <span className="telemetry-header-text">Position ⫽ </span>
-              {liveTelemetry.position && liveTelemetry.position.latitude != null && liveTelemetry.position.longitude != null ? (
-                <span>
-                  {getAccuracyIndicator(liveTelemetry.position._location_timestamp).className === 'telemetry-dead'
-                    ? "---° --.---', ---° --.---', " 
-                    : `${formatCoordinate(liveTelemetry.position.latitude, true)}, ${formatCoordinate(liveTelemetry.position.longitude, false)}, `
-                  }
-                </span>
+              {liveTelemetry.position?._timestamp && (Date.now() - liveTelemetry.position._timestamp < 10000) ? (
+                (liveTelemetry.position.latitude != null && liveTelemetry.position.longitude != null && getAccuracyIndicator(liveTelemetry.position._location_timestamp).className !== 'telemetry-dead') ? (
+                  <span>
+                    {`${formatCoordinate(liveTelemetry.position.latitude, true)}, ${formatCoordinate(liveTelemetry.position.longitude, false)}, `}
+                  </span>
+                ) : (
+                  <span className="telemetry-dead">⍙ Acquiring Satellites ⍙</span>
+                )
               ) : (
-                <span className="telemetry-dead">
-                  {liveTelemetry.position?._timestamp && (Date.now() - liveTelemetry.position._timestamp < 10000)
-                    ? "⍙ Acquiring Satellites ⍙"
-                    : "---° --.---', ---° --.---', "}
-                </span>
+                <span className="telemetry-dead">---° --.---', ---° --.---', </span>
               )}
               {/* Horizontal Dilution of Precision (HDOP); Under 2 is acceptable accuracy. Under 0.8 is ideal. */}
-                {liveTelemetry?.skyview && liveTelemetry.skyview.horizontal_dop != null && (
+                {liveTelemetry?.skyview && (
                 <span className="telemetry-right-pad">
-                  HDOP: [{liveTelemetry.skyview.horizontal_dop.toFixed(2)}]
+                  HDOP: [{getAccuracyIndicator(liveTelemetry.position?._location_timestamp).className !== 'telemetry-dead' && liveTelemetry.skyview.horizontal_dop != null ? liveTelemetry.skyview.horizontal_dop.toFixed(2) : '--'}]
                 </span>
               )}
             </div>
