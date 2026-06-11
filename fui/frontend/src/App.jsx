@@ -493,55 +493,80 @@ const App = () => {
   useEffect(() => {
     if (!isLoggedIn || !vessel) return;
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    // Have the websocket retry failed connections every 3 seconds
+    let websocket          = null;
+    let reconnectTimeout   = null;
+    let isComponentMounted = true; // Clears memory when the user browses away
 
-    let ws = new WebSocket(wsUrl);
+    const connectWebSocket = () => {
+      const protocol     = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const websocketUrl = `${protocol}//${window.location.host}`;
 
-    ws.onopen = () => console.log("WebSocket comms established successfully.");
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.topic && data.payload && data.payload.vessel_uuid === vessel.uuid) {
-          const topicParts = data.topic.split('/');
-          const subject    = topicParts[topicParts.length - 1];
+      websocket           = new WebSocket(websocketUrl);
+      websocket.onopen    = () => console.log("WebSocket comms established successfully.");
+      websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.topic && data.payload && data.payload.vessel_uuid === vessel.uuid) {
+            const topicParts = data.topic.split('/');
+            const subject    = topicParts[topicParts.length - 1];
 
-          setLiveTelemetry(prev => {
-            const currentSubject = prev[subject] || {};
-            const newPayload     = { ...data.payload };
+            setLiveTelemetry(prev => {
+              const currentSubject = prev[subject] || {};
+              const newPayload     = { ...data.payload };
 
-            // Discard NULLs so fragmented PGNs don't overwrite previous data.
-            Object.keys(newPayload).forEach(key => {
-              if (newPayload[key] === null) {
-                delete newPayload[key];
+              // Discard NULLs so fragmented PGNs don't overwrite previous data.
+              Object.keys(newPayload).forEach(key => {
+                if (newPayload[key] === null) {
+                  delete newPayload[key];
+                }
+              });
+
+              const merged = {
+                ...currentSubject, 
+                ...newPayload, 
+                _timestamp: Date.now()
+              };
+
+              // If this payload included coordinates, track exactly when we got them
+              if (newPayload.latitude !== undefined) {
+                merged._location_timestamp = Date.now();
               }
+
+              return {
+                ...prev,
+                [subject]: merged
+              };
             });
-
-            const merged = {
-              ...currentSubject, 
-              ...newPayload, 
-              _timestamp: Date.now()
-            };
-
-            // If this payload included coordinates, track exactly when we got them
-            if (newPayload.latitude !== undefined) {
-              merged._location_timestamp = Date.now();
-            }
-
-            return {
-              ...prev,
-              [subject]: merged
-            };
-          });
+          }
+        } catch (err) {
+          console.error('Error parsing WebSocket message. Error:', err);
         }
-      } catch (err) {
-        console.error('Error parsing WS message:', err);
-      }
+      };
+
+      websocket.onclose = () => {
+        console.log('WebSocket comms closed. Attempting reconnect in 3s...');
+        if (isComponentMounted) {
+          // Schedule a reconnection attempt
+          reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        }
+      };
+
+      websocket.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        websocket.close(); // Force the onclose handler to fire so it triggers the reconnect loop
+      };
     };
 
-    ws.onclose = () => console.log('WebSocket comms closed.');
+    // Kick off the initial connection
+    connectWebSocket();
 
-    return () => ws.close(); // Cleanup on unmount
+    return () => {
+      isComponentMounted = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (websocket) websocket.close(); // Cleanup on unmount
+
+    };
   }, [isLoggedIn, vessel]);
 
   // Initial load
