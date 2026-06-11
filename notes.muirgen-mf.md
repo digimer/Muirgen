@@ -122,8 +122,11 @@ Log out glyphs and where/how they're used.
 ⌖	8982	2316	POSITION INDICATOR                                                  # Sensors
 ⚠	9888	26A0	WARNING SIGN                                                        # General alarm
 ⏧	9191	23E7	ELECTRICAL INTERSECTION                                             # Navigation
+▽	9661	25BD	WHITE DOWN-POINTING TRIANGLE                                        # Compass, Outer poiner (points towards the center)
+△	9651	25B3	WHITE UP-POINTING TRIANGLE                                          # Compass, Inner poiner (points away from center)
+⫽	2AFB	        Triple Solidus Binary Relation                                      # 
 ⏥	9189	23E5	FLATNESS                                                            # 
-⏦	9190	23E6	AC CURRENT                                                          # 
+⏦	9190	23E6	AC CURRENT                                                          # Wave data (height, period, etc)
 ⏚	9178	23DA	EARTH GROUND                                                        # 
 ⍗	9047	2357	APL FUNCTIONAL SYMBOL QUAD DOWNWARDS ARROW                          # 
 ⎔	9108	2394	SOFTWARE-FUNCTION SYMBOL                                            # 
@@ -137,8 +140,8 @@ Log out glyphs and where/how they're used.
 ┳	9523	2533	HEAVY DOWN AND HORIZONTAL                                           # 
 ✗	10007	2717	BALLOT X                                                            # 
 ❖	10070	2756	BLACK DIAMOND MINUS WHITE X                                         # 
-➠	10144	27A0	HEAVY DASHED TRIANGLE-HEADED RIGHTWARDS ARROW                       #
-➢	10146	27A2	THREE-D TOP-LIGHTED RIGHTWARDS ARROWHEAD                            # 
+➠	10144	27A0	HEAVY DASHED TRIANGLE-HEADED RIGHTWARDS ARROW                       # Wind information
+➢	10146	27A2	THREE-D TOP-LIGHTED RIGHTWARDS ARROWHEAD                            # Heading information
 ➾	10174	27BE	OPEN-OUTLINED RIGHTWARDS ARROW                                      # 
 ◹	9721	25F9	UPPER RIGHT TRIANGLE                                                # 
 ⬐	11024	2B10	LEFTWARDS ARROW WITH TIP DOWNWARDS                                  # 

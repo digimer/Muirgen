@@ -1,7 +1,9 @@
 import React from 'react';
 const TelemetryManagement = ({ pushView }) => {
   const telemetryModules = [
-    { id: 'TELEMETRY_SKYVIEW',  label: 'Skyview',   glyph: '🛰' }
+    { id: 'TELEMETRY_SKYVIEW',  label: 'Skyview',   glyph: '🛰' }, 
+    { id: 'TELEMETRY_WIND',     label: 'Wind',      glyph: '➠' },
+    { id: 'TELEMETRY_HEADING',  label: 'Heading',   glyph: '➢' }
   ];
   return (
     <div className="system-grid-container">

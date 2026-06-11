@@ -929,6 +929,82 @@
   100% { opacity: 1; text-shadow: 0 0 10px var(--neon-red); }
 }
 
+/* ========================================================================== */
+/* WIREFRAM COMPASS SVG COMPONENT                                             */
+/* ========================================================================== */
+
+.wireframe-compass-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wireframe-compass-svg {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.3)); /* Base red glow */
+}
+
+/* Background radar rings */
+.compass-ring {
+  fill: none;
+  stroke: var(--soft-red); /* Dark red */
+  stroke-width: 2;
+  stroke-dasharray: 4 8; /* Dotted line effect */
+}
+
+/* Base compass star polygons */
+.compass-star-outer,
+.compass-star-mid,
+.compass-star-inner {
+  fill: none;
+  stroke: var(--neon-red);
+  stroke-linejoin: miter;
+}
+
+.compass-star-outer { stroke-width: 4; }
+.compass-star-mid   { stroke-width: 2; opacity: 0.9; }
+.compass-star-inner { stroke-width: 1; opacity: 0.8; }
+
+/* Cardinal Labels */
+.compass-label {
+  fill: var(--neon-red);
+  font-family: monospace;
+  font-size: 40px;
+  font-weight: bold;
+}
+
+/* Active Data Pointers */
+.compass-pointer-outer {
+  fill: rgba(255, 0, 0, 0.2);
+  stroke: var(--neon-red);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8)); /* Heavy glow */
+}
+.compass-pointer-inner {
+  fill: rgba(255, 0, 0, 0.2); /* Slightly amber for contrast */
+  stroke: var(--neon-red);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
+}
+/* Offline / Dead state overrides */
+.telemetry-dead-compass .compass-star-outer,
+.telemetry-dead-compass .compass-star-mid,
+.telemetry-dead-compass .compass-star-inner,
+.telemetry-dead-compass .compass-label {
+  stroke: var(--dim-red);
+  fill: var(--dim-red);
+  opacity: 0.5;
+  filter: none;
+}
+.telemetry-dead-compass .compass-pointer-outer,
+.telemetry-dead-compass .compass-pointer-inner {
+  opacity: 0; /* Hide pointers completely when stale */
+}
+
 
 /* These classes below here need to be rehomed */
 
