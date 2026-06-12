@@ -17,12 +17,18 @@ const WindTelemetry = ({ liveTelemetry }) => {
     <div className="skyview-container">
       <div className="skyview-top-grid">
         {/* Left Column: Graphic */}
-        <div className="skyview-radar-panel">
-          <WireframeCompass 
-            outerAngle={!isStale ? wind?.true_direction : null} 
-            innerAngle={!isStale ? wind?.apparent_direction : null} 
-            isStale={isStale} 
-          />
+        <div className="skyview-radar-wrapper">
+          <div className="skyview-radar-panel">
+            <WireframeCompass 
+              outerAngle={!isStale ? (wind?.true_direction ?? wind?.ground_direction) : null} 
+              innerAngle={!isStale ? wind?.apparent_direction : null} 
+              isStale={isStale} 
+            />
+          </div>
+          <div className="compass-legend">
+            Outer: True<br />
+            Inner: Apparent
+          </div>
         </div>
         {/* Right Column: Data */}
         <div className="skyview-data-panel">
@@ -35,7 +41,7 @@ const WindTelemetry = ({ liveTelemetry }) => {
                 <tr>
                   <td className="entity-data-label">True:</td>
                   <td className={`entity-data-value ${isStale ? 'telemetry-dead' : ''}`}>
-                    [{formatDirection(wind?.true_direction)}] at: [{formatSpeed(wind?.true_speed)} kts]
+                    [{formatDirection(wind?.true_direction ?? wind?.ground_direction)}] at: [{formatSpeed(wind?.true_speed ?? wind?.ground_speed)} kts]
                   </td>
                 </tr>
                 <tr>
@@ -53,7 +59,7 @@ const WindTelemetry = ({ liveTelemetry }) => {
               </tbody>
             </table>
           </div>
-          
+
           <div className="entity-data-label" style={{marginTop: '20px', textAlign: 'center'}}>
             [ Historical Graphs Pending ]
           </div>

@@ -607,9 +607,9 @@ const App = () => {
               <span className="telemetry-header-text">Wind ⫽ (T/A) [</span>
               {liveTelemetry.wind?._timestamp && (Date.now() - liveTelemetry.wind._timestamp < 10000) ? (
                 <>
-                  <span className={liveTelemetry.wind.true_direction != null ? "" : "telemetry-dead"}>
-                    {liveTelemetry.wind.true_direction != null ? `${liveTelemetry.wind.true_direction.toFixed(0).padStart(3, '0')}° ` : '---° '}
-                    {liveTelemetry.wind.true_speed != null ? (liveTelemetry.wind.true_speed * 1.94384).toFixed(1) : '--.-'}
+                  <span className={(liveTelemetry.wind.true_direction ?? liveTelemetry.wind.ground_direction) != null ? "" : "telemetry-dead"}>
+                    {(liveTelemetry.wind.true_direction ?? liveTelemetry.wind.ground_direction) != null ? `${(liveTelemetry.wind.true_direction ?? liveTelemetry.wind.ground_direction).toFixed(0).padStart(3, '0')}° ` : '---° '}
+                    {(liveTelemetry.wind.true_speed ?? liveTelemetry.wind.ground_speed) != null ? ((liveTelemetry.wind.true_speed ?? liveTelemetry.wind.ground_speed) * 1.94384).toFixed(1) : '--.-'}
                   </span>
                   <span className="telemetry-data-divider">┆</span>
                   <span className={liveTelemetry.wind.apparent_direction != null ? "" : "telemetry-dead"}>

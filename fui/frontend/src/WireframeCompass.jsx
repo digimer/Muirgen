@@ -2,6 +2,9 @@
 import React from 'react';
 
 const WireFrameCompass = ({ outerAngle, innerAngle, isStale }) => {
+  const outerRef = React.useRef(null);
+  const innerRef = React.useRef(null);
+
   // SVG will render at 1000x1000px, but CSS will scale as needed.
   const compassCenterX = 500;
   const compassCenterY = 500;
@@ -44,6 +47,25 @@ const WireFrameCompass = ({ outerAngle, innerAngle, isStale }) => {
     return `${tip.x},${tip.y} ${leftBase.x},${leftBase.y} ${rightBase.x},${rightBase.y}`;
   };
 
+  // Helper to compute continuous rotation angle without 360-deg wrap-around snapping
+  const getContinuousAngle = (targetAngle, ref) => {
+    if (targetAngle == null) return null;
+    if (ref.current == null) {
+      ref.current = targetAngle;
+      return targetAngle;
+    }
+    
+    let delta = targetAngle - (ref.current % 360);
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    
+    ref.current += delta;
+    return ref.current;
+  };
+
+  const displayOuter = getContinuousAngle(outerAngle, outerRef);
+  const displayInner = getContinuousAngle(innerAngle, innerRef);
+
   return (
     <div className={`wireframe-compass-container ${isStale ? 'telemetry-dead-compass' : ''}`}>
       <svg viewBox="0 0 1000 1000" className="wireframe-compass-svg">
@@ -74,12 +96,28 @@ const WireFrameCompass = ({ outerAngle, innerAngle, isStale }) => {
         <text x={compassCenterX + ringOuter + 45} y={compassCenterY + 10} className="compass-label" textAnchor="middle" alignmentBaseline="middle">E</text>
         <text x={compassCenterX - ringOuter - 45} y={compassCenterY + 10} className="compass-label" textAnchor="middle" alignmentBaseline="middle">W</text>
         {/* Dynamic Targeting Pointers */}
-        {outerAngle !== null && outerAngle !== undefined && (
-          <polygon points={getOuterPointer(outerAngle)} className="compass-pointer-outer" />
+        {displayOuter !== null && (
+          <polygon 
+            points={getOuterPointer(0)} 
+            className="compass-pointer-outer" 
+            style={{ 
+              transform: `rotate(${displayOuter}deg)`, 
+              transformOrigin: `${compassCenterX}px ${compassCenterY}px`,
+              transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' 
+            }}
+          />
         )}
         
-        {innerAngle !== null && innerAngle !== undefined && (
-          <polygon points={getInnerPointer(innerAngle)} className="compass-pointer-inner" />
+        {displayInner !== null && (
+          <polygon 
+            points={getInnerPointer(0)} 
+            className="compass-pointer-inner" 
+            style={{ 
+              transform: `rotate(${displayInner}deg)`, 
+              transformOrigin: `${compassCenterX}px ${compassCenterY}px`,
+              transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)' 
+            }}
+          />
         )}
       </svg>
     </div>

@@ -142,7 +142,7 @@ pub async fn route_pgns(
                     pitch: None,
                     roll: None,
                     heading_magnetic: parsed.heading_degrees().map(|heading| heading as f64),
-                    magnetic_variation: None,
+                    magnetic_variation: parsed.variation_degrees().map(|var| var as f64),
                     rate_of_turn: None,
                     speed_through_water: None,
                     course_over_ground: None,

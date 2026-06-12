@@ -24,6 +24,15 @@ impl Pgn127250 {
     pub fn heading_degrees(&self) -> Option<f32> {
         self.heading_radians().map(|rad| rad.to_degrees())
     }
+
+    // 0x7FFF means the data is unavailable
+    pub fn variation_radians(&self) -> Option<f32> {
+        if self.variation == 0x7FFF { None } else { Some(self.variation as f32 * 0.0001) }
+    }
+    
+    pub fn variation_degrees(&self) -> Option<f32> {
+        self.variation_radians().map(|rad| rad.to_degrees())
+    }
 }
 
 impl fmt::Display for Pgn127250 {

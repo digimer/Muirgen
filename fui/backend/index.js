@@ -1178,7 +1178,7 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
     );
 
     const motionResult = await pool.query(
-      `SELECT heading_magnetic, course_over_ground, speed_over_ground, speed_through_water, time 
+      `SELECT heading_magnetic, magnetic_variation, course_over_ground, speed_over_ground, speed_through_water, time  
        FROM motion_data 
        WHERE vessel_uuid = $1 
        ORDER BY time DESC LIMIT 1;`,
@@ -1186,7 +1186,7 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
     );
 
     const windResult = await pool.query(
-      `SELECT true_speed, true_direction, apparent_speed, apparent_direction, time 
+      `SELECT true_speed, true_direction, ground_speed, ground_direction, apparent_speed, apparent_direction, time 
        FROM wind_data 
        WHERE vessel_uuid = $1 
        ORDER BY time DESC LIMIT 1;`,
@@ -1217,6 +1217,7 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
 
     const motionData = motionResult.rows.length > 0 ? {
       heading_magnetic: motionResult.rows[0].heading_magnetic,
+      magnetic_variation: motionResult.rows[0].magnetic_variation,
       course_over_ground: motionResult.rows[0].course_over_ground,
       speed_over_ground: motionResult.rows[0].speed_over_ground,
       speed_through_water: motionResult.rows[0].speed_through_water,
@@ -1226,6 +1227,8 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
     const windData = windResult.rows.length > 0 ? {
       true_speed: windResult.rows[0].true_speed,
       true_direction: windResult.rows[0].true_direction,
+      ground_speed: windResult.rows[0].ground_speed,
+      ground_direction: windResult.rows[0].ground_direction,
       apparent_speed: windResult.rows[0].apparent_speed,
       apparent_direction: windResult.rows[0].apparent_direction,
       _timestamp: new Date(windResult.rows[0].time).getTime()

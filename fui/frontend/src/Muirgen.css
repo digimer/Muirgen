@@ -657,6 +657,20 @@
   padding: 20px;
 }
 
+.skyview-radar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: flex-start;
+  flex: 0 0 450px;
+}
+
+/* Override the panel's shrink behaviour when inside the columns wrapper */
+.skyview-radar-wrapper .skyview-radar-panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .radar-plot-container { 
   position: relative; 
   width: 100%;
@@ -990,6 +1004,15 @@
   stroke-width: 4;
   filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.8));
 }
+
+.compass-legend {
+  color: var(--strong-red);
+  font-family: monospace;
+  font-size: 0.9rem;
+  text-align: left;
+  padding-left: 5px;
+}
+
 /* Offline / Dead state overrides */
 .telemetry-dead-compass .compass-star-outer,
 .telemetry-dead-compass .compass-star-mid,

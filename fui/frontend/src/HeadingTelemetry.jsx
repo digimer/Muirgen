@@ -20,12 +20,18 @@ const HeadingTelemetry = ({ liveTelemetry }) => {
     <div className="skyview-container">
       <div className="skyview-top-grid">
         {/* Left Column: Graphic */}
-        <div className="skyview-radar-panel">
-          <WireframeCompass 
-            outerAngle={!isStale ? trueHeading : null} 
-            innerAngle={!isStale ? motion?.heading_magnetic : null} 
-            isStale={isStale} 
-          />
+        <div className="skyview-radar-wrapper">
+          <div className="skyview-radar-panel">
+            <WireframeCompass 
+              outerAngle={!isStale ? trueHeading : null} 
+              innerAngle={!isStale ? motion?.heading_magnetic : null} 
+              isStale={isStale} 
+            />
+          </div>
+          <div className="compass-legend">
+            Outer: True<br />
+            Inner: Magnetic
+          </div>
         </div>
 
         {/* Right Column: Data */}

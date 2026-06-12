@@ -57,12 +57,13 @@ pub async fn run_mqtt_thread(mut receiver: mpsc::Receiver<crate::db::DbMessage>,
                 let topic = format!("muirgen/telemetry/{}/depth", vessel_uuid);
                 let _     = client.publish(topic, QoS::AtMostOnce, false, payload.to_string()).await;
             }
-            crate::db::DbMessage::InsertMotionData { vessel_uuid, pitch, roll, heading_magnetic, speed_through_water, course_over_ground, speed_over_ground, .. } => {
+            crate::db::DbMessage::InsertMotionData { vessel_uuid, pitch, roll, heading_magnetic, magnetic_variation, speed_through_water, course_over_ground, speed_over_ground, .. } => {
                 let payload = json!({
                     "vessel_uuid": vessel_uuid.to_string(),
                     "pitch": pitch,
                     "roll": roll,
                     "heading_magnetic": heading_magnetic,
+                    "magnetic_variation": magnetic_variation,
                     "speed_through_water": speed_through_water, 
                     "course_over_ground": course_over_ground,
                     "speed_over_ground": speed_over_ground
@@ -80,11 +81,13 @@ pub async fn run_mqtt_thread(mut receiver: mpsc::Receiver<crate::db::DbMessage>,
                 let topic = format!("muirgen/telemetry/{}/weather", vessel_uuid);
                 let _     = client.publish(topic, QoS::AtMostOnce, false, payload.to_string()).await;
             }
-            crate::db::DbMessage::InsertWindData { vessel_uuid, true_speed, true_direction, apparent_speed, apparent_direction, .. } => {
+            crate::db::DbMessage::InsertWindData { vessel_uuid, true_speed, true_direction, ground_speed, ground_direction, apparent_speed, apparent_direction, .. } => {
                 let payload = json!({
                     "vessel_uuid": vessel_uuid.to_string(),
                     "true_speed": true_speed,
                     "true_direction": true_direction,
+                    "ground_speed": ground_speed,
+                    "ground_direction": ground_direction,
                     "apparent_speed": apparent_speed,
                     "apparent_direction": apparent_direction
                 });
