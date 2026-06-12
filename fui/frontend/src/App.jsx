@@ -19,6 +19,8 @@ import Skyview from './Skyview.jsx';
 import TelemetryManagement from './TelemetryManagement.jsx';
 import { formatCoordinate } from './utils/formatters';
 import WindTelemetry from './WindTelemetry';
+import Navigation from './Navigation.jsx';
+import NavigationMaps from './NavigationMaps.jsx';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
@@ -142,20 +144,22 @@ const App = () => {
     // Short names to actual names mapping
     const map = {
       'VSM': 'VSM',                           // Vessel Status Monitor (root)
-      'CONFIG': 'Config',                     // 
-      'TELEMETRY': 'Telemetry',               // Sensor data
-      'STATE': 'State',                       // Equipment status
-      'VESSEL_MANAGEMENT': 'Vessels',         // Adding, managing, logging, etc for vessels
-      'USER_MANAGEMENT': 'Operators',         // Adding, managing, logging, etc for users (not crew, though there may be some overlap)
       'BATTERY_MANAGEMENT': 'Batteries',      // Adding, managing, logging, etc for batteries
+      'CONFIG': 'Config',                     // 
       'MOTOR_MANAGEMENT': 'Motors',           // Adding, managing, logging, etc for motors
+      'NAVIGATION': 'Navigation',             // Root navigation menu
+      'NAVIGATION_MAPS': 'Cartography',       // The MapLibre engine
       'POWER_MANAGEMENT': 'Power',            // Adding, managing, logging, etc for power devices
       'SENSOR_MANAGEMENT': 'Sensors',         // Adding, managing, logging, etc for sensors
-      'VESSEL_PROFILE': 'Profile',            // ToDo - How is this different from vessel management? Is this a sub page?
-      'VESSEL_EDIT': 'Edit',                  // ToDo - ^
+      'STATE': 'State',                       // Equipment status
+      'TELEMETRY': 'Telemetry',               // Sensor data
+      'TELEMETRY_HEADING': 'Heading Vectors', // Shows heading information (true and magnetic headings)
       'TELEMETRY_SKYVIEW': 'Skyview',         // The GNSS/GPS skyview
       'TELEMETRY_WIND': 'Wind Vectors',       // Shows wind information (direction and strength, true and apparent)
-      'TELEMETRY_HEADING': 'Heading Vectors', // Shows heading information (true and magnetic headings)
+      'USER_MANAGEMENT': 'Operators',         // Adding, managing, logging, etc for users (not crew, though there may be some overlap)
+      'VESSEL_EDIT': 'Edit',                  // ToDo - ^
+      'VESSEL_MANAGEMENT': 'Vessels',         // Adding, managing, logging, etc for vessels
+      'VESSEL_PROFILE': 'Profile',            // ToDo - How is this different from vessel management? Is this a sub page?
     };
     return map[id] || id;
   };
@@ -757,6 +761,16 @@ const App = () => {
                 {/* Heading (compass) telemetry panel */}
                 {currentView?.id === 'TELEMETRY_HEADING' && (
                   <HeadingTelemetry liveTelemetry={liveTelemetry} />
+                )}
+
+                {/* Navigation Root Menu */}
+                {currentView?.id === 'NAVIGATION' && (
+                  <Navigation pushView={pushView} />
+                )}
+
+                {/* Navigation Cartography Canvas */}
+                {currentView?.id === 'NAVIGATION_MAPS' && (
+                  <NavigationMaps liveTelemetry={liveTelemetry} />
                 )}
 
                 {/* The vessel management */}

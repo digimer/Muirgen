@@ -124,6 +124,7 @@ Log out glyphs and where/how they're used.
 ⏧	9191	23E7	ELECTRICAL INTERSECTION                                             # Navigation
 ▽	9661	25BD	WHITE DOWN-POINTING TRIANGLE                                        # Compass, Outer poiner (points towards the center)
 △	9651	25B3	WHITE UP-POINTING TRIANGLE                                          # Compass, Inner poiner (points away from center)
+┆	9478	2506	LIGHT TRIPLE DASH VERTICAL                                          # Data divider
 ⫽	2AFB	        Triple Solidus Binary Relation                                      # 
 ⏥	9189	23E5	FLATNESS                                                            # 
 ⏦	9190	23E6	AC CURRENT                                                          # Wave data (height, period, etc)
@@ -166,7 +167,6 @@ Log out glyphs and where/how they're used.
 ⍄	9028	2344	APL FUNCTIONAL SYMBOL QUAD GREATER-THAN                             # 
 ⍂	9026	2342	APL FUNCTIONAL SYMBOL QUAD BACKSLASH                                # 
 ▵	9653	25B5	WHITE UP-POINTING SMALL TRIANGLE
-┆	9478	2506	LIGHT TRIPLE DASH VERTICAL                                          # Data divider
 
 Bootstrap Icon
 	glyphicon glyphicon-log-out	&#xe163;

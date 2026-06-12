@@ -751,6 +751,22 @@ app.get('/api/system/time', async (req, res) => {
   }
 });
 
+// Provide dynamic system configuration (like Map Server IPs) to the React frontend
+ app.get('/api/system/config', async (req, res) => {
+  try {
+    if (!process.env.MAP_SERVER_URL) {
+      return res.status(500).json({ error: 'MAP_SERVER_URL was not located in the backend .env file!' });
+    }
+
+    res.json({ 
+      mapServerUrl: process.env.MAP_SERVER_URL
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to load configuration' });
+  }
+});
+
 /* *********************************************************************************************************/
 /* User Management Endpoints (Not Auth!)                                                                   */
 /* *********************************************************************************************************/
