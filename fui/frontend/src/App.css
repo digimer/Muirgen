@@ -1163,79 +1163,6 @@ textarea:focus::placeholder {
   margin-bottom: 15px;
 }
 
-/* Disable default outline and apply custom red shadow when focused via keyboard (tab) */
-input:focus,
-input[type="number"]:focus,
-.touch-button:focus,
-button:focus {
-  outline: none;
-  /* Removes the browser's default white outline */
-}
-
-.touch-button, button {
-  background: var(--soft-red);
-  color: black;
-  border: 1px solid var(--soft-red);
-  padding: 15px 30px;
-  font-family: 'Ubuntu Sans Mono', monospace;
-  font-weight: 900;
-  font-size: 1.2rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: all 0.1s ease-in-out, background-color 0.3s;
-  box-shadow: 0 0 5px rgba(136, 0, 0, 0.5);
-  margin-bottom: 2px;
-}
-
-.touch-button-pointer {
-  cursor: pointer;
-}
-
-.touch-button-file-download {
-  padding: 2px 8px;
-  margin-right: 15px;
-  font-size: 0.8rem;
-}
-
-.touch-button-retrieve {
-  padding: 5px 10px;
-  font-size: 0.8rem;
-}
-
-.touch-button:hover,
-.touch-button:focus-visible,
-button:hover,
-button:focus-visible {
-  background: var(--neon-red) !important;
-  /* Use !important to guarantee this color wins */
-  color: var(--dark-bg);
-  box-shadow: 0 0 20px var(--neon-red);
-  outline: none;
-  /* Prevents default outline */
-}
-
-.touch-button:active,
-button:active {
-  background: black;
-  color: var(--neon-red);
-  box-shadow: 0 0 30px var(--neon-red);
-  transform: translateY(2px);
-}
-
-.touch-button:disabled,
-button:disabled {
-  border-color: var(--mid-red); 
-  color: var(--soft-red);
-  cursor: not-allowed;
-  box-shadow: none;
-  background: rgba(150, 0, 0, 0.4) !important;
-}
-
-.touch-button-affirmative {
-  background-color: var(--soft-red); 
-  color: var(--dark-bg);
-}
-
 .touch-button-affirmative:disabled {
   background-color: rgba(150, 0, 0, 0.4) !important;
   color: var(--mid-red);
@@ -1404,13 +1331,6 @@ input[type="number"] {
   color: var(--soft-red);
 }
 
-.touch-button:hover + .large-icon,
-.touch-button:focus-visible + .large-icon {
-  color: var(--neon-red);
-  text-shadow: 0 0 10px var(--neon-red);
-  transition: all 0.3s ease;
-}
-
 /* Select box, inherents from the base input with a styled arrow */
 .setup-input-select {
   background: black;
@@ -1486,12 +1406,6 @@ input[type="number"] {
   font-weight: bold;
   animation: error-pulse-glow 2s infinite;
   margin-top: 10px;
-}
-
-.touch-button.danger {
-  border-color: var(--neon-red);
-  color: var(--dark-bg);
-  font-weight: bold;
 }
 
 /* Tiptap editor overrides for Muirgen's design language */

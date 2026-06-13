@@ -21,6 +21,7 @@ import { formatCoordinate } from './utils/formatters';
 import WindTelemetry from './WindTelemetry';
 import Navigation from './Navigation.jsx';
 import NavigationMaps from './NavigationMaps.jsx';
+import WeatherTelemetry from './WeatherTelemetry.jsx';
 
 const App = () => {
   // Remember where the user was in case the browser reloads. 
@@ -155,6 +156,7 @@ const App = () => {
       'TELEMETRY': 'Telemetry',               // Sensor data
       'TELEMETRY_HEADING': 'Heading Vectors', // Shows heading information (true and magnetic headings)
       'TELEMETRY_SKYVIEW': 'Skyview',         // The GNSS/GPS skyview
+      'TELEMETRY_WEATHER': 'Weather Data',    // Shows weather station data and historical graphs
       'TELEMETRY_WIND': 'Wind Vectors',       // Shows wind information (direction and strength, true and apparent)
       'USER_MANAGEMENT': 'Operators',         // Adding, managing, logging, etc for users (not crew, though there may be some overlap)
       'VESSEL_EDIT': 'Edit',                  // ToDo - ^
@@ -761,6 +763,11 @@ const App = () => {
                 {/* Heading (compass) telemetry panel */}
                 {currentView?.id === 'TELEMETRY_HEADING' && (
                   <HeadingTelemetry liveTelemetry={liveTelemetry} />
+                )}
+
+                {/* Weather telemetry panel */}
+                {currentView?.id === 'TELEMETRY_WEATHER' && (
+                  <WeatherTelemetry liveTelemetry={liveTelemetry} vessel={vessel} />
                 )}
 
                 {/* Navigation Root Menu */}

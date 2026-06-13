@@ -3,7 +3,8 @@ const TelemetryManagement = ({ pushView }) => {
   const telemetryModules = [
     { id: 'TELEMETRY_SKYVIEW',  label: 'Skyview',   glyph: '🛰' }, 
     { id: 'TELEMETRY_WIND',     label: 'Wind',      glyph: '➠' },
-    { id: 'TELEMETRY_HEADING',  label: 'Heading',   glyph: '➢' }
+    { id: 'TELEMETRY_HEADING',  label: 'Heading',   glyph: '➢' }, 
+    { id: 'TELEMETRY_WEATHER',  label: 'Weather',   glyph: '⛈' }, 
   ];
   return (
     <div className="system-grid-container">

@@ -125,9 +125,20 @@ Log out glyphs and where/how they're used.
 ▽	9661	25BD	WHITE DOWN-POINTING TRIANGLE                                        # Compass, Outer poiner (points towards the center)
 △	9651	25B3	WHITE UP-POINTING TRIANGLE                                          # Compass, Inner poiner (points away from center)
 ┆	9478	2506	LIGHT TRIPLE DASH VERTICAL                                          # Data divider
-⫽	2AFB	        Triple Solidus Binary Relation                                      # 
-⏥	9189	23E5	FLATNESS                                                            # 
+🞊	128906	1F78A	WHITE CIRCLE CONTAINING BLACK SMALL CIRCLE                          # Accurate (<2 seconds)
+🞉	128905	1F789	EXTREMELY HEAVY WHITE CIRCLE                                        # Fresh (<4 seconds)
+🞈	128904	1F788	VERY HEAVY WHITE CIRCLE	                                            # Tolerable (<6 seconds)
+🞇	128903	1F787	HEAVY WHITE CIRCLE	                                            # Aging (<7 seconds)
+🞆	128902	1F786	BOLD WHITE CIRCLE	                                            # Borderline (<8 seconds)
+🞅	128901	1F785	MEDIUM BOLD WHITE CIRCLE	                                    # Limit of useful (<9 seconds)
+🟕	128981	1F7D5	CIRCLED TRIANGLE                                                    # Dead (>= 10 seconds)
+⫽	2AFB	        Triple Solidus Binary Relation                                      # Breadcrumb divider 
 ⏦	9190	23E6	AC CURRENT                                                          # Wave data (height, period, etc)
+➠	10144	27A0	HEAVY DASHED TRIANGLE-HEADED RIGHTWARDS ARROW                       # Wind information
+➢	10146	27A2	THREE-D TOP-LIGHTED RIGHTWARDS ARROWHEAD                            # Heading information
+🌐︎	&#x1F310;&#xFE0E; "\u{1F310}\u{FE0E}"	Globe with Meridians                        # Maps
+⛈	9928	26C8	THUNDER CLOUD AND RAIN                                              # Weather Data
+⏥	9189	23E5	FLATNESS                                                            # 
 ⏚	9178	23DA	EARTH GROUND                                                        # 
 ⍗	9047	2357	APL FUNCTIONAL SYMBOL QUAD DOWNWARDS ARROW                          # 
 ⎔	9108	2394	SOFTWARE-FUNCTION SYMBOL                                            # 
@@ -141,8 +152,6 @@ Log out glyphs and where/how they're used.
 ┳	9523	2533	HEAVY DOWN AND HORIZONTAL                                           # 
 ✗	10007	2717	BALLOT X                                                            # 
 ❖	10070	2756	BLACK DIAMOND MINUS WHITE X                                         # 
-➠	10144	27A0	HEAVY DASHED TRIANGLE-HEADED RIGHTWARDS ARROW                       # Wind information
-➢	10146	27A2	THREE-D TOP-LIGHTED RIGHTWARDS ARROWHEAD                            # Heading information
 ➾	10174	27BE	OPEN-OUTLINED RIGHTWARDS ARROW                                      # 
 ◹	9721	25F9	UPPER RIGHT TRIANGLE                                                # 
 ⬐	11024	2B10	LEFTWARDS ARROW WITH TIP DOWNWARDS                                  # 
@@ -167,6 +176,13 @@ Log out glyphs and where/how they're used.
 ⍄	9028	2344	APL FUNCTIONAL SYMBOL QUAD GREATER-THAN                             # 
 ⍂	9026	2342	APL FUNCTIONAL SYMBOL QUAD BACKSLASH                                # 
 ▵	9653	25B5	WHITE UP-POINTING SMALL TRIANGLE
+◍	9677	25CD	CIRCLE WITH VERTICAL FILL
+⌤	8996	2324	UP ARROWHEAD BETWEEN TWO HORIZONTAL BARS
+🟇	128967	1F7C7	MEDIUM FOUR POINTED PINWHEEL STAR
+⛁	9921	26C1	WHITE DRAUGHTS KING
+☁	9729	2601	CLOUD	Try it
+☂	9730	2602	UMBRELLA
+≋               224B    Wind/Waves
 
 Bootstrap Icon
 	glyphicon glyphicon-log-out	&#xe163;
@@ -175,17 +191,9 @@ Bootstrap Icon
 ☄	9732	2604	COMET
 ⌅	8965	2305	PROJECTIVE	Try it
 ⌆	8966	2306	PERSPECTIVE
-⌤	8996	2324	UP ARROWHEAD BETWEEN TWO HORIZONTAL BARS
 ⍙	9049	2359	APL FUNCTIONAL SYMBOL DELTA UNDERBAR
 ⏣	9187	23E3	BENZENE RING WITH CIRCLE
 
-🞊	128906	1F78A	WHITE CIRCLE CONTAINING BLACK SMALL CIRCLE - Accurate (<2 seconds)
-🞉	128905	1F789	EXTREMELY HEAVY WHITE CIRCLE               - Fresh (<4 seconds)
-🞈	128904	1F788	VERY HEAVY WHITE CIRCLE	                   - Tolerable (<6 seconds)
-🞇	128903	1F787	HEAVY WHITE CIRCLE	                       - Aging (<7 seconds)
-🞆	128902	1F786	BOLD WHITE CIRCLE	                         - Borderline (<8 seconds)
-🞅	128901	1F785	MEDIUM BOLD WHITE CIRCLE	                 - Limit of useful (<9 seconds)
-🟕	128981	1F7D5	CIRCLED TRIANGLE                           - Dead (>= 10 seconds)
 ⚠	9888	26A0	WARNING SIGN
 ⚺	9914	26BA	SEMISEXTILE
 ⚼	9916	26BC	SESQUIQUADRATE

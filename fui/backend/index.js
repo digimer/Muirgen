@@ -1201,6 +1201,14 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
       [targetUuid]
     );
 
+    const weatherResult = await pool.query(
+      `SELECT air_temp, pressure, relative_humidity, dew_point, time 
+       FROM weather_data 
+       WHERE vessel_uuid = $1 
+       ORDER BY time DESC LIMIT 1;`,
+      [targetUuid]
+    );
+
     // Parse the Postgres timestamps to JS UNIX timestamps so they match the React Date.now() logic
     const positionData = posResult.rows.length > 0 ? {
       latitude: posResult.rows[0].latitude,
@@ -1239,17 +1247,66 @@ app.get('/api/vessels/:uuid/telemetry/last-known', authenticateToken, async (req
       _timestamp: new Date(depthResult.rows[0].time).getTime()
     } : null;
 
+    const weatherData = weatherResult.rows.length > 0 ? {
+      air_temp: weatherResult.rows[0].air_temp,
+      pressure: weatherResult.rows[0].pressure,
+      relative_humidity: weatherResult.rows[0].relative_humidity,
+      dew_point: weatherResult.rows[0].dew_point,
+      _timestamp: new Date(weatherResult.rows[0].time).getTime()
+    } : null;
+
     res.json({
       position: positionData,
       skyview: skyviewData,
       motion: motionData,
       wind: windData,
-      depth: depthData
+      depth: depthData, 
+      weather: weatherData
     });
 
   } catch (err) {
     console.error('Last known telemetry fetch failed! Error: ', err.message);
     res.status(500).json({ error: `Last known telemetry fetch failed! Error: ${err.message}` });
+  }
+});
+
+// Get historical weather data for a vessel
+app.get('/api/vessels/:uuid/telemetry/weather/history', authenticateToken, async (req, res) => {
+  const targetUuid = req.params.uuid;
+  const hours      = parseInt(req.query.hours) || 24; // Default to 24 hours
+  const points     = parseInt(req.query.points) || 800; // Optimal for 1080p/4K charting without lag
+  const startParam = req.query.start ? new Date(parseInt(req.query.start)) : null;
+  const endParam   = req.query.end ? new Date(parseInt(req.query.end)) : null;
+  const end        = endParam || new Date();
+  const start      = startParam || new Date(end.getTime() - (hours * 3600 * 1000));
+
+  // Calculate the time difference in seconds, then divide by our target points
+  const durationSeconds = (end.getTime() - start.getTime()) / 1000;
+  const bucketSeconds   = Math.max(1, Math.floor(durationSeconds / points));
+  
+  try {
+    const result = await pool.query(
+      `SELECT 
+         time_bucket($1::interval, time) AS time, 
+         AVG(air_temp) as air_temp, 
+         AVG(pressure) as pressure, 
+         AVG(relative_humidity) as relative_humidity, 
+         AVG(dew_point) as dew_point
+       FROM weather_data 
+       WHERE vessel_uuid = $2 
+         AND time >= $3 AND time <= $4
+       GROUP BY time_bucket($1::interval, time)
+       ORDER BY time ASC;`,
+      [`${bucketSeconds} seconds`, targetUuid, start.toISOString(), end.toISOString()]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (err) {
+    console.error('Weather history fetch failed! Error: ', err.message);
+    res.status(500).json({ error: 'Failed to fetch weather history.' });
   }
 });
 
