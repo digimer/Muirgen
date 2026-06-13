@@ -90,6 +90,7 @@ pub enum DbMessage {
         pressure: Option<f64>,
         air_temp: Option<f64>,
         humidity: Option<f64>,
+        dew_point: Option<f64>,
     },
     InsertWindData {
         vessel_uuid: uuid::Uuid,
@@ -310,22 +311,23 @@ pub async fn run_db_thread(
                     )
                 );
             }
-            DbMessage::InsertWeatherData { vessel_uuid, device_name, pressure, air_temp, humidity } => {
+            DbMessage::InsertWeatherData { vessel_uuid, device_name, pressure, air_temp, humidity, dew_point } => {
                 let sensor_source = format!("n2k:{}", device_name);
                 // Convert f64 to f32 to match 'real' in the Postgres schema
                 let pressure_f32  = pressure.map(|prs| prs as f32);
                 let temp_f32      = air_temp.map(|tmp| tmp as f32);
                 let humidity_f32  = humidity.map(|hmd| hmd as f32);
-                
+                let dew_point_f32 = dew_point.map(|dp| dp as f32);
+
                 retry_query!(
                     &pool,
                     "Database: Weather data insert failed!",
                     sqlx::query!(
                         r#"
-                        INSERT INTO weather_data (vessel_uuid, sensor_source, pressure, air_temp, relative_humidity)
-                        VALUES ($1, $2, $3, $4, $5)
+                        INSERT INTO weather_data (vessel_uuid, sensor_source, pressure, air_temp, relative_humidity, dew_point)
+                        VALUES ($1, $2, $3, $4, $5, $6)
                         "#,
-                        vessel_uuid, sensor_source, pressure_f32, temp_f32, humidity_f32
+                        vessel_uuid, sensor_source, pressure_f32, temp_f32, humidity_f32, dew_point_f32
                     )
                 );
             }

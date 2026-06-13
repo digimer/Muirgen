@@ -400,13 +400,27 @@ pub async fn route_pgns(
         130311 => {
             // Convert Pascals to hPa
             if let Some(parsed) = parse_and_print!(Pgn130311, pgn, source, data) {
+                let air_temp = parsed.temperature_kelvin().map(|temp| temp as f64);
+                let humidity = parsed.humidity_percent().map(|hum| hum as f64);
+                
+                // Calculate Dew Point (Kelvin) from Air Temp (Kelvin) and Humidity (%) using the Magnus formula
+                let dew_point = if let (Some(t_k), Some(h)) = (air_temp, humidity) {
+                    if h > 0.0 && h <= 100.0 {
+                        let t_c = t_k - 273.15;
+                        let alpha = ((17.27 * t_c) / (237.7 + t_c)) + (h / 100.0).ln();
+                        let dp_c = (237.7 * alpha) / (17.27 - alpha);
+                        Some(dp_c + 273.15)
+                    } else { None }
+                } else { None };
+
                 // Prepare the message
                 let message = DbMessage::InsertWeatherData {
                     vessel_uuid,
                     device_name,
                     pressure: parsed.pressure_pascals().map(|pascals| (pascals / 100.0) as f64),
-                    air_temp: parsed.temperature_kelvin().map(|temp| temp as f64),
-                    humidity: parsed.humidity_percent().map(|humidity| humidity as f64),
+                    air_temp,
+                    humidity,
+                    dew_point,
                 };
 
                 // Send it to DB and MQTT channels
@@ -424,6 +438,7 @@ pub async fn route_pgns(
                         device_name,
                         pressure: None, 
                         humidity: None,
+                        dew_point: None,
                         air_temp: parsed.temperature_kelvin().map(|temp| temp as f64),
                     };
 
@@ -443,6 +458,7 @@ pub async fn route_pgns(
                         device_name,
                         pressure: None, 
                         air_temp: None,
+                        dew_point: None,
                         humidity: parsed.humidity_percent().map(|hum| hum as f64),
                     };
 
@@ -462,6 +478,7 @@ pub async fn route_pgns(
                         device_name,
                         air_temp: None, 
                         humidity: None,
+                        dew_point: None,
                         pressure: parsed.pressure_pascals().map(|psr| (psr as f64) / 100.0),
                     };
 

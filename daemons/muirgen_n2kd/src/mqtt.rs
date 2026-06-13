@@ -71,12 +71,13 @@ pub async fn run_mqtt_thread(mut receiver: mpsc::Receiver<crate::db::DbMessage>,
                 let topic = format!("muirgen/telemetry/{}/motion", vessel_uuid);
                 let _     = client.publish(topic, QoS::AtMostOnce, false, payload.to_string()).await;
             }
-            crate::db::DbMessage::InsertWeatherData { vessel_uuid, air_temp, pressure, humidity, .. } => {
+            crate::db::DbMessage::InsertWeatherData { vessel_uuid, air_temp, pressure, humidity, dew_point, .. } => {
                 let payload = json!({
                     "vessel_uuid": vessel_uuid.to_string(),
                     "air_temp": air_temp,
                     "pressure": pressure,
-                    "humidity": humidity
+                    "humidity": humidity, 
+                    "dew_point": dew_point
                 });
                 let topic = format!("muirgen/telemetry/{}/weather", vessel_uuid);
                 let _     = client.publish(topic, QoS::AtMostOnce, false, payload.to_string()).await;
