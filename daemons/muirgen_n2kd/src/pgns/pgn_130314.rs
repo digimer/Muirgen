@@ -14,15 +14,15 @@ pub struct Pgn130314 {
 }
 
 impl Pgn130314 {
-    // 0x7FFFFFFF is unavailable. 1 Pa resolution.
-    pub fn pressure_pascals(&self) -> Option<i32> {
-        if self.pressure == 0x7FFFFFFF { None } else { Some(self.pressure) }
+    // 0x7FFFFFFF is unavailable. NMEA 2000 130314 resolution is 0.1 Pa.
+    pub fn pressure_pascals(&self) -> Option<f32> {
+        if self.pressure == 0x7FFFFFFF { None } else { Some(self.pressure as f32 * 0.1) }
     }
 }
 
 impl fmt::Display for Pgn130314 {
     fn fmt(&self, format: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pressure = self.pressure_pascals().map(|pascals| format!("{:.0} hPa", pascals as f32 / 100.0)).unwrap_or_else(|| "N/A".to_string());
+        let pressure = self.pressure_pascals().map(|pascals| format!("{:.0} hPa", pascals / 100.0)).unwrap_or_else(|| "N/A".to_string());
         write!(format, "Pressure: [{}], Source: [{}]", pressure, self.source)
     }
 }

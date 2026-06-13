@@ -1123,6 +1123,7 @@ button:disabled {
 
 .weather-top-table {
   width: 100%;
+  table-layout: fixed;
 }
 
 .weather-chart-panel {
