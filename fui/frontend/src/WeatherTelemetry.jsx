@@ -205,7 +205,7 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
               <tr>
                 <td className="entity-data-label">Dew Point:</td>
                 <td className={`entity-data-value ${isStale ? 'telemetry-dead' : ''}`}>[{formatTemp(weather?.dew_point)}]</td>
-                <td className="entity-data-label">Rel Humidity:</td>
+                <td className="entity-data-label">Relative Humidity:</td>
                 <td className={`entity-data-value ${isStale ? 'telemetry-dead' : ''}`}>[{formatRH(weather?.relative_humidity)}]</td>
               </tr>
               <tr>

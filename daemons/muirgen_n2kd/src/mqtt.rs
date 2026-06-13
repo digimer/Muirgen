@@ -76,7 +76,7 @@ pub async fn run_mqtt_thread(mut receiver: mpsc::Receiver<crate::db::DbMessage>,
                     "vessel_uuid": vessel_uuid.to_string(),
                     "air_temp": air_temp,
                     "pressure": pressure,
-                    "humidity": humidity, 
+                    "relative_humidity": humidity, 
                     "dew_point": dew_point
                 });
                 let topic = format!("muirgen/telemetry/{}/weather", vessel_uuid);
