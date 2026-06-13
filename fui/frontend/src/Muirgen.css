@@ -731,8 +731,6 @@ button:disabled {
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 1px solid var(--neon-red);
-  background: rgba(0, 0, 0, 0.9);
   align-self: flex-start;
   padding: 20px;
 }
@@ -1117,6 +1115,10 @@ button:disabled {
   flex-direction: column;
   height: 100%;
   gap: 20px;
+}
+
+.weather-top-panel {
+  flex: 0 0 auto; /* Hug the content, do not expand */
 }
 
 .weather-top-table {

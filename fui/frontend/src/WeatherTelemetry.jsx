@@ -63,8 +63,14 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
     dew_point: 'Dew Point (°C)'
   }), []);
   const chartData = useMemo(() => {
-    const labels = [];
-    const data = historyData.map(d => {
+    const data = [];
+    
+    // The backend buckets to 800 points. Calculate the expected chronological gap between points.
+    const expectedBucketMs = Math.max(1, Math.floor((timeRange * 3600) / 800)) * 1000;
+    const maxAllowedGap    = expectedBucketMs * 3; // If a gap is > 3 buckets, the sensor was offline.
+
+    for (let i = 0; i < historyData.length; i++) {
+      const d = historyData[i];
       let y = null;
       switch(activeDataset) {
         case 'air_temp':   y = d.air_temp != null ? d.air_temp - 273.15 : null; break;
@@ -73,11 +79,23 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
         case 'humidity':   y = d.relative_humidity; break;
         case 'dew_point':  y = d.dew_point != null ? d.dew_point - 273.15 : null; break;
       }
-      labels.push(new Date(d.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }));
-      return y;
-    });
+
+      const currentX = new Date(d.time).getTime();
+
+      // If the gap between this point and the last is too large, explicitly sever the line.
+      if (i > 0) {
+        const prevX = new Date(historyData[i-1].time).getTime();
+        if ((currentX - prevX) > maxAllowedGap) {
+          data.push({ x: prevX + 1, y: null });
+        }
+      }
+
+      data.push({ x: currentX, y: y });
+    }
+
+    // Anchor the right edge of the graph to NOW so missing real-time data is visually obvious.
+    data.push({ x: Date.now(), y: null });
     return {
-      labels: labels,
       datasets: [{
         label: DATASET_LABELS[activeDataset],
         data: data,
@@ -109,7 +127,10 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
         animation: false,
         callbacks: {
           title: function(tooltipItems) {
-            return tooltipItems[0].label; // Natively reads the HH:mm string!
+            const d = new Date(tooltipItems[0].parsed.x);
+              return timeRange > 24 
+                ? d.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+                : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
           }
         }
       },
@@ -117,13 +138,13 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
         pan: { enabled: true, mode: 'x' },
         zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
         limits: {
-          x: { min: 'original', max: 'original', minRange: 60 } // 60 data points minimum zoom
+          x: { minRange: 3600000 } // 1 hour minimum zoom in milliseconds
         }
       }
     },
     scales: {
       x: {
-        type: 'category',
+        type: 'linear',
         display: true,
         grid: { 
           color: 'rgba(255, 0, 0, 0.15)'
@@ -133,7 +154,13 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
           font: { family: 'monospace' },
           autoSkip: true,
           maxTicksLimit: 7,
-          maxRotation: 0
+          maxRotation: 0,
+          callback: function(value) {
+            const d = new Date(value);
+            return timeRange > 24 
+              ? d.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+              : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+          }
         }
       },
       yAxis: {
@@ -149,7 +176,7 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
         ticks: { color: '#ff0000', font: { family: 'monospace' } }
       }
     }
-  }), [activeDataset, DATASET_LABELS]);
+  }), [activeDataset, DATASET_LABELS, timeRange]);
 
   const formatTemp  = (val) => val != null ? `${(val - 273.15).toFixed(1)}°C` : '---.-°C';
   const formatPress = (val) => val != null ? `${val.toFixed(1)} hPa` : '----.- hPa';
@@ -158,7 +185,7 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
   return (
     <div className="skyview-container weather-telemetry-container">
       {/* Top Grid: Live Data */}
-      <div className="skyview-data-panel">
+      <div className="skyview-data-panel weather-top-panel">
         <div className="skyview-dop-header">
           <span>Live Weather Sensors</span>
         </div>
@@ -203,6 +230,9 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
           <div className="weather-chart-controls">
             <button className={`weather-zoom-button ${timeRange === 3 ? 'active' : ''}`} onClick={() => handleZoomReset(3)}>3h</button>
             <button className={`weather-zoom-button ${timeRange === 24 ? 'active' : ''}`} onClick={() => handleZoomReset(24)}>24h</button>
+            <button className={`weather-zoom-button ${timeRange === 72 ? 'active' : ''}`} onClick={() => handleZoomReset(72)}>3d</button>
+            <button className={`weather-zoom-button ${timeRange === 168 ? 'active' : ''}`} onClick={() => handleZoomReset(168)}>7d</button>
+            <button className={`weather-zoom-button ${timeRange === 720 ? 'active' : ''}`} onClick={() => handleZoomReset(720)}>30d</button>
           </div>
         </div>
         
