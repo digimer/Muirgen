@@ -93,6 +93,9 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
       data.push({ x: currentX, y: y });
     }
 
+    // Anchor the left edge exactly to the requested time horizon
+    data.unshift({ x: Date.now() - (timeRange * 3600 * 1000), y: null });
+
     // Anchor the right edge of the graph to NOW so missing real-time data is visually obvious.
     data.push({ x: Date.now(), y: null });
     return {
@@ -145,9 +148,10 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
     scales: {
       x: {
         type: 'linear',
+        bounds: 'data',
         display: true,
         grid: { 
-          color: 'rgba(255, 0, 0, 0.15)'
+          color: 'rgba(255, 0, 0, 0.25)'
         },
         ticks: { 
           color: '#ff0000', 
@@ -172,7 +176,7 @@ const WeatherTelemetry = ({ liveTelemetry, vessel }) => {
           color: '#ff0000', 
           font: { family: 'monospace' } 
         },
-        grid: { color: 'rgba(255, 0, 0, 0.15)' },
+        grid: { color: 'rgba(255, 0, 0, 0.25)' },
         ticks: { color: '#ff0000', font: { family: 'monospace' } }
       }
     }
