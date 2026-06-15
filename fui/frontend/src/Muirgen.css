@@ -1223,23 +1223,57 @@ button:disabled {
   filter: invert(15%) sepia(100%) saturate(7400%) hue-rotate(359deg) brightness(98%) contrast(114%) !important;
 }
 
+/* These are copies of weather-zoom-button for consistency */
 .map-mode-button {
-  background: #000000;
-  border: 1px solid #ff0000;
-  color: #ff0000;
-  padding: 8px 12px;
-  font-family: monospace;
+  background: transparent;
+  color: var(--soft-red);
+  border: 1px solid var(--soft-red);
+  padding: 4px 12px;
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
-.map-mode-button:hover {
-  background: #1a0000;
-}
-.map-mode-button.active {
-  background: #330000;
-  box-shadow: 0 0 8px #ff0000;
+  transition: all 0.2s ease;
 }
 
+.map-mode-button:hover {
+  background: transparent;
+  border-color: var(--neon-red);
+  color: var(--neon-red);
+  box-shadow: 0 0 5px var(--neon-red);
+}
+
+.map-mode-button.active {
+  background: rgba(255, 0, 0, 0.15);
+  border-color: var(--neon-red);
+  color: var(--neon-red);
+  text-shadow: none;
+}
+
+.maplibregl-ctrl-scale {
+  background-color: var(--dark-bg) !important;
+  border: 1px solid var(--neon-red) !important;
+  border-top: none !important;
+  color: var(--neon-red) !important;
+  font-family: 'Ubuntu Sans Mono', monospace !important;
+  box-shadow: none !important;
+}
+
+.maplibregl-ctrl-attrib {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  color: var(--neon-red) !important;
+  font-family: 'Ubuntu Sans Mono', monospace !important;
+  border: 1px solid var(--neon-red);
+}
+
+.maplibregl-ctrl-attrib a {
+  color: var(--neon-red) !important;
+  text-decoration: none !important;
+}
+
+.maplibregl-ctrl-attrib-button {
+  background-color: transparent !important;
+  filter: invert(15%) sepia(100%) saturate(7400%) hue-rotate(359deg) brightness(98%) contrast(114%) !important;
+}
 
 /* These classes below here need to be rehomed */
 

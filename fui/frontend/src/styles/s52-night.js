@@ -1,37 +1,22 @@
-const addLayerBands = (baseId, sourceLayerPrefix, type, paint, availableLayers, layout = {}) => {
-  // Band 1 (Overview): Zooms 0-6
-  // Band 2 (General): Zooms 6-9
-  // Band 3 (Coastal): Zooms 9-11
-  // Band 4 (Approach): Zooms 11-13
-  // Band 5 (Harbour): Zooms 13-15
-  // Band 6 (Berthing): Zooms 15-22
-  const minZooms = [0, 6, 9, 11, 13, 15];
-  const maxZooms = [6, 9, 11, 13, 15, 22];
-
-  return [1, 2, 3, 4, 5, 6]
-    .filter(band => {
-      // Only return the band if it actually exists in the tile server metadata
-      if (availableLayers) {
-        return availableLayers.includes(`${sourceLayerPrefix}-${band}`);
-      }
-      return true;
-    })
-    .map(band => ({
-        id: `${baseId}-${band}`,
-        type: type,
-        source: "s57-tiles",
-        "source-layer": `${sourceLayerPrefix}-${band}`,
-        minzoom: minZooms[band - 1],
-        maxzoom: maxZooms[band - 1],
-        paint: paint,
-        layout: layout
-    }));
+const addLayerBands = (baseId, sourceLayer, type, paint, layout = {}) => {
+  // Tippecanoe natively culls features by zoom level inside the vector tile.
+  // We return a single layer in an array so the `...` spread operator still works below.
+  return [{
+      id: baseId,
+      type: type,
+      source: "s57-tiles",
+      "source-layer": sourceLayer,
+      paint: paint,
+      layout: layout
+  }];
 };
 
 export const getNightStyle = (mapServerUrl, availableLayers) => ({
   version: 8,
   name: "Cassette Futurism - Night",
   metadata: {},
+  sprite: `${mapServerUrl}/sprites/sprite`,
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
   sources: {
     "s57-tiles": {
       type: "vector",
@@ -49,16 +34,8 @@ export const getNightStyle = (mapServerUrl, availableLayers) => ({
       id: "background",
       type: "background",
       paint: {
-        "background-color": "#000000" // Pitch black water
+        "background-color": "#0a0000" // Faint red for all default landmasses
       }
-    },
-    // OSM Terrestrial Basemap (Renders underneath marine charts)
-    {
-      id: "osm-land",
-      type: "fill",
-      source: "osm-basemap",
-      "source-layer": "landcover",
-      paint: { "fill-color": "#050000" } // Very faint dark red for terrestrial landmasses
     },
     {
       id: "osm-water",
@@ -68,12 +45,19 @@ export const getNightStyle = (mapServerUrl, availableLayers) => ({
       paint: { "fill-color": "#000000" } // Pitch black for inland lakes/rivers
     },
     {
+      id: "osm-waterway",
+      type: "line",
+      source: "osm-basemap",
+      "source-layer": "waterway",
+      paint: { "line-color": "#000000", "line-width": 1.5 } // Pitch black for canals and narrow rivers
+    },
+    {
       id: "osm-transportation",
       type: "line",
       source: "osm-basemap",
       "source-layer": "transportation",
       filter: ["in", "class", "motorway", "trunk", "primary"], // Only major highways to prevent UI clutter
-      paint: { "line-color": "#2a0000", "line-width": 1 } 
+      paint: { "line-color": "#550000", "line-width": 1 } 
     },
     {
       id: "osm-boundary",
@@ -81,24 +65,96 @@ export const getNightStyle = (mapServerUrl, availableLayers) => ({
       source: "osm-basemap",
       "source-layer": "boundary",
       filter: ["==", "admin_level", 2], // Only country borders
-      paint: { "line-color": "#550000", "line-width": 1.5, "line-dasharray": [2, 2] }
+      paint: { "line-color": "#880000", "line-width": 1.5, "line-dasharray": [2, 2] }
     },
-    ...addLayerBands("LNDARE-fill", "LNDARE", "fill", {
-      "fill-color": "#1a0000",
-      "fill-outline-color": "#330000"
-    }, availableLayers),
+    // --- LAND & STRUCTURES ---
     ...addLayerBands("COALNE-line", "COALNE", "line", {
       "line-color": "#ff0000",
       "line-width": 1.5
-    }, availableLayers),
+    }),
+    ...addLayerBands("SLCONS-fill", "SLCONS", "fill", {
+      "fill-color": "#440000" // Solid red for Shoreline Constructions
+    }),
     ...addLayerBands("SLCONS-line", "SLCONS", "line", {
       "line-color": "#ff0000",
       "line-width": 1.5
-    }, availableLayers),
-    ...addLayerBands("DEPARE-line", "DEPARE", "line", {
-      "line-color": "#330000",
-      "line-width": 0.5,
-      "line-dasharray": [2, 4]
-    }, availableLayers)
+    }),
+    ...addLayerBands("DOCARE-fill", "DOCARE", "fill", {
+      "fill-color": "#550000", // Bright solid red for docks
+    }),
+    ...addLayerBands("DOCARE-line", "DOCARE", "line", {
+      "line-color": "#ff0000",
+      "line-width": 1.5
+    }),
+    ...addLayerBands("PONTON-fill", "PONTON", "fill", {
+      "fill-color": "#880000" // Brightest red for floating pontoons
+    }),
+    ...addLayerBands("PONTON-line", "PONTON", "line", {
+      "line-color": "#ff0000",
+      "line-width": 1.5
+    }),
+
+    // --- WATER & CHANNELS ---
+    ...addLayerBands("DEPARE-fill", "DEPARE", "fill", {
+      "fill-color": [
+        "step",
+        ["to-number", ["get", "DRVAL1"], 0], // Read the Depth Range 1 attribute
+        "#110000",    // Shallow water (Default glow)
+        2, "#0a0000", // 2m+ Depth
+        5, "#050000", // 5m+ Depth
+        10, "#000000" // 10m+ Deep channels fade to pure black
+      ]
+    }),
+    ...addLayerBands("DEPCNT-line", "DEPCNT", "line", {
+      "line-color": "#440000", // Medium red depth contour lines
+      "line-width": 1
+    }),
+    ...addLayerBands("DEPCNT-label", "DEPCNT", "symbol", {
+      "text-color": "#660000" // Faint red text for depths
+    }, {
+      "text-field": ["get", "VALDCO"], // Print the exact depth value!
+      "text-size": 10,
+      "symbol-placement": "line", // Align the text along the curvy contour line
+      "text-pitch-alignment": "map"
+    }),
+
+    // --- BUOYS & NAVIGATION AIDS ---
+    ...addLayerBands("BOYLAT-icon", "BOYLAT", "symbol", {
+      "text-color": "#ff0000"
+    }, {
+      "icon-image": [
+        "match",
+        ["get", "COLOUR"],
+        "3", "boy-port",      // S-57 Colour 3 = Red
+        "4", "boy-starboard", // S-57 Colour 4 = Green
+        "boy-safe-water"      // Fallback
+      ],
+      "icon-size": 0.5,
+      "icon-allow-overlap": true,
+      "text-field": ["get", "OBJNAM"], // Display the Buoy's Name!
+      "text-offset": [0, 1.2],
+      "text-size": 10
+    }),
+    ...addLayerBands("BOYSPP-icon", "BOYSPP", "symbol", { "text-color": "#ff0000" }, {
+      "icon-image": "boy-safe-water", 
+      "icon-size": 0.5,
+      "icon-allow-overlap": true,
+      "text-field": ["get", "OBJNAM"],
+      "text-offset": [0, 1.2],
+      "text-size": 10
+    }),
+    ...addLayerBands("BOYISD-icon", "BOYISD", "symbol", { "text-color": "#ff0000" }, {
+      "icon-image": "boy-isolated-danger", 
+      "icon-size": 0.5,
+      "icon-allow-overlap": true,
+      "text-field": ["get", "OBJNAM"],
+      "text-offset": [0, 1.2],
+      "text-size": 10
+    }),
+    ...addLayerBands("LIGHTS-icon", "LIGHTS", "symbol", {}, {
+      "icon-image": "light-flare",
+      "icon-size": 0.5,
+      "icon-allow-overlap": true
+    })
   ]
 });

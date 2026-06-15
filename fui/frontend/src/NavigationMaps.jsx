@@ -111,10 +111,16 @@ const NavigationMaps = ({ liveTelemetry }) => {
         });
 
         mapInstance.current.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+        mapInstance.current.addControl(new maplibregl.ScaleControl({ maxWidth: 200, unit: 'nautical' }), 'bottom-right');
+        mapInstance.current.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
-        // If the user manually drags the map, break the lock and enter FREE_PAN mode
-        mapInstance.current.on('dragstart', () => {
-          setMapMode('FREE_PAN');
+        // Break tracking lock on ANY user interaction (drag, scroll wheel, 
+        // pinch, etc.). Programmatic tracking movements (easeTo) will not have
+        // an originalEvent.
+        mapInstance.current.on('movestart', (e) => {
+          if (e.originalEvent) {
+            setMapMode('FREE_PAN');
+          }
         });
 
         mapInstance.current.on('load', () => {
@@ -221,16 +227,7 @@ const NavigationMaps = ({ liveTelemetry }) => {
               <button 
                 key={mode}
                 onClick={() => setMapMode(mode)}
-                style={{
-                  background: mapMode === mode ? '#330000' : '#000000',
-                  border: '1px solid #ff0000',
-                  color: '#ff0000',
-                  padding: '8px 12px',
-                  fontFamily: 'monospace',
-                  cursor: 'pointer',
-                  boxShadow: mapMode === mode ? '0 0 8px #ff0000' : 'none',
-                  textTransform: 'replace(/_/g, " ")'
-                }}
+                className={`map-mode-button ${mapMode === mode ? 'active' : ''}`}
               >
                 {mode.replace('_', ' ')}
               </button>
