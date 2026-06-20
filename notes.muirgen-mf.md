@@ -15,6 +15,10 @@ ToDo:
   controls, resolving sourve of truth issues, etc. Absolutely what we want, but too much in the early stages
   of development.
 - Enable IPv6 support when closer to release. Leaving IPv4 for simplified debugging during early dev.
+- [ROUTING 1 - Planning]: Implement basic manual route planning. Plot GeoJSON LineStrings on the map and calculate distance/bearing between waypoints.
+- [ROUTING 2 - Active]: Implement active route monitoring. Calculate Cross-Track Error (XTE), Bearing to Waypoint (BTW), and Time to Go (TTG) using Haversine math.
+- [ROUTING 3 - Automated]: Implement draft-aware auto-routing (A* or Dijkstra). Use S-57 LNDARE/DEPARE to create a cost-surface "Nav Mesh" that routes around shallow water/land.
+- [ROUTING 4 - Advanced Sailing/Weather]: Long-term task to build an Isochronal Weather Router. Ingest vessel Polars and GRIB files. Mathematically expand isochrones to calculate optimal tacking angles and times. Add ML auto-tuning to heal polar tables over time via TimescaleDB telemetry, and support complex Motor-Sailing optimization (constrained fuel/battery equations).
 
 
 # Install Notes
@@ -138,6 +142,9 @@ Log out glyphs and where/how they're used.
 ➢	10146	27A2	THREE-D TOP-LIGHTED RIGHTWARDS ARROWHEAD                            # Heading information
 🌐︎	&#x1F310;&#xFE0E; "\u{1F310}\u{FE0E}"	Globe with Meridians                        # Maps
 ⛈	9928	26C8	THUNDER CLOUD AND RAIN                                              # Weather Data
+🞡	128929	1F7A1	THIN GREEK CROSS                                                    # Crosshairs
+◬	9708	25EC	WHITE UP-POINTING TRIANGLE WITH DOT
+⟐	10192	27D0	WHITE DIAMOND WITH CENTRED DOT
 ⏥	9189	23E5	FLATNESS                                                            # 
 ⏚	9178	23DA	EARTH GROUND                                                        # 
 ⍗	9047	2357	APL FUNCTIONAL SYMBOL QUAD DOWNWARDS ARROW                          # 
@@ -183,6 +190,15 @@ Log out glyphs and where/how they're used.
 ☁	9729	2601	CLOUD	Try it
 ☂	9730	2602	UMBRELLA
 ≋               224B    Wind/Waves
+┼	9532	253C	LIGHT VERTICAL AND HORIZONTAL
+╪	9578	256A	VERTICAL SINGLE AND HORIZONTAL DOUBLE
+◊	9674	25CA	LOZENGE
+🞨	128936	1F7A8	THIN SALTIRE
+🟀	128960	1F7C0	LIGHT THREE POINTED BLACK STAR
+🟄	128964	1F7C4	LIGHT FOUR POINTED BLACK STAR
+🟕	128981	1F7D5	CIRCLED TRIANGLE
+✛	10011	271B	OPEN CENTRE CROSS
+
 
 Bootstrap Icon
 	glyphicon glyphicon-log-out	&#xe163;

@@ -1,0 +1,93 @@
+{
+  "boy-port": {
+    "width": 64,
+    "height": 64,
+    "x": 0,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-starboard": {
+    "width": 64,
+    "height": 64,
+    "x": 64,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-safe-water": {
+    "width": 64,
+    "height": 64,
+    "x": 128,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-isolated-danger": {
+    "width": 64,
+    "height": 64,
+    "x": 192,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-cardinal-north": {
+    "width": 64,
+    "height": 64,
+    "x": 256,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-cardinal-south": {
+    "width": 64,
+    "height": 64,
+    "x": 320,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-cardinal-east": {
+    "width": 64,
+    "height": 64,
+    "x": 384,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-cardinal-west": {
+    "width": 64,
+    "height": 64,
+    "x": 448,
+    "y": 0,
+    "pixelRatio": 1
+  },
+  "boy-special-purpose": {
+    "width": 64,
+    "height": 64,
+    "x": 0,
+    "y": 64,
+    "pixelRatio": 1
+  },
+  "light-flare": {
+    "width": 64,
+    "height": 64,
+    "x": 64,
+    "y": 64,
+    "pixelRatio": 1
+  },
+  "hazard-wreck": {
+    "width": 64,
+    "height": 64,
+    "x": 128,
+    "y": 64,
+    "pixelRatio": 1
+  },
+  "hazard-rock": {
+    "width": 64,
+    "height": 64,
+    "x": 192,
+    "y": 64,
+    "pixelRatio": 1
+  },
+  "hazard-obstruction": {
+    "width": 64,
+    "height": 64,
+    "x": 256,
+    "y": 64,
+    "pixelRatio": 1
+  }
+}

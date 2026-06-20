@@ -4,6 +4,7 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from './utils/api.js';
 import { getNightStyle } from './styles/s52-night.js';
+import { formatCoordinate } from './utils/formatters.js';
 
 // Haversine formula to mathematically project a geographic coordinate
 const projectCoordinate = (lat, lon, bearingDeg, distanceNM) => {
@@ -23,6 +24,20 @@ const projectCoordinate = (lat, lon, bearingDeg, distanceNM) => {
   );
 
   return [lon2 * 180 / Math.PI, lat2 * 180 / Math.PI]; // MapLibre expects [lng, lat]
+};
+
+// Calculate distance between two coordinates in Nautical Miles
+const calculateDistanceNM = (lat1, lon1, lat2, lon2) => {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const earthRadiusNM      = 3440.065; 
+  const deltaLatRad        = (lat2 - lat1) * Math.PI / 180;
+  const deltaLonRad        = (lon2 - lon1) * Math.PI / 180;
+  const chordLengthSquared = Math.sin(deltaLatRad/2) * Math.sin(deltaLatRad/2) +
+                             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                             Math.sin(deltaLonRad/2) * Math.sin(deltaLonRad/2);
+  const angularDistance    = 2 * Math.atan2(Math.sqrt(chordLengthSquared), Math.sqrt(1 - chordLengthSquared));
+  
+  return earthRadiusNM * angularDistance;
 };
 
 // Generate GeoJSON for the 1-hour Predictor Vector
@@ -71,8 +86,17 @@ const NavigationMaps = ({ liveTelemetry }) => {
   const mapInstance           = useRef(null);
   const vesselMarker          = useRef(null);
   const mapLoaded             = useRef(false);
+  const viewLatRef            = useRef(null);
+  const viewLngRef            = useRef(null);
+  const viewDistRef           = useRef(null);
+  const latestTelemetry       = useRef(liveTelemetry);
   const [error, setError]     = useState(null);
   const [mapMode, setMapMode] = useState('NORTH_UP'); // FREE_PAN, NORTH_UP, HEAD_UP
+
+  // Keep telemetry ref fresh for the high-performance move listener
+  useEffect(() => {
+    latestTelemetry.current = liveTelemetry;
+  }, [liveTelemetry]);
 
   // Map Initialization
   useEffect(() => {
@@ -111,8 +135,28 @@ const NavigationMaps = ({ liveTelemetry }) => {
         });
 
         mapInstance.current.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-        mapInstance.current.addControl(new maplibregl.ScaleControl({ maxWidth: 200, unit: 'nautical' }), 'bottom-right');
+        mapInstance.current.addControl(new maplibregl.ScaleControl({ maxWidth: 200, unit: 'nautical' }), 'bottom-left');
         mapInstance.current.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+
+        // High-performance DOM update for coordinates to avoid 60FPS React state re-renders
+        mapInstance.current.on('move', () => {
+          if (viewLatRef.current && viewLngRef.current) {
+            const center = mapInstance.current.getCenter();
+            viewLatRef.current.innerText = formatCoordinate(center.lat, true);
+            viewLngRef.current.innerText = formatCoordinate(center.lng, false);
+
+            // Calculate range if we have a live GPS fix
+            if (viewDistRef.current && latestTelemetry.current?.position?.latitude != null) {
+              const dist = calculateDistanceNM(
+                latestTelemetry.current.position.latitude,
+                latestTelemetry.current.position.longitude,
+                center.lat,
+                center.lng
+              );
+              viewDistRef.current.innerText = `${dist.toFixed(2)} nm`;
+            }
+          }
+        });
 
         // Break tracking lock on ANY user interaction (drag, scroll wheel, 
         // pinch, etc.). Programmatic tracking movements (easeTo) will not have
@@ -213,16 +257,35 @@ const NavigationMaps = ({ liveTelemetry }) => {
     }
   }, [liveTelemetry, mapMode]);
 
+  // Initialize coordinates immediately when entering FREE_PAN mode
+  useEffect(() => {
+    if (mapMode === 'FREE_PAN' && mapInstance.current && viewLatRef.current && viewLngRef.current) {
+      const center = mapInstance.current.getCenter();
+      viewLatRef.current.innerText = formatCoordinate(center.lat, true);
+      viewLngRef.current.innerText = formatCoordinate(center.lng, false);
+
+      if (viewDistRef.current && latestTelemetry.current?.position?.latitude != null) {
+        const dist = calculateDistanceNM(
+          latestTelemetry.current.position.latitude,
+          latestTelemetry.current.position.longitude,
+          center.lat,
+          center.lng
+        );
+        viewDistRef.current.innerText = `${dist.toFixed(2)} nm`;
+      }
+    }
+  }, [mapMode]);
+
   return (
-    <div className="maps-container" style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div className="maps-container">
       {error ? (
         <div className="maps-error">Map error: [{error}]</div>
       ) : (
         <>
-          <div ref={mapContainer} className="maps-viewport" style={{ width: '100%', height: '100%' }} />
+          <div ref={mapContainer} className="maps-viewport" />
           
           {/* Tracking Mode Controls UI */}
-          <div style={{ position: 'absolute', bottom: '20px', left: '20px', display: 'flex', gap: '10px', zIndex: 1000 }}>
+          <div className="map-mode-controls">
             {['FREE_PAN', 'NORTH_UP', 'HEAD_UP'].map(mode => (
               <button 
                 key={mode}
@@ -233,6 +296,22 @@ const NavigationMaps = ({ liveTelemetry }) => {
               </button>
             ))}
           </div>
+          {/* Map Center Coordinate Display */}
+          {mapMode === 'FREE_PAN' && (
+            <>
+              <div className="map-center-crosshair">
+                🞡
+              </div>
+              <div className="map-view-coords">
+                <span>🞡 View:</span>
+                <span ref={viewLatRef}>--° --.---' -</span>
+                <span className="telemetry-data-divider">┆</span>
+                <span ref={viewLngRef}>---° --.---' -</span>
+                <span className="telemetry-data-divider">┆</span>
+                <span>Range: <span ref={viewDistRef}>--.-- nm</span></span>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

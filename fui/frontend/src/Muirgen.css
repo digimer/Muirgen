@@ -70,6 +70,11 @@
   --plyr-video-control-background-hover: var(--neon-red);
 }
 
+/* Fallback to catch any unstyled browser-default outlines */
+*:focus-visible {
+  outline: 2px solid var(--neon-red);
+  outline-offset: 2px;
+}
 
 /* ========================================================================== */
 /* BUTTONS & CONTROLS (V1 STANDARD)                                           */
@@ -1223,9 +1228,20 @@ button:disabled {
   filter: invert(15%) sepia(100%) saturate(7400%) hue-rotate(359deg) brightness(98%) contrast(114%) !important;
 }
 
+.map-mode-controls {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  gap: 10px;
+  z-index: 1000;
+}
+
 /* These are copies of weather-zoom-button for consistency */
 .map-mode-button {
-  background: transparent;
+  background: rgba(20, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   color: var(--soft-red);
   border: 1px solid var(--soft-red);
   padding: 4px 12px;
@@ -1236,14 +1252,14 @@ button:disabled {
 }
 
 .map-mode-button:hover {
-  background: transparent;
+  background: rgba(50, 0, 0, 0.6);
   border-color: var(--neon-red);
   color: var(--neon-red);
   box-shadow: 0 0 5px var(--neon-red);
 }
 
 .map-mode-button.active {
-  background: rgba(255, 0, 0, 0.15);
+  background: rgba(150, 0, 0, 0.4);
   border-color: var(--neon-red);
   color: var(--neon-red);
   text-shadow: none;
@@ -1256,6 +1272,7 @@ button:disabled {
   color: var(--neon-red) !important;
   font-family: 'Ubuntu Sans Mono', monospace !important;
   box-shadow: none !important;
+  margin-bottom: 50px !important; /* Pushes the ruler up */
 }
 
 .maplibregl-ctrl-attrib {
@@ -1274,6 +1291,63 @@ button:disabled {
   background-color: transparent !important;
   filter: invert(15%) sepia(100%) saturate(7400%) hue-rotate(359deg) brightness(98%) contrast(114%) !important;
 }
+
+/* Force MapLibre to use our neon red instead of its hardcoded blue box-shadow */
+.maplibregl-canvas:focus,
+.maplibregl-canvas:focus-visible,
+.maplibregl-map:focus,
+.maplibregl-map:focus-visible {
+  outline: 2px solid var(--neon-red) !important;
+}
+
+.maplibregl-ctrl button:focus,
+.maplibregl-ctrl button:focus-visible {
+  box-shadow: 0 0 10px var(--neon-red) !important;
+}
+
+.map-center-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1000;
+  color: var(--neon-red);
+  font-size: 1.5rem;
+  opacity: 0.7;
+  text-shadow: 0 0 5px var(--neon-red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-view-coords {
+  position: absolute;
+  bottom: 15px; /* Sits underneath the scale bar */
+  left: 10px;
+  background: rgba(20, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 1px solid var(--dim-red);
+  padding: 4px 8px;
+  color: var(--neon-red);
+  font-family: 'Ubuntu Sans Mono', monospace;
+  font-size: 0.9rem;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+
+
+
+
+
+
+
+
 
 /* These classes below here need to be rehomed */
 
