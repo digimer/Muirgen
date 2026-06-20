@@ -1,8 +1,53 @@
 import React from 'react';
 import { useSystemStatus } from './utils/hooks';
 
-const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm }) => {
+const Sidebar = ({ activeView, setActiveView, onLogout, dataAlarm, activeMapFeature, setActiveMapFeature }) => {
   const { isHddActive } = useSystemStatus();
+
+  // Physical Escape key to close the metadata window
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && activeMapFeature) {
+        setActiveMapFeature(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeMapFeature, setActiveMapFeature]);
+
+  // If a map target is clicked, the metadata replaces the sidebar to prevent
+  // obstructing the map itself.
+  if (activeMapFeature) {
+    return (
+      <nav className="sidebar-nav">
+        <div className="sidebar-header">
+          <span className="sidebar-title">Target Data</span>
+          <div className="sidebar-divider margin-divider-top" />
+        </div>
+        
+        <div className="sidebar-metadata-close-wrapper">
+          <button className="map-mode-button sidebar-metadata-close-button" onClick={() => setActiveMapFeature(null)}>
+            ⌧ CLOSE
+          </button>
+        </div>
+        <div className="sidebar-divider sidebar-metadata-divider" />
+
+        <div className="sidebar-metadata-container">
+          <h4 className="sidebar-metadata-title">LAYER: {activeMapFeature.layer}</h4>
+          <table className="sidebar-metadata-table">
+            <tbody>
+              {Object.entries(activeMapFeature.properties).map(([key, value]) => (
+                <tr key={key} className="sidebar-metadata-row">
+                  <td className="sidebar-metadata-key">{key}</td>
+                  <td className="sidebar-metadata-value">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </nav>
+    );
+  }
   
   // Root level menu
   const menuItems = [

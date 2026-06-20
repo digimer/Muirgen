@@ -44,6 +44,8 @@ const App = () => {
   const [vessel, setVessel]               = useState(null);
   // UID forced update tick to handle stuck animations.
   const [uiTick, setUiTick]               = useState(0);
+  // Cartography Target Inspection
+  const [activeMapFeature, setActiveMapFeature] = useState(null);
   
   // Live telemetry state
   const [liveTelemetry, setLiveTelemetry] = useState({
@@ -596,6 +598,8 @@ const App = () => {
           <Sidebar 
             activeView={currentView?.id} setActiveView={resetToView} onLogout={handleLogout} 
             dataAlarm={getAccuracyIndicator(getWorstTelemetryTimestamp())}
+            activeMapFeature={activeMapFeature}
+            setActiveMapFeature={setActiveMapFeature}
           />
         )}
         
@@ -777,7 +781,10 @@ const App = () => {
 
                 {/* Navigation Cartography Canvas */}
                 {currentView?.id === 'NAVIGATION_MAPS' && (
-                  <NavigationMaps liveTelemetry={liveTelemetry} />
+                  <NavigationMaps 
+                    liveTelemetry={liveTelemetry} 
+                    setActiveMapFeature={setActiveMapFeature}
+                  />
                 )}
 
                 {/* The vessel management */}

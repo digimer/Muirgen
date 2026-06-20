@@ -81,7 +81,7 @@ const generatePredictorGeoJSON = (lat, lon, speedKnots, cogDeg) => {
   return { type: "FeatureCollection", features };
 };
 
-const NavigationMaps = ({ liveTelemetry }) => {
+const NavigationMaps = ({ liveTelemetry, setActiveMapFeature }) => {
   const mapContainer          = useRef(null);
   const mapInstance           = useRef(null);
   const vesselMarker          = useRef(null);
@@ -169,6 +169,28 @@ const NavigationMaps = ({ liveTelemetry }) => {
 
         mapInstance.current.on('load', () => {
           mapLoaded.current = true;
+
+          // Interactive Target Click Handler
+          mapInstance.current.on('click', (e) => {
+            const excludeLayers = ["LNDARE", "DEPARE", "COALNE", "DOCARE", "SLCONS", "PONTON", "predictor-line"];
+            const features = mapInstance.current.queryRenderedFeatures(e.point);
+            const filteredFeatures = features.filter(f => !excludeLayers.includes(f.sourceLayer) && !excludeLayers.includes(f.layer.id));
+            
+            if (filteredFeatures.length > 0) {
+              setActiveMapFeature({
+                layer: filteredFeatures[0].sourceLayer || filteredFeatures[0].layer.id,
+                properties: filteredFeatures[0].properties
+              });
+            }
+          });
+
+          // Change cursor to pointer when hovering over interactive targets
+          mapInstance.current.on('mousemove', (e) => {
+            const excludeLayers = ["LNDARE", "DEPARE", "COALNE", "DOCARE", "SLCONS", "PONTON", "predictor-line"];
+            const features = mapInstance.current.queryRenderedFeatures(e.point);
+            const interactive = features.some(f => !excludeLayers.includes(f.sourceLayer) && !excludeLayers.includes(f.layer.id));
+            mapInstance.current.getCanvas().style.cursor = interactive ? 'pointer' : '';
+          });
 
           // Add GeoJSON source for the mathematical predictor vector
           mapInstance.current.addSource('predictor-source', {

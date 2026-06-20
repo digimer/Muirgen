@@ -468,6 +468,8 @@ button:disabled {
   flex-direction: column;
   z-index: 20;
   padding: 1em;
+  width: 220px;
+  flex-shrink: 0;
 }
 
 /* The program header (where the program name is shown) */
@@ -575,6 +577,63 @@ button:disabled {
 /* tuning for the logout exit */
 .sidebar-exit-button {
   margin-bottom: 50px;
+}
+
+/* Sidebar Map Target Metadata Display */
+.sidebar-metadata-container {
+  overflow-y: auto;
+  padding: 0 10px;
+  flex: 1;
+  scrollbar-width: none; /* Firefox */
+}
+
+.sidebar-metadata-container::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+.sidebar-metadata-close-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 15px 10px;
+}
+
+.sidebar-metadata-close-button {
+  width: 100%;
+}
+
+.sidebar-metadata-divider {
+  opacity: 0.5;
+}
+
+.sidebar-metadata-title {
+  color: var(--neon-red);
+  margin-top: 0;
+  border-bottom: 1px solid var(--neon-red);
+}
+
+.sidebar-metadata-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.85em;
+  color: var(--text-color);
+}
+
+.sidebar-metadata-row {
+  border-bottom: 1px solid rgba(255, 0, 0, 0.2);
+}
+
+.sidebar-metadata-key {
+  padding: 8px 4px;
+  font-weight: bold;
+  vertical-align: top;
+  width: 40%;
+}
+
+.sidebar-metadata-value {
+  padding: 8px 4px;
+  word-break: break-all;
+  opacity: 0.8;
 }
 
 /* Add specific nudges here to align certain utf-8 glyphs. 
